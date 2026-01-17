@@ -10,7 +10,6 @@ load_dotenv() # Load variables from .env
 MONGO_URI = os.getenv("MONGO_URI")
 
 
-MONGO_URI = "mongodb+srv://prajwalganiga06:passwordadmin123@gas-driver.ngwamww.mongodb.net/?appName=Gas-Driver"
 
 print("--------------------------------------------------")
 print("🔄 CONNECTING TO MONGODB ATLAS...")

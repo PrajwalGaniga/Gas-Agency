@@ -8,5 +8,6 @@ pandas
 openpyxl
 xlsxwriter
 python-dotenv
+passlib[bcrypt]
+bcrypt==4.0.1
 starlette
-bson
