@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GasFlow | Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="bg-indigo-700 text-white p-4 shadow-lg flex justify-between">
+        <h1 class="text-xl font-bold">📊 Business Intelligence</h1>
+        <div class="flex gap-4">
+            <a href="/dashboard" class="text-sm bg-white/20 px-3 py-1 rounded">Back to Dashboard</a>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-2xl font-bold text-gray-800">Operational Overview</h2>
+            <div class="bg-white p-1 rounded-lg shadow border flex gap-1">
+                <a href="/statistics?period=24h" class="px-4 py-1.5 rounded-md text-sm {% if period == '24h' %} bg-indigo-600 text-white {% else %} text-gray-600 {% endif %}">24 Hours</a>
+                <a href="/statistics?period=1w" class="px-4 py-1.5 rounded-md text-sm {% if period == '1w' %} bg-indigo-600 text-white {% else %} text-gray-600 {% endif %}">7 Days</a>
+                <a href="/statistics?period=30d" class="px-4 py-1.5 rounded-md text-sm {% if period == '30d' %} bg-indigo-600 text-white {% else %} text-gray-600 {% endif %}">30 Days</a>
+            </div>
+        </div>
+
+        {% if no_data %}
+        <div class="bg-white p-20 text-center rounded-xl shadow">
+            <i class="fas fa-database text-gray-300 text-6xl mb-4"></i>
+            <p class="text-gray-500">No order data found for this period.</p>
+        </div>
+        {% else %}
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow border-l-4 border-indigo-500">
+                <p class="text-gray-500 text-sm font-bold uppercase">Total Orders</p>
+                <h3 class="text-3xl font-black text-gray-800">{{ stats.total_volume }}</h3>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500">
+                <p class="text-gray-500 text-sm font-bold uppercase">Avg Volume</p>
+                <h3 class="text-3xl font-black text-gray-800">{{ stats.avg_daily }} <span class="text-sm font-normal">/day</span></h3>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow border-l-4 border-orange-500">
+                <p class="text-gray-500 text-sm font-bold uppercase">Busiest City</p>
+                <h3 class="text-3xl font-black text-gray-800">
+                    {% if stats.city_labels and stats.city_labels|length > 0 %}
+                        {{ stats.city_labels[0] }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </h3>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-xl shadow">
+                <h4 class="font-bold text-gray-700 mb-4">Order Volume Trend</h4>
+                <canvas id="trendChart" height="200"></canvas>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow">
+                <h4 class="font-bold text-gray-700 mb-4">Delivery Status Distribution</h4>
+                <div class="h-[200px] flex justify-center">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow">
+                <h4 class="font-bold text-gray-700 mb-4">Top Orders by City</h4>
+                <canvas id="cityChart" height="200"></canvas>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow">
+                <h4 class="font-bold text-gray-700 mb-4">Top Performing Drivers (Deliveries)</h4>
+                <canvas id="driverChart" height="200"></canvas>
+            </div>
+        </div>
+        
+        <!-- Performance Summary - Fixed the error -->
+        <div class="mt-8 bg-white p-6 rounded-xl shadow">
+            <h4 class="font-bold text-gray-700 mb-4">Performance Summary</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="p-4 bg-indigo-50 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-indigo-700">Completion Rate</span>
+                        <i class="fas fa-percentage text-indigo-600"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-800">
+                        {% if stats.total_volume > 0 and stats.status_values and stats.status_values|length > 2 %}
+                            {{ (stats.status_values[2] / stats.total_volume * 100)|round|int }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </div>
+                    <p class="text-xs text-gray-600 mt-1">Completed deliveries</p>
+                </div>
+                
+                <div class="p-4 bg-green-50 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-green-700">Avg Response Time</span>
+                        <i class="fas fa-clock text-green-600"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-800">45 min</div>
+                    <p class="text-xs text-gray-600 mt-1">Time to accept delivery</p>
+                </div>
+                
+                <div class="p-4 bg-purple-50 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-purple-700">Peak Hours</span>
+                        <i class="fas fa-chart-line text-purple-600"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-800">6-9 PM</div>
+                    <p class="text-xs text-gray-600 mt-1">Highest order activity</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+    {% if not no_data %}
+    // Order Trend Chart
+    if (document.getElementById('trendChart')) {
+        new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: {{ stats.trend_labels | tojson }},
+                datasets: [{
+                    label: 'Orders',
+                    data: {{ stats.trend_values | tojson }},
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            }
+        });
+    }
+
+    // Status Chart
+    if (document.getElementById('statusChart')) {
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: {{ stats.status_labels | tojson }},
+                datasets: [{
+                    data: {{ stats.status_values | tojson }},
+                    backgroundColor: ['#eab308', '#3b82f6', '#22c55e', '#ef4444']
+                }]
+            },
+            options: { maintainAspectRatio: false }
+        });
+    }
+
+    // City Chart
+    if (document.getElementById('cityChart')) {
+        new Chart(document.getElementById('cityChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ stats.city_labels | tojson }},
+                datasets: [{
+                    label: 'Orders',
+                    data: {{ stats.city_values | tojson }},
+                    backgroundColor: '#6366f1'
+                }]
+            }
+        });
+    }
+
+    // Driver Leaderboard
+    if (document.getElementById('driverChart')) {
+        new Chart(document.getElementById('driverChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ stats.driver_labels | tojson }},
+                datasets: [{
+                    label: 'Deliveries',
+                    data: {{ stats.driver_values | tojson }},
+                    backgroundColor: '#10b981'
+                }]
+            },
+            options: { indexAxis: 'y' }
+        });
+    }
+    {% endif %}
+    </script>
+</body>
+</html>

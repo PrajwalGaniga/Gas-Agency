@@ -1,0 +1,16 @@
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+
+# Environment secrets
+.env
+
+# Expo/React Native files
+GasDriverApp/node_modules/
+GasDriverApp/.expo/
+GasDriverApp/npm-debug.log*
+
+# Other
+ngrok.exe
+.DS_Store

@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GasFlow Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Mobile-first animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+        .animate-slide-in-left { animation: slideInLeft 0.5s ease-out forwards; }
+        .animate-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite linear;
+        }
+        
+        /* Card hover effects */
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Gradient backgrounds */
+        .gradient-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .gradient-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        
+        .gradient-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        
+        .gradient-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        
+        .gradient-info {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+        
+        /* Glass effect */
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+        
+        /* Mobile menu animation */
+        .mobile-menu-enter {
+            transform: translateX(-100%);
+        }
+        
+        .mobile-menu-enter-active {
+            transform: translateX(0);
+            transition: transform 0.3s ease-out;
+        }
+        
+        .mobile-menu-exit {
+            transform: translateX(0);
+        }
+        
+        .mobile-menu-exit-active {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-out;
+        }
+        
+        /* Loading skeleton */
+        .skeleton {
+            background-color: #e0e0e0;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .skeleton::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+        
+        /* Progress ring */
+        .progress-ring {
+            transition: stroke-dashoffset 0.5s ease;
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        /* Pulse animation for notifications */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .animate-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Responsive utilities */
+        .mobile-only {
+            display: block;
+        }
+        
+        .desktop-only {
+            display: none;
+        }
+        
+        @media (min-width: 768px) {
+            .mobile-only {
+                display: none;
+            }
+            
+            .desktop-only {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    
+    <!-- Mobile Navigation Toggle -->
+    <div class="mobile-only fixed top-4 left-4 z-50">
+        <button id="mobileMenuToggle" class="gradient-primary text-white p-3 rounded-xl shadow-lg">
+            <i class="fas fa-bars text-lg"></i>
+        </button>
+    </div>
+    
+    <!-- Mobile Navigation Menu -->
+    <div id="mobileMenu" class="mobile-only fixed inset-0 z-40 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50" id="menuOverlay"></div>
+        <div class="absolute inset-y-0 left-0 w-64 bg-white shadow-2xl p-6">
+            <div class="flex items-center justify-between mb-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 gradient-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-fire text-white"></i>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-800">GasFlow</h1>
+                </div>
+                <button id="closeMobileMenu" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <a href="/customers" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-purple-50 text-gray-700">
+                    <i class="fas fa-users text-purple-600 w-6"></i>
+                    <span class="font-medium">Customers</span>
+                </a>
+                <a href="/drivers" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-purple-50 text-gray-700">
+                    <i class="fas fa-truck text-purple-600 w-6"></i>
+                    <span class="font-medium">Drivers</span>
+                </a>
+                <a href="/assignments" class="flex items-center space-x-3 p-3 rounded-lg gradient-primary text-white">
+                    <i class="fas fa-boxes w-6"></i>
+                    <span class="font-medium">Assignments</span>
+                </a>
+                <a href="/reports" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-purple-50 text-gray-700">
+                    <i class="fas fa-chart-bar text-purple-600 w-6"></i>
+                    <span class="font-medium">Reports</span>
+                </a>
+            </div>
+            
+            <div class="mt-auto pt-10 border-t border-gray-200">
+                <div class="flex items-center justify-between p-3">
+                    <span class="font-medium text-gray-700">Admi</span>
+                    <a href="/profile" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
+    <i class="fas fa-id-badge"></i>
+    <span class="text-sm font-medium">My Profile</span>
+</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Navigation -->
+    <nav class="gradient-primary text-white shadow-xl sticky top-0 z-30 desktop-only">
+        <div class="container mx-auto px-4 lg:px-6 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-8">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <h1 class="text-xl font-bold">GasFlow Admin</h1>
+                    </div>
+                    <div class="hidden md:flex space-x-1">
+                        <a href="/customers" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
+                            <i class="fas fa-users"></i>
+                            <span class="text-sm font-medium">Customers</span>
+                        </a>
+                        <a href="/drivers" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
+                            <i class="fas fa-truck"></i>
+                            <span class="text-sm font-medium">Drivers</span>
+                        </a>
+                        <a href="/assignments" class="px-4 py-2 rounded-lg bg-white bg-opacity-20 flex items-center gap-2">
+                            <i class="fas fa-boxes"></i>
+                            <span class="text-sm font-medium">Assignments</span>
+                            {% if stats.pending > 0 %}
+                            <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{{ stats.pending }}</span>
+                            {% endif %}
+                        </a>
+                        <a href="/reports" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
+                            <i class="fas fa-chart-bar"></i>
+                            <span class="text-sm font-medium">Reports</span>
+                        </a>
+                        <a href="/statistics" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
+    <i class="fas fa-chart-line"></i>
+    <span class="text-sm font-medium">Statistics</span>
+</a>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="hidden md:flex items-center space-x-2 bg-white bg-opacity-10 px-3 py-2 rounded-lg">
+                        <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span class="text-xs font-medium">Live</span>
+                    </div>
+                    <button onclick="window.location.reload()" 
+                            class="px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-redo"></i>
+                        <span class="text-sm font-medium hidden md:inline">Refresh</span>
+                    </button>
+                    <div class="flex items-center space-x-4">
+    <div class="flex items-center space-x-2">
+        <a href="/profile" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
+            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                <i class="fas fa-user text-sm"></i>
+            </div>
+            <span class="text-sm font-medium hidden md:inline">Admin</span>
+        </a>
+    </div>
+
+    <a href="/logout" class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition flex items-center gap-2 shadow-md">
+        <i class="fas fa-sign-out-alt"></i>
+        <span class="text-sm font-medium hidden md:inline">Logout</span>
+    </a>
+</div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 lg:px-6 py-6">
+        
+        <!-- Success Message -->
+        {% if message %}
+        <div class="animate-fade-in-up mb-6 gradient-success text-white p-4 rounded-xl shadow-lg flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-check-circle text-xl"></i>
+                <div>
+                    <span class="font-medium">{{ message }}</span>
+                    <p class="text-xs opacity-90 mt-1">Operation completed successfully</p>
+                </div>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-white hover:text-gray-200">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- Header Section -->
+        <div class="mb-8 animate-fade-in-up">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Dashboard Overview</h2>
+                    <p class="text-gray-600">Real-time analytics and operations management</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="text-sm bg-white px-3 py-2 rounded-lg shadow border">
+                        <i class="far fa-clock text-purple-600 mr-2"></i>
+                        <span id="currentTime">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <!-- Drivers Card -->
+            <div class="card-hover glass-effect rounded-xl p-5 shadow animate-fade-in-up" style="animation-delay: 0.1s">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-12 h-12 gradient-info rounded-xl flex items-center justify-center">
+                        <i class="fas fa-truck text-white text-lg"></i>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 font-semibold">Total Drivers</p>
+                        <h1 class="text-3xl font-bold text-gray-800 mt-1">{{ stats.drivers }}</h1>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span class="text-xs text-blue-600 font-medium">Active Fleet</span>
+                    <i class="fas fa-arrow-right text-blue-500 text-xs"></i>
+                </div>
+            </div>
+
+            <!-- Customers Card -->
+            <div class="card-hover glass-effect rounded-xl p-5 shadow animate-fade-in-up" style="animation-delay: 0.2s">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-12 h-12 gradient-primary rounded-xl flex items-center justify-center">
+                        <i class="fas fa-users text-white text-lg"></i>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 font-semibold">Customers</p>
+                        <h1 class="text-3xl font-bold text-gray-800 mt-1">{{ stats.customers }}</h1>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span class="text-xs text-purple-600 font-medium">Database</span>
+                    <i class="fas fa-arrow-right text-purple-500 text-xs"></i>
+                </div>
+            </div>
+
+            <!-- Pending Card -->
+            <div class="card-hover glass-effect rounded-xl p-5 shadow animate-fade-in-up" style="animation-delay: 0.3s">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-12 h-12 gradient-warning rounded-xl flex items-center justify-center">
+                        <i class="fas fa-clock text-white text-lg"></i>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 font-semibold">Pending</p>
+                        <h1 class="text-3xl font-bold text-gray-800 mt-1">{{ stats.pending }}</h1>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span class="text-xs text-yellow-600 font-medium">Awaiting Assignment</span>
+                    <i class="fas fa-arrow-right text-yellow-500 text-xs"></i>
+                </div>
+            </div>
+
+            <!-- In Progress Card -->
+            <div class="card-hover glass-effect rounded-xl p-5 shadow animate-fade-in-up" style="animation-delay: 0.4s">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-12 h-12 gradient-danger rounded-xl flex items-center justify-center">
+                        <i class="fas fa-shipping-fast text-white text-lg"></i>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 font-semibold">In Transit</p>
+                        <h1 class="text-3xl font-bold text-gray-800 mt-1">{{ stats.in_progress }}</h1>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span class="text-xs text-red-600 font-medium">On The Way</span>
+                    <i class="fas fa-arrow-right text-red-500 text-xs"></i>
+                </div>
+            </div>
+
+            <!-- Delivered Card -->
+            <div class="card-hover glass-effect rounded-xl p-5 shadow animate-fade-in-up" style="animation-delay: 0.5s">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-12 h-12 gradient-success rounded-xl flex items-center justify-center">
+                        <i class="fas fa-check-circle text-white text-lg"></i>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 font-semibold">Delivered</p>
+                        <h1 class="text-3xl font-bold text-gray-800 mt-1">{{ stats.delivered }}</h1>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span class="text-xs text-green-600 font-medium">Completed</span>
+                    <i class="fas fa-arrow-right text-green-500 text-xs"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Upload Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            
+            <!-- Chart Section -->
+            <div class="lg:col-span-2 card-hover glass-effect rounded-xl p-6 shadow animate-fade-in-up" style="animation-delay: 0.6s">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">Order Analytics</h3>
+                        <p class="text-sm text-gray-500 mt-1">Distribution across all statuses</p>
+                    </div>
+                    <div class="flex items-center gap-2 mt-3 md:mt-0">
+                        <button onclick="switchChartType('bar')" 
+                                class="px-3 py-1.5 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-1">
+                            <i class="fas fa-chart-bar text-xs"></i>
+                            <span>Bar</span>
+                        </button>
+                        <button onclick="switchChartType('doughnut')" 
+                                class="px-3 py-1.5 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-1">
+                            <i class="fas fa-chart-pie text-xs"></i>
+                            <span>Donut</span>
+                        </button>
+                        <button onclick="switchChartType('line')" 
+                                class="px-3 py-1.5 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-1">
+                            <i class="fas fa-chart-line text-xs"></i>
+                            <span>Line</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="relative" style="height: 280px;">
+                    <canvas id="orderChart"></canvas>
+                </div>
+                <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                    <div class="p-2 bg-yellow-50 rounded">
+                        <p class="text-xs text-yellow-700 font-medium">Pending</p>
+                        <p class="text-lg font-bold text-yellow-800">{{ stats.pending }}</p>
+                    </div>
+                    <div class="p-2 bg-orange-50 rounded">
+                        <p class="text-xs text-orange-700 font-medium">In Transit</p>
+                        <p class="text-lg font-bold text-orange-800">{{ stats.in_progress }}</p>
+                    </div>
+                    <div class="p-2 bg-green-50 rounded">
+                        <p class="text-xs text-green-700 font-medium">Delivered</p>
+                        <p class="text-lg font-bold text-green-800">{{ stats.delivered }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="card-hover glass-effect rounded-xl p-6 shadow border-2 border-dashed border-purple-200 animate-fade-in-up" style="animation-delay: 0.7s">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 gradient-primary rounded-xl mx-auto mb-4 flex items-center justify-center animate-float">
+                        <i class="fas fa-file-upload text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Bulk Import</h3>
+                    <p class="text-sm text-gray-500">Upload customer database</p>
+                </div>
+                
+                <form action="/upload-customers" method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-purple-400 transition cursor-pointer" id="fileDropArea">
+                        <input type="file" 
+                               name="file" 
+                               accept=".csv, .xlsx" 
+                               id="fileInput"
+                               class="hidden"
+                               onchange="updateFileName(this)"
+                               required>
+                        <label for="fileInput" class="cursor-pointer block text-center">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                            <p class="text-sm text-gray-600 font-medium" id="fileName">Click to browse files</p>
+                            <p class="text-xs text-gray-400 mt-1">Supports CSV, XLSX</p>
+                            <p class="text-xs text-purple-600 mt-2 font-medium">
+                                <i class="fas fa-info-circle mr-1"></i> Max size: 10MB
+                            </p>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="w-full gradient-primary text-white px-6 py-3.5 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-upload"></i>
+                        <span>Upload & Sync</span>
+                    </button>
+                </form>
+                
+                <div class="mt-4 p-3 bg-purple-50 rounded-lg">
+                    <p class="text-xs text-purple-700">
+                        <i class="fas fa-lightbulb mr-1"></i>
+                        <strong>Tip:</strong> Ensure headers match: Name, Phone, City, Address, Landmark
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card-hover glass-effect rounded-xl p-6 shadow animate-fade-in-up" style="animation-delay: 0.8s">
+            <div class="mb-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Quick Actions</h3>
+                <p class="text-sm text-gray-500">Access management portals</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Assignments Portal -->
+                <a href="/assignments" class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-50 to-orange-100 p-5 hover:shadow-lg transition-all duration-300 border border-orange-200">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-orange-200 rounded-full -mr-12 -mt-12 opacity-20"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center text-white">
+                                <i class="fas fa-boxes text-lg"></i>
+                            </div>
+                            {% if stats.pending > 0 %}
+                            <span class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+                                {{ stats.pending }} New
+                            </span>
+                            {% endif %}
+                        </div>
+                        <h4 class="text-lg font-bold text-orange-900 mb-1">Order Assignments</h4>
+                        <p class="text-sm text-orange-700">Assign pending deliveries to drivers</p>
+                        <div class="mt-4 flex items-center text-orange-600 text-sm font-medium">
+                            <span>Manage Now</span>
+                            <i class="fas fa-arrow-right ml-2 group-hover:ml-3 transition-all"></i>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Customer Database -->
+                <a href="/customers" class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 p-5 hover:shadow-lg transition-all duration-300 border border-blue-200">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-blue-200 rounded-full -mr-12 -mt-12 opacity-20"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white">
+                                <i class="fas fa-users text-lg"></i>
+                            </div>
+                        </div>
+                        <h4 class="text-lg font-bold text-blue-900 mb-1">Customer Database</h4>
+                        <p class="text-sm text-blue-700">View and manage all customers</p>
+                        <div class="mt-4 flex items-center text-blue-600 text-sm font-medium">
+                            <span>View All</span>
+                            <i class="fas fa-arrow-right ml-2 group-hover:ml-3 transition-all"></i>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Driver Management -->
+                <a href="/drivers" class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 p-5 hover:shadow-lg transition-all duration-300 border border-purple-200">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-purple-200 rounded-full -mr-12 -mt-12 opacity-20"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center text-white">
+                                <i class="fas fa-truck text-lg"></i>
+                            </div>
+                        </div>
+                        <h4 class="text-lg font-bold text-purple-900 mb-1">Driver Fleet</h4>
+                        <p class="text-sm text-purple-700">Manage driver accounts & cities</p>
+                        <div class="mt-4 flex items-center text-purple-600 text-sm font-medium">
+                            <span>Manage Fleet</span>
+                            <i class="fas fa-arrow-right ml-2 group-hover:ml-3 transition-all"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Recent Activity (Mobile Only) -->
+        <div class="mobile-only mt-6 card-hover glass-effect rounded-xl p-5 shadow">
+            <div class="mb-4">
+                <h3 class="text-lg font-bold text-gray-800 mb-2">Quick Stats</h3>
+            </div>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-truck text-blue-600 text-sm"></i>
+                        </div>
+                        <span class="font-medium text-gray-700">Available Drivers</span>
+                    </div>
+                    <span class="font-bold text-gray-800">{{ stats.drivers }}</span>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-clock text-yellow-600 text-sm"></i>
+                        </div>
+                        <span class="font-medium text-gray-700">Pending Orders</span>
+                    </div>
+                    <span class="font-bold text-gray-800">{{ stats.pending }}</span>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-check-circle text-green-600 text-sm"></i>
+                        </div>
+                        <span class="font-medium text-gray-700">Completed Today</span>
+                    </div>
+                    <span class="font-bold text-gray-800">{{ stats.delivered }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="container mx-auto px-4 lg:px-6 py-6">
+        <div class="text-center text-gray-500 text-sm">
+            <p>GasFlow Admin Dashboard v2.0 • Real-time Monitoring System</p>
+            <p class="mt-1">© 2023 GasFlow Delivery Services. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script>
+        let currentChart = null;
+        let currentChartType = 'bar';
+        
+        const chartData = {
+            labels: ['Pending', 'In Transit', 'Delivered'],
+            datasets: [{
+                label: 'Orders',
+                data: [{{ stats.pending }}, {{ stats.in_progress }}, {{ stats.delivered }}],
+                backgroundColor: [
+                    'rgba(234, 179, 8, 0.8)',
+                    'rgba(249, 115, 22, 0.8)',
+                    'rgba(34, 197, 94, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(234, 179, 8, 1)',
+                    'rgba(249, 115, 22, 1)',
+                    'rgba(34, 197, 94, 1)'
+                ],
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        };
+
+        function createChart(type) {
+            const ctx = document.getElementById('orderChart').getContext('2d');
+            
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            const config = {
+                type: type,
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: type === 'doughnut',
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: { size: 12, family: 'Inter' },
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            cornerRadius: 6,
+                            titleFont: { size: 13, family: 'Inter' },
+                            bodyFont: { size: 12, family: 'Inter' },
+                            displayColors: true,
+                            boxPadding: 4
+                        }
+                    },
+                    scales: type !== 'doughnut' ? {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { 
+                                stepSize: 1, 
+                                font: { family: 'Inter', size: 11 },
+                                padding: 5
+                            },
+                            grid: { 
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { 
+                                font: { family: 'Inter', size: 11 },
+                                padding: 10
+                            }
+                        }
+                    } : {}
+                }
+            };
+            
+            currentChart = new Chart(ctx, config);
+        }
+
+        function switchChartType(type) {
+            currentChartType = type;
+            createChart(type);
+            
+            // Update active button state
+            document.querySelectorAll('button[onclick^="switchChartType"]').forEach(btn => {
+                btn.classList.remove('bg-purple-200');
+                btn.classList.add('bg-purple-100');
+            });
+            
+            const activeBtn = document.querySelector(`button[onclick="switchChartType('${type}')"]`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-purple-100');
+                activeBtn.classList.add('bg-purple-200');
+            }
+        }
+
+        function updateFileName(input) {
+            const fileName = input.files[0]?.name || 'Click to browse files';
+            document.getElementById('fileName').textContent = fileName;
+            
+            // Add visual feedback
+            const dropArea = document.getElementById('fileDropArea');
+            dropArea.classList.remove('border-gray-300');
+            dropArea.classList.add('border-purple-400', 'bg-purple-50');
+            
+            setTimeout(() => {
+                dropArea.classList.remove('bg-purple-50');
+            }, 1000);
+        }
+
+        // Mobile menu functionality
+        document.getElementById('mobileMenuToggle').addEventListener('click', function() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.remove('hidden');
+            setTimeout(() => {
+                menu.classList.add('mobile-menu-enter-active');
+            }, 10);
+        });
+
+        document.getElementById('closeMobileMenu').addEventListener('click', function() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.remove('mobile-menu-enter-active');
+            setTimeout(() => {
+                menu.classList.add('hidden');
+            }, 300);
+        });
+
+        document.getElementById('menuOverlay').addEventListener('click', function() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.remove('mobile-menu-enter-active');
+            setTimeout(() => {
+                menu.classList.add('hidden');
+            }, 300);
+        });
+
+        // Update current time
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateString = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+            document.getElementById('currentTime').textContent = `${dateString} • ${timeString}`;
+        }
+        
+        updateTime();
+        setInterval(updateTime, 60000); // Update every minute
+
+        // File drop area functionality
+        const fileDropArea = document.getElementById('fileDropArea');
+        const fileInput = document.getElementById('fileInput');
+        
+        fileDropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileDropArea.classList.add('border-purple-400', 'bg-purple-50');
+        });
+        
+        fileDropArea.addEventListener('dragleave', () => {
+            fileDropArea.classList.remove('border-purple-400', 'bg-purple-50');
+        });
+        
+        fileDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileDropArea.classList.remove('border-purple-400', 'bg-purple-50');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                updateFileName(fileInput);
+            }
+        });
+
+        // Initialize chart on load
+        window.addEventListener('load', () => {
+            createChart('bar');
+            
+            // Set initial active button for chart type
+            switchChartType('bar');
+            
+            // Add animation delays for cards on mobile
+            if (window.innerWidth < 768) {
+                const cards = document.querySelectorAll('.animate-fade-in-up');
+                cards.forEach((card, index) => {
+                    card.style.animationDelay = `${(index + 1) * 0.1}s`;
+                });
+            }
+        });
+        
+        // Responsive adjustments
+        window.addEventListener('resize', function() {
+            if (currentChart) {
+                currentChart.resize();
+            }
+        });
+    </script>
+</body>
+</html>

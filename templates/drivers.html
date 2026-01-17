@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Management | GasFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-active { opacity: 1; transform: scale(1); transition: all 0.3s; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    
+    <nav class="gradient-primary text-white shadow-xl sticky top-0 z-30">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-truck text-2xl"></i>
+                <h1 class="text-xl font-bold">Driver Fleet Management</h1>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="openAddDriverModal()" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg text-sm font-bold shadow-lg transition">+ Add Driver</button>
+                <a href="/dashboard" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm font-bold transition">Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-6 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+                <p class="text-xs font-bold text-gray-400 uppercase">Total Drivers</p>
+                <h3 class="text-2xl font-bold">{{ drivers|length }}</h3>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                <p class="text-xs font-bold text-gray-400 uppercase">Active Now</p>
+                <h3 class="text-2xl font-bold text-green-600">{{ drivers|selectattr('is_active', 'equalto', true)|list|length }}</h3>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500">
+                <p class="text-xs font-bold text-gray-400 uppercase">Fleet Deliveries</p>
+                <h3 class="text-2xl font-bold text-purple-600">{{ drivers|sum(attribute='total_deliveries') }}</h3>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% for driver in drivers %}
+            <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden animate-fade-in">
+                <div class="h-1.5 w-full {{ 'bg-green-500' if driver.is_active else 'bg-gray-300' }}"></div>
+                <div class="p-6">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="font-bold text-gray-800 text-lg">{{ driver.name }}</h3>
+                            <p class="text-blue-600 text-sm font-medium">{{ driver.phone_number }}</p>
+                        </div>
+                        <span class="text-[10px] font-bold px-2 py-1 rounded-full {{ 'bg-green-100 text-green-700' if driver.is_active else 'bg-red-100 text-red-700' }}">
+                            {{ 'ACTIVE' if driver.is_active else 'INACTIVE' }}
+                        </span>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-1 mb-6">
+                        {% for city in (driver.assigned_cities or []) %}
+                        <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-[10px] font-bold">📍 {{ city }}</span>
+                        {% endfor %}
+                    </div>
+
+                    <button type="button" 
+                            class="edit-driver-btn w-full bg-gray-800 text-white py-2 rounded-lg font-bold hover:bg-black transition text-sm"
+                            data-id="{{ driver._id }}"
+                            data-name="{{ driver.name }}"
+                            data-phone="{{ driver.phone_number }}"
+                            data-cities='{{ (driver.assigned_cities or []) | tojson }}'
+                            data-active="{{ 'true' if driver.is_active else 'false' }}"
+                            data-deliveries="{{ driver.total_deliveries }}">
+                        Manage Driver
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="addDriverModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">Register New Driver</h2>
+            <form action="/add-driver" method="POST" class="space-y-4">
+                <input type="text" name="name" placeholder="Full Name" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required>
+                <input type="text" name="phone" placeholder="Phone Number" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required>
+                <input type="password" name="password" placeholder="Assign Login Password" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required>
+                
+                <label class="block text-sm font-bold text-gray-600">Assign Cities</label>
+                <div class="max-h-32 overflow-y-auto border rounded-xl p-3 bg-gray-50 grid grid-cols-2 gap-2">
+                    {% for city in cities %}
+                    <label class="flex items-center text-xs"><input type="checkbox" name="cities" value="{{ city.name }}" class="mr-2"> {{ city.name }}</label>
+                    {% endfor %}
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="closeAddDriverModal()" class="flex-1 bg-gray-100 p-3 rounded-xl font-bold">Cancel</button>
+                    <button type="submit" class="flex-1 gradient-primary text-white p-3 rounded-xl font-bold">Create Driver</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="editModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">Edit Driver</h2>
+            
+            <form action="/update-driver" method="POST" class="space-y-4">
+                <input type="hidden" name="driver_id" id="e_id">
+                <input type="text" id="e_name" name="name" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="e_phone" name="phone" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="password" name="password" placeholder="New Password (optional)" class="w-full p-3 border rounded-xl outline-none">
+                
+                <div class="flex justify-between bg-gray-50 p-3 rounded-xl text-sm">
+                    <span class="text-gray-500">Lifetime Deliveries:</span>
+                    <span id="e_deliveries" class="font-bold">0</span>
+                </div>
+
+                <div class="max-h-32 overflow-y-auto border rounded-xl p-3 bg-gray-50 grid grid-cols-2 gap-2">
+                    {% for city in cities %}
+                    <label class="flex items-center text-xs"><input type="checkbox" name="cities" value="{{ city.name }}" class="city-check mr-2"> {{ city.name }}</label>
+                    {% endfor %}
+                </div>
+
+                <label class="flex items-center p-3 bg-blue-50 rounded-xl cursor-pointer">
+                    <input type="checkbox" name="is_active" id="e_active" value="true" class="mr-3 w-5 h-5 text-blue-600">
+                    <span class="text-sm font-bold text-blue-800">Driver is Active</span>
+                </label>
+
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeEditModal()" class="flex-1 bg-gray-100 p-3 rounded-xl font-bold">Cancel</button>
+                    <button type="submit" class="flex-1 bg-gray-800 text-white p-3 rounded-xl font-bold">Save Changes</button>
+                </div>
+            </form>
+
+            <div class="mt-6 pt-6 border-t">
+                <form action="/delete-driver" method="POST" onsubmit="return confirm('Delete this driver permanently?');">
+                    <input type="hidden" name="driver_id" id="delete_driver_id">
+                    <button type="submit" class="w-full text-red-600 font-bold hover:bg-red-50 py-3 rounded-xl transition text-sm">
+                        <i class="fas fa-trash-alt mr-2"></i> Remove Driver from Agency
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openAddDriverModal() { document.getElementById('addDriverModal').classList.remove('hidden'); }
+        function closeAddDriverModal() { document.getElementById('addDriverModal').classList.add('hidden'); }
+        function openEditModal() { document.getElementById('editModal').classList.remove('hidden'); }
+        function closeEditModal() { document.getElementById('editModal').classList.add('hidden'); }
+
+        document.querySelectorAll('.edit-driver-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const name = this.getAttribute('data-name');
+                const phone = this.getAttribute('data-phone');
+                const cities = JSON.parse(this.getAttribute('data-cities') || '[]');
+                const active = this.getAttribute('data-active') === 'true';
+                const count = this.getAttribute('data-deliveries');
+
+                // Populate Forms
+                document.getElementById('e_id').value = id;
+                document.getElementById('delete_driver_id').value = id;
+                document.getElementById('e_name').value = name;
+                document.getElementById('e_phone').value = phone;
+                document.getElementById('e_deliveries').innerText = count;
+                document.getElementById('e_active').checked = active;
+
+                document.querySelectorAll('.city-check').forEach(box => {
+                    box.checked = cities.includes(box.value);
+                });
+
+                openEditModal();
+            });
+        });
+
+        // Close on background click
+        window.onclick = (e) => {
+            if (e.target.id === 'editModal') closeEditModal();
+            if (e.target.id === 'addDriverModal') closeAddDriverModal();
+        };
+    </script>
+</body>
+</html>

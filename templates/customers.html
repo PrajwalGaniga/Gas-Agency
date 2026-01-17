@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Management | GasFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .animate-slide-in { animation: slideIn 0.4s ease-out forwards; }
+        .animate-pulse { animation: pulse 2s infinite; }
+        
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        }
+        
+        .gradient-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .gradient-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        
+        .gradient-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        
+        .gradient-info {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+        
+        .gradient-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .status-badge {
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        .modal-exit {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .modal-exit-active {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        .mobile-only { display: block; }
+        .desktop-only { display: none; }
+        
+        @media (min-width: 768px) {
+            .mobile-only { display: none; }
+            .desktop-only { display: block; }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    
+    <!-- Mobile Navigation -->
+    <div class="mobile-only fixed top-4 left-4 z-40">
+        <button onclick="window.history.back()" class="gradient-primary text-white p-3 rounded-xl shadow-lg">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+    </div>
+    
+    <!-- Navigation -->
+    <nav class="gradient-primary text-white shadow-xl sticky top-0 z-30">
+        <div class="container mx-auto px-4 lg:px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold">Customer Management</h1>
+                        <p class="text-xs opacity-80">{{ customers|length }} customers registered</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <div class="desktop-only flex items-center space-x-2 bg-white bg-opacity-10 px-3 py-1.5 rounded-lg">
+                        <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span class="text-xs font-medium">Live</span>
+                    </div>
+                    
+                    <button onclick="openAddCityModal()" class="px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-city"></i>
+                        <span class="desktop-only text-sm font-medium">Add City</span>
+                    </button>
+                    
+                    <button onclick="openAddCustomerModal()" class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-user-plus"></i>
+                        <span class="desktop-only text-sm font-medium">Add Customer</span>
+                    </button>
+                    
+                    <a href="/dashboard" class="px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span class="desktop-only text-sm font-medium">Dashboard</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 lg:px-6 py-6">
+        
+        <!-- Search and Filter Section -->
+        <div class="mb-8 animate-fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Search Bar -->
+                <div class="lg:col-span-2">
+                    <form action="/customers" method="GET" class="flex shadow-lg rounded-xl overflow-hidden">
+                        <div class="flex-1 relative">
+                            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" 
+                                   name="search" 
+                                   value="{{ search_query }}" 
+                                   placeholder="Search customers by name, phone, or city..." 
+                                   class="w-full p-4 pl-12 outline-none focus:ring-2 focus:ring-blue-300">
+                        </div>
+                        <button type="submit" class="gradient-primary text-white px-6 font-medium hover:opacity-90 transition">
+                            <i class="fas fa-search desktop-only mr-2"></i>
+                            <span class="desktop-only">Search</span>
+                            <span class="mobile-only">Go</span>
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Filter Buttons -->
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-sm text-gray-600 font-medium mobile-only w-full mb-2">Filter by Status:</span>
+                    <a href="/customers?filter_type=all" 
+                       class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'all' %} gradient-primary text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
+                        <i class="fas fa-layer-group mr-2"></i>
+                        <span>All</span>
+                    </a>
+                    <a href="/customers?filter_type=delivered" 
+                       class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'delivered' %} gradient-success text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <span>Delivered</span>
+                    </a>
+                    <a href="/customers?filter_type=in_progress" 
+                       class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'in_progress' %} gradient-info text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
+                        <i class="fas fa-truck mr-2"></i>
+                        <span>In Progress</span>
+                    </a>
+                    <a href="/customers?filter_type=pending" 
+                       class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'pending' %} gradient-warning text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
+                        <i class="fas fa-clock mr-2"></i>
+                        <span>Pending</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stats Summary -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-4 rounded-xl shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">Total Customers</p>
+                        <p class="text-2xl font-bold text-gray-800">{{ customers|length }}</p>
+                    </div>
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-users text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white p-4 rounded-xl shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">Pending Orders</p>
+                        <p class="text-2xl font-bold text-yellow-600">
+                            {{ customers|selectattr('current_status', 'equalto', 'PENDING')|list|length }}
+                        </p>
+                    </div>
+                    <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-clock text-yellow-600"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white p-4 rounded-xl shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">In Progress</p>
+                        <p class="text-2xl font-bold text-blue-600">
+                            {{ customers|selectattr('current_status', 'equalto', 'IN_PROGRESS')|list|length }}
+                        </p>
+                    </div>
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-truck text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white p-4 rounded-xl shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">Delivered</p>
+                        <p class="text-2xl font-bold text-green-600">
+                            {{ customers|selectattr('current_status', 'equalto', 'DELIVERED')|list|length }}
+                        </p>
+                    </div>
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Customer Cards Grid -->
+        {% if customers %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% for person in customers %}
+            <div class="card-hover bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden animate-fade-in" 
+                 style="animation-delay: {{ loop.index * 0.05 }}s">
+                
+                <!-- Status Indicator Bar -->
+                <div class="h-2 w-full 
+                    {% if person.current_status == 'DELIVERED' %} bg-gradient-to-r from-green-400 to-green-500
+                    {% elif person.current_status == 'IN_PROGRESS' %} bg-gradient-to-r from-blue-400 to-blue-500
+                    {% elif person.current_status == 'PENDING' %} bg-gradient-to-r from-yellow-400 to-yellow-500
+                    {% else %} bg-gray-300 {% endif %}">
+                </div>
+                
+                <div class="p-5">
+                    <!-- Header -->
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <h3 class="font-bold text-lg text-gray-800 truncate">{{ person.name }}</h3>
+                            <div class="flex items-center mt-1">
+                                <i class="fas fa-phone-alt text-gray-400 text-xs mr-2"></i>
+                                <p class="text-blue-600 font-medium text-sm truncate">{{ person.phone_number }}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Status Badge -->
+                        <div class="flex flex-col items-end">
+                            <span class="status-badge px-2 py-1 rounded-full 
+                                {% if person.current_status == 'DELIVERED' %} bg-green-100 text-green-700 
+                                {% elif person.current_status == 'IN_PROGRESS' %} bg-blue-100 text-blue-700 
+                                {% elif person.current_status == 'PENDING' %} bg-yellow-100 text-yellow-700 
+                                {% else %} bg-gray-100 text-gray-600 {% endif %}">
+                                {{ person.current_status }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Customer Details -->
+                    <div class="space-y-3 mb-5">
+                        <div class="flex items-start">
+                            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-city text-purple-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">City</p>
+                                <p class="text-sm font-medium text-gray-800">{{ person.city }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-map-marker-alt text-indigo-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Address & Landmark</p>
+                                <p class="text-sm font-medium text-gray-800 truncate">{{ person.landmark }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2">
+                        <form action="/create-order" method="POST" class="flex-1">
+                            <input type="hidden" name="customer_id" value="{{ person._id }}">
+                            <button type="submit" 
+                                    class="w-full gradient-warning text-white py-2.5 rounded-lg font-bold hover:opacity-90 transition flex items-center justify-center gap-2">
+                                <i class="fas fa-gas-pump"></i>
+                                <span>Request Order</span>
+                            </button>
+                        </form>
+                        
+                        <button onclick="openEditModal('{{ person._id }}', '{{ person.name }}', '{{ person.phone_number }}', '{{ person.city }}', '{{ person.landmark }}')" 
+                                class="px-4 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition flex items-center justify-center">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Empty State -->
+        {% else %}
+        <div class="text-center py-16 animate-fade-in">
+            <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-users text-gray-400 text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-700 mb-2">No customers found</h3>
+            <p class="text-gray-500 mb-6">Try adjusting your search or add new customers</p>
+            <button onclick="openAddCustomerModal()" class="gradient-primary text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition inline-flex items-center gap-2">
+                <i class="fas fa-user-plus"></i>
+                <span>Add First Customer</span>
+            </button>
+        </div>
+        {% endif %}
+        
+        <!-- Pagination (if needed) -->
+        {% if customers|length >= 12 %}
+        <div class="mt-10 flex justify-center">
+            <div class="flex items-center gap-2">
+                <button class="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 transition">
+                    <i class="fas fa-chevron-left text-gray-600"></i>
+                </button>
+                <button class="w-10 h-10 gradient-primary text-white rounded-lg shadow">1</button>
+                <button class="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 transition">2</button>
+                <button class="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 transition">3</button>
+                <button class="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 transition">
+                    <i class="fas fa-ellipsis-h text-gray-400"></i>
+                </button>
+                <button class="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 transition">
+                    <i class="fas fa-chevron-right text-gray-600"></i>
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Add Customer Modal -->
+    <div id="addCustModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Register New Customer</h2>
+                    <p class="text-sm text-gray-500 mt-1">Add customer to the database</p>
+                </div>
+                <button onclick="closeAddCustomerModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form action="/add-customer" method="POST" class="space-y-4">
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-1 block">Full Name</label>
+                    <div class="relative">
+                        <i class="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" 
+                               name="name" 
+                               placeholder="Enter full name" 
+                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                               required>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-1 block">Phone Number</label>
+                    <div class="relative">
+                        <i class="fas fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" 
+                               name="phone" 
+                               placeholder="Enter phone number" 
+                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                               required>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-1 block">City</label>
+                    <div class="relative">
+                        <i class="fas fa-city absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <select name="city" 
+                                class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none">
+                            {% for city in cities %}
+                            <option value="{{ city.name }}">{{ city.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-1 block">Address & Landmark</label>
+                    <div class="relative">
+                        <i class="fas fa-map-marker-alt absolute left-3 top-3 text-gray-400"></i>
+                        <textarea name="landmark" 
+                                  placeholder="Enter complete address with landmark" 
+                                  rows="3"
+                                  class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button type="button" 
+                            onclick="closeAddCustomerModal()" 
+                            class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 gradient-success text-white py-3 rounded-lg font-medium hover:opacity-90 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Register Customer</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add City Modal -->
+    <div id="addCityModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Add Service City</h2>
+                    <p class="text-sm text-gray-500 mt-1">Expand your service area</p>
+                </div>
+                <button onclick="closeAddCityModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form action="/add-city" method="POST" class="space-y-4">
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-1 block">City Name</label>
+                    <div class="relative">
+                        <i class="fas fa-map-pin absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" 
+                               name="city_name" 
+                               placeholder="Enter city name" 
+                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                               required>
+                    </div>
+                </div>
+                
+                <button type="submit" 
+                        class="w-full gradient-primary text-white py-3 rounded-lg font-medium hover:opacity-90 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Add City to Service Area</span>
+                </button>
+                
+                <button type="button" 
+                        onclick="closeAddCityModal()" 
+                        class="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition">
+                    Cancel
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Customer Modal -->
+    <div id="editCustModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Edit Customer</h2>
+                    <p class="text-sm text-gray-500 mt-1">Update customer information</p>
+                </div>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form action="/update-customer" method="POST" class="space-y-4">
+                <input type="hidden" id="edit_customer_id" name="customer_id">
+                
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-1 block">Full Name</label>
+                    <div class="relative">
+                        <i class="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" 
+                               id="edit_name" 
+                               name="name" 
+                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-1 block">Phone Number</label>
+                    <div class="relative">
+                        <i class="fas fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" 
+                               id="edit_phone" 
+                               name="phone_number" 
+                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-1 block">City</label>
+                    <div class="relative">
+                        <i class="fas fa-city absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <select id="edit_city" 
+                                name="city" 
+                                class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none">
+                            {% for city in cities %}
+                            <option value="{{ city.name }}">{{ city.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-1 block">Address & Landmark</label>
+                    <div class="relative">
+                        <i class="fas fa-map-marker-alt absolute left-3 top-3 text-gray-400"></i>
+                        <textarea id="edit_landmark" 
+                                  name="landmark" 
+                                  rows="3"
+                                  class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button type="button" 
+                            onclick="closeEditModal()" 
+                            class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 gradient-primary text-white py-3 rounded-lg font-medium hover:opacity-90 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-save"></i>
+                        <span>Save Changes</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="container mx-auto px-4 lg:px-6 py-6 mt-8">
+        <div class="text-center text-gray-500 text-sm">
+            <p>GasFlow Customer Management • {{ customers|length }} customers registered</p>
+            <p class="mt-1">© 2023 GasFlow Delivery Services. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script>
+        // Modal Functions
+        function openAddCustomerModal() {
+            document.getElementById('addCustModal').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('addCustModal').classList.add('modal-enter-active');
+            }, 10);
+        }
+        
+        function closeAddCustomerModal() {
+            const modal = document.getElementById('addCustModal');
+            modal.classList.remove('modal-enter-active');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+        
+        function openAddCityModal() {
+            document.getElementById('addCityModal').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('addCityModal').classList.add('modal-enter-active');
+            }, 10);
+        }
+        
+        function closeAddCityModal() {
+            const modal = document.getElementById('addCityModal');
+            modal.classList.remove('modal-enter-active');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+        
+        function openEditModal(id, name, phone, city, landmark) {
+            document.getElementById('edit_customer_id').value = id;
+            document.getElementById('edit_name').value = name;
+            document.getElementById('edit_phone').value = phone;
+            document.getElementById('edit_city').value = city;
+            document.getElementById('edit_landmark').value = landmark;
+            
+            const modal = document.getElementById('editCustModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.add('modal-enter-active');
+            }, 10);
+        }
+        
+        function closeEditModal() {
+            const modal = document.getElementById('editCustModal');
+            modal.classList.remove('modal-enter-active');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+        
+        // Close modals on outside click
+        document.addEventListener('click', function(event) {
+            const modals = ['addCustModal', 'addCityModal', 'editCustModal'];
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (modal && !modal.classList.contains('hidden') && event.target === modal) {
+                    if (modalId === 'addCustModal') closeAddCustomerModal();
+                    if (modalId === 'addCityModal') closeAddCityModal();
+                    if (modalId === 'editCustModal') closeEditModal();
+                }
+            });
+        });
+        
+        // Close modals on ESC key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeAddCustomerModal();
+                closeAddCityModal();
+                closeEditModal();
+            }
+        });
+        
+        // Search input focus
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('input[name="search"]');
+            if (searchInput && window.innerWidth > 768) {
+                searchInput.focus();
+            }
+            
+            // Add animation delays for cards
+            const cards = document.querySelectorAll('.card-hover');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.05}s`;
+            });
+        });
+        
+        // Mobile back button functionality
+        window.addEventListener('popstate', function() {
+            closeAllModals();
+        });
+        
+        function closeAllModals() {
+            closeAddCustomerModal();
+            closeAddCityModal();
+            closeEditModal();
+        }
+    </script>
+</body>
+</html>

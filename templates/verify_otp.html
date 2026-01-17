@@ -1,0 +1,11 @@
+<body class="bg-gray-100 flex items-center justify-center h-screen font-sans">
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm text-center">
+        <h2 class="text-xl font-bold mb-4">Verify OTP</h2>
+        <form action="/verify-otp" method="POST" class="space-y-4">
+            <input type="hidden" name="email" value="{{ email }}">
+            <input type="text" name="otp" placeholder="Enter 6-digit code" class="w-full p-2 border rounded text-center tracking-widest" required>
+            <button class="w-full bg-green-600 text-white p-2 rounded">Verify</button>
+        </form>
+    </div>
+    <script src="https://cdn.tailwindcss.com"></script>
+</body>

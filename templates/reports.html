@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Reports | GasFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .animate-slide-in { animation: slideIn 0.4s ease-out forwards; }
+        .animate-pulse { animation: pulse 2s infinite; }
+        
+        .gradient-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .gradient-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        
+        .gradient-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        
+        .gradient-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        
+        .gradient-info {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .status-badge {
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .mobile-only { display: block; }
+        .desktop-only { display: none; }
+        
+        @media (min-width: 768px) {
+            .mobile-only { display: none; }
+            .desktop-only { display: block; }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+        
+        .stat-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        }
+        
+        .table-row-hover {
+            transition: all 0.2s ease;
+        }
+        
+        .table-row-hover:hover {
+            background-color: #f8fafc;
+            transform: scale(1.001);
+        }
+        
+        .period-active {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .period-active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px 3px 0 0;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-indigo-50 min-h-screen">
+    
+    <!-- Mobile Navigation -->
+    <div class="mobile-only fixed top-4 left-4 z-40">
+        <button onclick="window.history.back()" class="gradient-primary text-white p-3 rounded-xl shadow-lg">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+    </div>
+    
+    <!-- Navigation -->
+    <nav class="gradient-primary text-white shadow-xl sticky top-0 z-30">
+        <div class="container mx-auto px-4 lg:px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-bar text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold">Performance Analytics</h1>
+                        <p class="text-xs opacity-80">{{ orders|length }} orders in selected period</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <div class="desktop-only flex items-center space-x-2 bg-white bg-opacity-10 px-3 py-1.5 rounded-lg">
+                        <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span class="text-xs font-medium">Live</span>
+                    </div>
+                    
+                    <a href="/dashboard" 
+                       class="px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span class="desktop-only text-sm font-medium">Dashboard</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 lg:px-6 py-6">
+        
+        <!-- Period Selection & Export -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8 animate-fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800 mb-2 flex items-center">
+                        <i class="fas fa-calendar-alt text-indigo-500 mr-2"></i>
+                        Select Reporting Period
+                    </h2>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="/reports?period=24h" 
+                           class="px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center gap-2 {% if period == '24h' %} gradient-primary text-white period-active shadow-lg {% else %} bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-sm {% endif %}">
+                            <i class="fas fa-clock"></i>
+                            <span>Last 24 Hours</span>
+                        </a>
+                        <a href="/reports?period=1w" 
+                           class="px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center gap-2 {% if period == '1w' %} gradient-primary text-white period-active shadow-lg {% else %} bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-sm {% endif %}">
+                            <i class="fas fa-calendar-week"></i>
+                            <span>Last 1 Week</span>
+                        </a>
+                        <a href="/reports?period=1m" 
+                           class="px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center gap-2 {% if period == '1m' %} gradient-primary text-white period-active shadow-lg {% else %} bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-sm {% endif %}">
+                            <i class="fas fa-calendar"></i>
+                            <span>Last 1 Month</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <a href="/export-report?period={{ period }}" 
+                   class="gradient-success text-white px-6 py-3 rounded-lg font-bold hover:opacity-90 transition flex items-center gap-2 shadow-lg">
+                    <i class="fas fa-file-excel text-lg"></i>
+                    <div class="text-left">
+                        <span class="block text-sm font-medium opacity-90">Download Report</span>
+                        <span class="block text-xs">Excel Format</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-gray-400 animate-fade-in" style="animation-delay: 0.1s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Activity</p>
+                        <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ summary.total }}</h2>
+                    </div>
+                    <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-gray-600 text-xl"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-3">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Total orders in selected period
+                </p>
+            </div>
+            
+            <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-green-500 animate-fade-in" style="animation-delay: 0.2s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-green-600 uppercase tracking-wider">Delivered</p>
+                        <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ summary.delivered }}</h2>
+                    </div>
+                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-3">
+                    <i class="fas fa-percentage mr-1"></i>
+                    {% if summary.total > 0 %}
+                    {{ ((summary.delivered / summary.total) * 100)|round|int }}% completion rate
+                    {% else %}
+                    0% completion rate
+                    {% endif %}
+                </p>
+            </div>
+            
+            <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-orange-500 animate-fade-in" style="animation-delay: 0.3s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-orange-600 uppercase tracking-wider">In Progress</p>
+                        <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ summary.in_progress }}</h2>
+                    </div>
+                    <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-truck text-orange-600 text-xl"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-3">
+                    <i class="fas fa-clock mr-1"></i>
+                    Currently being delivered
+                </p>
+            </div>
+            
+            <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-red-500 animate-fade-in" style="animation-delay: 0.4s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-red-600 uppercase tracking-wider">Pending</p>
+                        <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ summary.pending }}</h2>
+                    </div>
+                    <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-clock text-red-600 text-xl"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-3">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    Awaiting assignment
+                </p>
+            </div>
+        </div>
+
+        <!-- Orders Table -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden animate-fade-in">
+            <!-- Table Header -->
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 border-b">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-list-alt text-indigo-500 mr-2"></i>
+                            Order Activity Details
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">Showing {{ orders|length }} order(s) in selected period</p>
+                    </div>
+                    <div class="flex items-center gap-2 mt-3 md:mt-0">
+                        <span class="text-xs text-gray-500">
+                            <i class="fas fa-circle text-green-500 mr-1"></i> Delivered
+                        </span>
+                        <span class="text-xs text-gray-500">
+                            <i class="fas fa-circle text-blue-500 mr-1"></i> In Progress
+                        </span>
+                        <span class="text-xs text-gray-500">
+                            <i class="fas fa-circle text-orange-500 mr-1"></i> Pending
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Table Content -->
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <div class="flex items-center">
+                                    <i class="fas fa-user mr-2"></i>
+                                    Customer
+                                </div>
+                            </th>
+                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <div class="flex items-center">
+                                    <i class="fas fa-city mr-2"></i>
+                                    City
+                                </div>
+                            </th>
+                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <div class="flex items-center">
+                                    <i class="fas fa-truck mr-2"></i>
+                                    Assigned Driver
+                                </div>
+                            </th>
+                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <div class="flex items-center">
+                                    <i class="fas fa-tag mr-2"></i>
+                                    Status
+                                </div>
+                            </th>
+                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <div class="flex items-center">
+                                    <i class="fas fa-calendar-alt mr-2"></i>
+                                    Date & Time
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for order in orders %}
+                        <tr class="table-row-hover {% if loop.index % 2 == 0 %}bg-gray-50{% endif %}">
+                            <td class="p-4">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                                        <i class="fas fa-user text-indigo-600 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-gray-800">{{ order.customer_name }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-map-marker-alt text-gray-400 mr-2 text-sm"></i>
+                                    <span class="font-medium text-gray-700">{{ order.city }}</span>
+                                </div>
+                            </td>
+                            <td class="p-4">
+                                {% if order.assigned_driver_name %}
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                        <i class="fas fa-id-card text-blue-600 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-blue-600">{{ order.assigned_driver_name }}</p>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                        <i class="fas fa-user-slash text-gray-400 text-sm"></i>
+                                    </div>
+                                    <span class="text-gray-400 font-medium">Not Assigned</span>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td class="p-4">
+                                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold
+                                    {% if order.status == 'DELIVERED' %} bg-green-100 text-green-700
+                                    {% elif order.status == 'IN_PROGRESS' %} bg-blue-100 text-blue-700
+                                    {% else %} bg-orange-100 text-orange-700 {% endif %}">
+                                    {% if order.status == 'DELIVERED' %}
+                                    <i class="fas fa-check-circle mr-1.5"></i>
+                                    {% elif order.status == 'IN_PROGRESS' %}
+                                    <i class="fas fa-truck-moving mr-1.5"></i>
+                                    {% else %}
+                                    <i class="fas fa-clock mr-1.5"></i>
+                                    {% endif %}
+                                    {{ order.status }}
+                                </span>
+                            </td>
+                            <td class="p-4">
+                                <div class="flex items-center">
+                                    <i class="far fa-clock text-gray-400 mr-2 text-sm"></i>
+                                    <span class="text-sm font-medium text-gray-600">{{ order.created_at.strftime('%d %b') }}</span>
+                                    <span class="text-xs text-gray-400 ml-2">{{ order.created_at.strftime('%I:%M %p') }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="p-8 text-center">
+                                <div class="flex flex-col items-center">
+                                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                        <i class="fas fa-chart-bar text-gray-400 text-2xl"></i>
+                                    </div>
+                                    <h4 class="text-lg font-medium text-gray-600 mb-2">No Data Available</h4>
+                                    <p class="text-gray-500">No orders found for the selected period.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Table Footer -->
+            {% if orders %}
+            <div class="bg-gray-50 p-4 border-t">
+                <div class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
+                    <div class="mb-2 md:mb-0">
+                        Showing {{ orders|length }} of {{ summary.total }} order(s)
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="text-xs">
+                            <span class="inline-block w-3 h-3 bg-green-500 rounded-full mr-1"></span>
+                            Delivered: {{ summary.delivered }}
+                        </span>
+                        <span class="text-xs">
+                            <span class="inline-block w-3 h-3 bg-blue-500 rounded-full mr-1"></span>
+                            In Progress: {{ summary.in_progress }}
+                        </span>
+                        <span class="text-xs">
+                            <span class="inline-block w-3 h-3 bg-orange-500 rounded-full mr-1"></span>
+                            Pending: {{ summary.pending }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="container mx-auto px-4 lg:px-6 py-6 mt-8">
+        <div class="text-center text-gray-500 text-sm">
+            <p>GasFlow Performance Analytics • Period: {{ period|upper }} • Generated on {{ now.strftime('%Y-%m-%d %H:%M') if now else 'N/A' }}</p>
+            <p class="mt-1">© 2023 GasFlow Delivery Services. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script>
+        // Add animation delays for cards
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.animate-fade-in');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+            });
+            
+            // Add row hover effects
+            const rows = document.querySelectorAll('.table-row-hover');
+            rows.forEach(row => {
+                row.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.001)';
+                    this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+                });
+                
+                row.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
+                    this.style.boxShadow = 'none';
+                });
+            });
+            
+            // Add click effect to download button
+            const downloadBtn = document.querySelector('a[href*="export-report"]');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', function(e) {
+                    if ({{ orders|length }} === 0) {
+                        e.preventDefault();
+                        alert('No data available to export for this period.');
+                    }
+                });
+            }
+        });
+        
+        // Mobile back button functionality
+        window.addEventListener('popstate', function() {
+            // Handle navigation if needed
+        });
+        
+        // Auto-highlight current period
+        const currentPeriod = "{{ period }}";
+        console.log(`Current reporting period: ${currentPeriod}`);
+        
+        // Add subtle animation to stats on page load
+        setTimeout(() => {
+            const stats = document.querySelectorAll('.stat-card');
+            stats.forEach(stat => {
+                stat.classList.add('animate-pulse');
+                setTimeout(() => {
+                    stat.classList.remove('animate-pulse');
+                }, 1000);
+            });
+        }, 1000);
+    </script>
+</body>
+</html>

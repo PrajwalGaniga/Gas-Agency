@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Profile | GasFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="bg-indigo-700 text-white p-4 shadow-lg flex justify-between items-center">
+        <h1 class="text-xl font-bold"><i class="fas fa-user-circle mr-2"></i>My Profile</h1>
+        <a href="/dashboard" class="text-sm bg-white/20 px-4 py-2 rounded-lg hover:bg-white/30 transition">Back to Dashboard</a>
+    </nav>
+
+    <div class="container mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-1 bg-white p-8 rounded-2xl shadow-md">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">Personal Information</h2>
+            <form action="/update-profile" method="POST" class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Login Email</label>
+                    <input type="text" value="{{ admin.email }}" class="w-full p-3 bg-gray-100 rounded-lg cursor-not-allowed" readonly>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Agency Name</label>
+                    <input type="text" name="agency_name" value="{{ admin.agency_name or '' }}" placeholder="Gas Agency name" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase">Phone</label>
+                        <input type="text" name="phone" value="{{ admin.phone or '' }}" placeholder="Mobile No" class="w-full p-3 border rounded-lg outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase">Age</label>
+                        <input type="number" name="age" value="{{ admin.age or '' }}" placeholder="Years" class="w-full p-3 border rounded-lg outline-none">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold hover:bg-indigo-700 transition">Save Changes</button>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 bg-white p-8 rounded-2xl shadow-md">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">Fleet Management History</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b text-gray-400 text-xs uppercase font-bold">
+                            <th class="pb-4">Driver Name</th>
+                            <th class="pb-4">Registered Date</th>
+                            <th class="pb-4">Current Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for d in drivers %}
+                        <tr>
+                            <td class="py-4 font-medium text-gray-800">{{ d.name }}</td>
+                            <td class="py-4 text-sm text-gray-500">{{ d.created_at_str }}</td>
+                            <td class="py-4">
+                                <span class="px-3 py-1 rounded-full text-[10px] font-bold {{ 'bg-green-100 text-green-700' if d.is_active else 'bg-red-100 text-red-700' }}">
+                                    {{ 'ACTIVE' if d.is_active else 'INACTIVE' }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="py-8 text-center text-gray-400 italic">No drivers registered yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

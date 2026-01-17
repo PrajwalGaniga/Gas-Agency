@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Assignment | GasFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { 
+            font-family: 'Inter', sans-serif; 
+        }
+        
+        .card-hover {
+            transition: all 0.2s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(249, 115, 22, 0.1);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        .animate-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-padding {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-orange-50 to-amber-50 min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="bg-gradient-to-r from-orange-600 to-orange-500 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-truck-loading"></i>
+                </div>
+                <h1 class="text-xl font-bold">Delivery Assignment</h1>
+            </div>
+            <a href="/dashboard" class="text-sm border border-orange-400 px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
+                <i class="fas fa-tachometer-alt"></i>
+                <span class="hidden sm:inline">Dashboard</span>
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-4 md:p-6 mobile-padding">
+        
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800">Pending Requests</h2>
+                    <p class="text-gray-600 mt-1">{{ orders|length }} orders waiting for assignment</p>
+                </div>
+                
+                {% if orders %}
+                <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow">
+                        <div class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm font-medium text-gray-700">Live Updates</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        {% if not orders %}
+        <div class="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-check text-green-600 text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-700 mb-3">All Caught Up! 🎉</h3>
+            <p class="text-gray-500 mb-6">No pending orders to assign right now.</p>
+            <a href="/dashboard" class="inline-flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Return to Dashboard</span>
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Orders Grid -->
+        {% if orders %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for order in orders %}
+            <div class="card-hover bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-orange-500">
+                
+                <!-- Order Header -->
+                <div class="p-5 border-b border-gray-100">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-800">{{ order.customer_name }}</h3>
+                            <div class="flex items-center mt-2">
+                                <i class="far fa-clock text-gray-400 text-xs mr-2"></i>
+                                <span class="text-xs text-gray-500">{{ order.created_at.strftime('%d %b, %I:%M %p') }}</span>
+                            </div>
+                        </div>
+                        <span class="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">
+                            PENDING
+                        </span>
+                    </div>
+                    
+                    <!-- City Info -->
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-map-marker-alt text-orange-600 text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">📍 <strong class="text-gray-800">{{ order.city }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assignment Form -->
+                <div class="p-5">
+                    <form action="/assign-delivery" method="POST" class="space-y-4">
+                        <input type="hidden" name="order_id" value="{{ order._id }}">
+                        
+                        <div>
+                            <label class="text-xs font-bold text-gray-600 uppercase mb-2 block flex items-center">
+                                <i class="fas fa-user-tie text-orange-500 mr-2"></i>
+                                Select Available Driver
+                            </label>
+                            
+                            <div class="relative">
+                                <i class="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                <select name="driver_id" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 appearance-none" required>
+                                    <option value="">-- Choose Driver for {{ order.city }} --</option>
+                                    {% set has_drivers = false %}
+                                    {% for driver in drivers %}
+                                        {% if order.city in driver.assigned_cities %}
+                                            {% set has_drivers = true %}
+                                            <option value="{{ driver._id }}">{{ driver.name }} • {{ driver.phone_number }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if not has_drivers %}
+                                        <option value="" disabled>No drivers available for {{ order.city }}</option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                            
+                            {% if has_drivers %}
+                            <p class="text-xs text-gray-500 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Drivers available for {{ order.city }}
+                            </p>
+                            {% else %}
+                            <div class="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <div class="flex items-start">
+                                    <i class="fas fa-exclamation-triangle text-red-500 mt-0.5 mr-2"></i>
+                                    <p class="text-xs text-red-700">No drivers assigned to {{ order.city }}. Add drivers first.</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <button type="submit" 
+                                class="w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-3 rounded-lg font-bold hover:opacity-90 transition shadow-md flex items-center justify-center gap-2"
+                                {% if not has_drivers %}disabled{% endif %}>
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Assign to Driver</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Simple form submission feedback
+        document.addEventListener('DOMContentLoaded', function() {
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    const submitBtn = this.querySelector('button[type="submit"]');
+                    const originalText = submitBtn.innerHTML;
+                    
+                    if (!submitBtn.disabled) {
+                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Assigning...';
+                        submitBtn.disabled = true;
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
