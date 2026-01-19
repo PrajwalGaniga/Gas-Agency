@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Form, Depends, HTTPException, Query
+from fastapi import APIRouter, Form, Depends, HTTPException, Query,Body
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from bson import ObjectId
 import math
+from admin import get_current_driver
+from auth import get_current_driver
 
 # Database Imports
 from app.database import (
-    db, driver_collection, order_collection, customer_collection
+    db, driver_collection, order_collection, customer_collection,driver_audit_collection, driver_location_collection
 )
 from app.utils import verify_password
 
@@ -215,4 +217,36 @@ async def complete_delivery(
         {"records.order_id": ObjectId(order_id)},
         {"$set": {"records.$.status": "DELIVERED"}}
     )
+    return {"success": True}
+
+# PURPOSE: Records driver GPS ping and updates live status
+@driver_router.post("/driver/location")
+async def update_location(
+    lat: float = Body(...), 
+    lng: float = Body(...), 
+    driver_id: ObjectId = Depends(get_current_driver)
+):
+    now = datetime.utcnow()
+    # Log to history for path drawing
+    driver_location_collection.insert_one({
+        "driver_id": driver_id,
+        "lat": lat,
+        "lng": lng,
+        "timestamp": now
+    })
+    # Update current profile for live table
+    driver_collection.update_one(
+        {"_id": driver_id},
+        {"$set": {"last_seen": now, "current_lat": lat, "current_lng": lng}}
+    )
+    return {"success": True}
+
+# PURPOSE: Explicit Driver Logout
+@driver_router.post("/driver/logout")
+async def driver_logout(driver_id: ObjectId = Depends(get_current_driver)):
+    driver_audit_collection.insert_one({
+        "driver_id": driver_id,
+        "event": "LOGOUT",
+        "timestamp": datetime.utcnow()
+    })
     return {"success": True}

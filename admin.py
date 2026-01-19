@@ -1,60 +1,67 @@
+# admin.py
 from fastapi import APIRouter, Request, Form, Depends, HTTPException, UploadFile, File
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse, StreamingResponse
 from datetime import datetime, timedelta
-from typing import Optional
-from jose import jwt, JWTError
 import pandas as pd
 import io
 from bson import ObjectId
 
-# Database Imports
+# --- INTERNAL IMPORTS ---
+# 1. Auth imports from the NEW auth.py
+from auth import get_current_admin, create_access_token ,get_current_driver
+
+# 2. Database imports
 from app.database import (
     db, admin_collection, driver_collection, 
-    customer_collection, order_collection, cities_collection
+    customer_collection, order_collection, cities_collection,
+    driver_audit_collection, driver_location_collection
 )
+
+# 3. Utils imports
 from app.utils import verify_password, get_password_hash, generate_otp, send_otp_email
 
 admin_router = APIRouter()
 templates = Jinja2Templates(directory="templates")
-
-# --- JWT CONFIGURATION (Admin Side) ---
-SECRET_KEY = "your_secret_key_here"  # In production, move to .env
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-def get_current_admin(request: Request):
-    token = request.cookies.get("access_token")
-    if not token:
-        return None
-    try:
-        # Remove 'Bearer ' if present (though cookies usually just have the token)
-        if token.startswith("Bearer "):
-            token = token.split(" ")[1]
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        admin_id = payload.get("sub")
-        if admin_id is None:
-            return None
-        return ObjectId(admin_id)
-    except JWTError:
-        return None
-
+templates.env.add_extension('jinja2.ext.do')
 # --- CONSTANTS ---
 DEVELOPER_PASSCODE = "GAS"
 MASTER_EMAIL = "prajwalganiga06@gmail.com"
 
-# PURPOSE: Renders the signup page
+# --- HELPER FUNCTIONS ---
+
+# PURPOSE: Helper to calculate total working hours for the current day
+def calculate_work_time(driver_id):
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    logs = list(driver_audit_collection.find({
+        "driver_id": ObjectId(driver_id),
+        "timestamp": {"$gte": today}
+    }).sort("timestamp", 1))
+    
+    total_seconds = 0
+    last_login = None
+    
+    for log in logs:
+        if log["event"] == "LOGIN":
+            last_login = log["timestamp"]
+        elif log["event"] == "LOGOUT" and last_login:
+            total_seconds += (log["timestamp"] - last_login).total_seconds()
+            last_login = None
+            
+    # If currently online (no logout log yet), count time from last login to now
+    if last_login:
+        total_seconds += (datetime.utcnow() - last_login).total_seconds()
+        
+    hours = int(total_seconds // 3600)
+    minutes = int((total_seconds % 3600) // 60)
+    return f"{hours}h {minutes}m"
+
+# --- AUTH ROUTES ---
+
 @admin_router.get("/signup")
 async def signup_page(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
-# PURPOSE: Validates developer passcode and sends OTP for signup
 @admin_router.post("/signup-request")
 async def signup_request(
     request: Request, 
@@ -80,7 +87,6 @@ async def signup_request(
     send_otp_email(MASTER_EMAIL, otp)
     return {"success": True, "message": "Approval OTP sent to Master Admin."}
 
-# PURPOSE: Verifies OTP and creates the admin account
 @admin_router.post("/complete-signup")
 async def complete_signup(email: str = Form(...), otp: str = Form(...)):
     temp_user = db["temp_signups"].find_one({"email": email})
@@ -96,40 +102,36 @@ async def complete_signup(email: str = Form(...), otp: str = Form(...)):
     
     return {"success": False, "message": "Invalid or expired OTP."}
 
-# PURPOSE: Renders the login page
 @admin_router.get("/")
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-# PURPOSE: Authenticates admin, generates JWT, and sets it in a secure cookie
 @admin_router.post("/login")
 async def login_logic(request: Request, email: str = Form(...), password: str = Form(...)):
     user = admin_collection.find_one({"email": email})
     
     if user and verify_password(password, user["password_hash"]):
-        # Create JWT Token
+        # USE IMPORTED FUNCTION FROM AUTH.PY
         access_token = create_access_token(data={"sub": str(user["_id"])})
         
         response = RedirectResponse(url="/dashboard", status_code=303)
-        # Set HttpOnly Cookie
         response.set_cookie(key="access_token", value=access_token, httponly=True)
         return response
     
     return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials."})
 
-# PURPOSE: Logs out the admin by clearing the cookie
 @admin_router.get("/logout")
 async def logout(request: Request):
     response = RedirectResponse(url="/?message=Logged out successfully", status_code=303)
     response.delete_cookie("access_token")
     return response
 
-# PURPOSE: Password reset flow - Page
+# --- PASSWORD RESET ROUTES ---
+
 @admin_router.get("/forgot-password")
 async def forgot_password_page(request: Request):
     return templates.TemplateResponse("forgot_password.html", {"request": request})
 
-# PURPOSE: Password reset flow - Send OTP
 @admin_router.post("/send-otp")
 async def send_otp(request: Request, email: str = Form(...)):
     user = admin_collection.find_one({"email": email})
@@ -144,7 +146,6 @@ async def send_otp(request: Request, email: str = Form(...)):
     
     return templates.TemplateResponse("forgot_password.html", {"request": request, "error": "Failed to send OTP."})
 
-# PURPOSE: Password reset flow - Verify OTP
 @admin_router.post("/verify-otp")
 async def verify_otp(request: Request, email: str = Form(...), otp: str = Form(...)):
     user = admin_collection.find_one({"email": email})
@@ -153,7 +154,6 @@ async def verify_otp(request: Request, email: str = Form(...), otp: str = Form(.
     
     return templates.TemplateResponse("verify_otp.html", {"request": request, "email": email, "error": "Invalid OTP."})
 
-# PURPOSE: Password reset flow - Reset Logic
 @admin_router.post("/reset-password")
 async def reset_password_logic(request: Request, email: str = Form(...), new_password: str = Form(...)):
     hashed_pwd = get_password_hash(new_password)
@@ -163,36 +163,75 @@ async def reset_password_logic(request: Request, email: str = Form(...), new_pas
     )
     return templates.TemplateResponse("login.html", {"request": request, "message": "✅ Password reset successful!"})
 
-# PURPOSE: Admin Dashboard - Shows statistics
+# --- DASHBOARD & DRIVERS ---
+
 @admin_router.get("/dashboard")
 async def dashboard_view(request: Request, admin_id: ObjectId = Depends(get_current_admin)):
-    if not admin_id:
-        return RedirectResponse(url="/", status_code=303)
+    if not admin_id: 
+        return RedirectResponse("/")
+    
+    # 1. Fetch all drivers for this admin
+    drivers = list(driver_collection.find({"admin_id": admin_id}))
+    stats_list = []
+    
+    for d in drivers:
+        is_online = (datetime.utcnow() - d.get("last_seen", datetime.min)).total_seconds() < 300
+        
+        stats_list.append({
+            "id": str(d["_id"]),
+            "name": d["name"],
+            "phone": d.get("phone_number", "N/A"),
+            "is_online": is_online,
+            "last_seen": d.get("last_seen"),
+            "work_time": calculate_work_time(d["_id"]),
+            "completed": order_collection.count_documents({"assigned_driver_id": d["_id"], "status": "DELIVERED"}),
+            # This only counts orders ALREADY assigned to this driver
+            "pending": order_collection.count_documents({"assigned_driver_id": d["_id"], "status": "PENDING"})
+        })
+    
+    # 2. Calculate system-wide stats
+    total_drivers = len(drivers)
+    total_customers = customer_collection.count_documents({"admin_id": admin_id})
+    
+    # Total Pending in system
+    all_pending_orders = order_collection.count_documents({"admin_id": admin_id, "status": "PENDING"})
+    
+    # NEW: Calculate Unassigned Pending Orders specifically
+    unassigned_pending = order_collection.count_documents({
+        "admin_id": admin_id, 
+        "status": "PENDING", 
+        "assigned_driver_id": None # No driver assigned yet
+    })
+
+    in_progress_orders = order_collection.count_documents({"admin_id": admin_id, "status": "IN_PROGRESS"})
+    delivered_orders = order_collection.count_documents({"admin_id": admin_id, "status": "DELIVERED"})
     
     stats = {
-        "drivers": driver_collection.count_documents({"admin_id": admin_id}),
+        "drivers": len(drivers),
         "customers": customer_collection.count_documents({"admin_id": admin_id}),
         "pending": order_collection.count_documents({"admin_id": admin_id, "status": "PENDING"}),
+        # NEW: Find orders that are PENDING but have NO DRIVER
+        "unassigned": order_collection.count_documents({"admin_id": admin_id, "status": "PENDING", "assigned_driver_id": None}),
         "in_progress": order_collection.count_documents({"admin_id": admin_id, "status": "IN_PROGRESS"}),
         "delivered": order_collection.count_documents({"admin_id": admin_id, "status": "DELIVERED"})
     }
     
-    user_email = admin_collection.find_one({"_id": admin_id})["email"]
-    
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request, 
-        "stats": stats, 
-        "user": {"username": user_email}
-    })
-
-# PURPOSE: Driver Management View
+    return templates.TemplateResponse(
+        "dashboard.html", 
+        {
+            "request": request, 
+            "drivers": stats_list,
+            "stats": stats,
+            "message": request.query_params.get("message")
+        }
+    )
 @admin_router.get("/drivers")
 async def driver_management(request: Request, admin_id: ObjectId = Depends(get_current_admin)):
     if not admin_id:
         return RedirectResponse(url="/", status_code=303)
     
     drivers = list(driver_collection.find({"admin_id": admin_id}))
-    cities = list(db["cities"].find()) 
+    cities = list(cities_collection.find().sort("name", 1))
     
     for d in drivers:
         d["_id"] = str(d["_id"])
@@ -210,7 +249,6 @@ async def driver_management(request: Request, admin_id: ObjectId = Depends(get_c
         "cities": cities
     })
 
-# PURPOSE: Add new driver
 @admin_router.post("/add-driver")
 async def add_driver(
     request: Request, name: str = Form(...), phone: str = Form(...), 
@@ -231,7 +269,6 @@ async def add_driver(
     })
     return RedirectResponse(url="/drivers", status_code=303)
 
-# PURPOSE: Update existing driver
 @admin_router.post("/update-driver")
 async def update_driver(
     driver_id: str = Form(...), name: str = Form(...), 
@@ -254,7 +291,6 @@ async def update_driver(
     driver_collection.update_one({"_id": ObjectId(driver_id)}, {"$set": update_data})
     return RedirectResponse(url="/drivers", status_code=303)
 
-# PURPOSE: Delete a driver
 @admin_router.post("/delete-driver")
 async def delete_driver(request: Request, driver_id: str = Form(...), admin_id: ObjectId = Depends(get_current_admin)):
     if not admin_id:
@@ -266,26 +302,29 @@ async def delete_driver(request: Request, driver_id: str = Form(...), admin_id: 
     })
     return RedirectResponse(url="/drivers?msg=Driver deleted", status_code=303)
 
-# PURPOSE: Delivery Assignments Page
+# --- ASSIGNMENTS ---
+
+# admin.py
+
 @admin_router.get("/assignments")
 async def delivery_assignments(request: Request, admin_id: ObjectId = Depends(get_current_admin)):
     if not admin_id:
         return RedirectResponse(url="/", status_code=303)
 
-    pending_orders = list(order_collection.find({
-        "admin_id": admin_id, 
-        "status": "PENDING"
-    }))
+    # 1. Fetch only PENDING orders belonging to THIS admin
+    pending_orders = list(order_collection.find({"admin_id": admin_id, "status": "PENDING"}))
     for order in pending_orders:
         order["_id"] = str(order["_id"])
         order["customer_id"] = str(order["customer_id"])
 
-    active_drivers = list(driver_collection.find({
-        "admin_id": admin_id, 
-        "is_active": True
-    }))
+    # 2. Fetch ACTIVE drivers and stringify everything for JSON/Template safety
+    active_drivers = list(driver_collection.find({"admin_id": admin_id, "is_active": True}))
     for driver in active_drivers:
         driver["_id"] = str(driver["_id"])
+        # Stringify any datetime objects to prevent 500 Serialization Errors
+        for key, value in driver.items():
+            if isinstance(value, datetime):
+                driver[key] = value.isoformat()
 
     return templates.TemplateResponse("assignments.html", {
         "request": request,
@@ -293,44 +332,113 @@ async def delivery_assignments(request: Request, admin_id: ObjectId = Depends(ge
         "drivers": active_drivers
     })
 
-# PURPOSE: Assign a driver to an order
 @admin_router.post("/assign-delivery")
 async def assign_delivery(request: Request, order_id: str = Form(...), driver_id: str = Form(...)):
-    print(f"\n--- DEBUG: Assignment Requested ---")
     try:
-        o_id, d_id = ObjectId(order_id), ObjectId(driver_id)
-        driver = driver_collection.find_one({"_id": d_id})
-        
+        o_id = ObjectId(order_id)
+        order = order_collection.find_one({"_id": o_id})
+        if not order:
+            return {"success": False, "message": "Order not found"}
+
+        final_driver_id = None
+        final_driver_name = "Unassigned"
+
+        # 🚀 FIXED: Handle "auto" string separately to prevent ObjectId conversion crash
+        if driver_id == "auto":
+            from customer import get_optimal_driver 
+            admin_id = order.get("admin_id")
+            city = order.get("city")
+            best_driver = get_optimal_driver(admin_id, city)
+            
+            if best_driver:
+                final_driver_id = best_driver["_id"]
+                final_driver_name = best_driver["name"]
+            else:
+                return {"success": False, "message": f"No active drivers found for {city}"}
+        else:
+            # Manual selection - Convert only if it's a valid ID string
+            d_id = ObjectId(driver_id)
+            driver = driver_collection.find_one({"_id": d_id})
+            if driver:
+                final_driver_id = d_id
+                final_driver_name = driver["name"]
+
+        # Update both collections
         order_collection.update_one(
             {"_id": o_id},
             {"$set": {
                 "status": "IN_PROGRESS", 
-                "assigned_driver_id": d_id, 
-                "assigned_driver_name": driver["name"], 
+                "assigned_driver_id": final_driver_id, 
+                "assigned_driver_name": final_driver_name, 
                 "assigned_at": datetime.utcnow()
             }}
         )
-
         customer_collection.update_one(
             {"records.order_id": o_id},
-            {"$set": {
-                "records.$.status": "IN_PROGRESS", 
-                "records.$.driver_name": driver["name"]
-            }}
+            {"$set": {"records.$.status": "IN_PROGRESS", "records.$.driver_name": final_driver_name}}
         )
 
-        # Handle Response based on Accept Header (App vs Web)
-        accept_header = request.headers.get("accept", "")
-        if "application/json" in accept_header:
-            return {"success": True, "message": "Order assigned successfully!"}
-        
         return RedirectResponse(url="/assignments", status_code=303)
-
     except Exception as e:
-        print(f"DEBUG CRITICAL ERROR in /assign-delivery: {e}")
         return {"success": False, "message": str(e)}
 
-# PURPOSE: Reports View
+# --- TRACKING & AUDIT (NEW) ---
+
+@admin_router.get("/track/{driver_id}")
+async def track_driver_page(request: Request, driver_id: str, admin_id: ObjectId = Depends(get_current_admin)):
+    if not admin_id: return RedirectResponse("/")
+    
+    driver = driver_collection.find_one({"_id": ObjectId(driver_id), "admin_id": admin_id})
+    if not driver:
+        return RedirectResponse("/dashboard")
+        
+    return templates.TemplateResponse("DriverTracking.html", {
+        "request": request,
+        "driver_name": driver["name"],
+        "driver_id": driver_id
+    })
+
+@admin_router.get("/api/track-data/{driver_id}")
+async def get_tracking_data(driver_id: str, admin_id: ObjectId = Depends(get_current_admin)):
+    if not admin_id: raise HTTPException(status_code=401)
+    
+    d_oid = ObjectId(driver_id)
+    driver = driver_collection.find_one({"_id": d_oid, "admin_id": admin_id})
+    
+    # 1. Get Current Location
+    current_pos = None
+    if driver and driver.get("current_lat"):
+        current_pos = {"lat": driver["current_lat"], "lng": driver["current_lng"]}
+        
+    # 2. Get Path History (last 24h) for the movement line
+    yesterday = datetime.utcnow() - timedelta(hours=24)
+    loc_cursor = driver_location_collection.find(
+        {"driver_id": d_oid, "timestamp": {"$gte": yesterday}}
+    ).sort("timestamp", 1)
+    path = [{"lat": l["lat"], "lng": l["lng"]} for l in loc_cursor]
+    
+    # 3. Get ALL assigned orders for this driver to show on map
+    orders = order_collection.find({
+        "assigned_driver_id": d_oid,
+        "status": {"$in": ["PENDING", "IN_PROGRESS", "DELIVERED"]}
+    })
+    
+    markers = []
+    for o in orders:
+        cust = customer_collection.find_one({"_id": o["customer_id"]})
+        if cust and cust.get("verified_lat"):
+            markers.append({
+                "lat": float(cust["verified_lat"]),
+                "lng": float(cust["verified_lng"]),
+                "status": o["status"],
+                "customer": cust["name"],
+                "address": cust.get("landmark", "Unknown")
+            })
+            
+    return {"current_pos": current_pos, "path": path, "markers": markers}
+
+# --- REPORTS & STATISTICS ---
+
 @admin_router.get("/reports")
 async def reports_page(request: Request, period: str = "24h", admin_id: ObjectId = Depends(get_current_admin)):
     if not admin_id:
@@ -362,7 +470,6 @@ async def reports_page(request: Request, period: str = "24h", admin_id: ObjectId
         "orders": recent_orders
     })
 
-# PURPOSE: Export Report as Excel
 @admin_router.get("/export-report")
 async def export_report(request: Request, period: str = "24h", admin_id: ObjectId = Depends(get_current_admin)):
     if not admin_id:
@@ -394,7 +501,6 @@ async def export_report(request: Request, period: str = "24h", admin_id: ObjectI
     headers = {"Content-Disposition": f"attachment; filename=GasDelivery_Report_{period}.xlsx"}
     return StreamingResponse(output, headers=headers, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-# PURPOSE: Statistics Page
 @admin_router.get("/statistics")
 async def statistics_page(request: Request, period: str = "7d"):
     now = datetime.utcnow()
@@ -436,7 +542,8 @@ async def statistics_page(request: Request, period: str = "7d"):
         "request": request, "period": period, "stats": stats_data, "no_data": False
     })
 
-# PURPOSE: Bulk Upload Customers via Excel/CSV
+# --- UPLOAD & PROFILE ---
+
 @admin_router.post("/upload-customers")
 async def upload_customers(request: Request, file: UploadFile = File(...), admin_id: ObjectId = Depends(get_current_admin)):
     if not admin_id:
@@ -453,7 +560,6 @@ async def upload_customers(request: Request, file: UploadFile = File(...), admin
 
     for _, row in df.iterrows():
         phone = str(row['Phone Number']).strip()
-        # Retrieve Pincode if it exists in the sheet, else empty string
         pincode = str(row.get('Pincode', '')).strip()
         
         customer_data = {
@@ -502,7 +608,6 @@ async def upload_customers(request: Request, file: UploadFile = File(...), admin
         "message": f"✅ Uploaded: {count_new} New, {count_updated} Updated."
     })
 
-# PURPOSE: Admin Profile View
 @admin_router.get("/profile")
 async def profile_view(request: Request, admin_id: ObjectId = Depends(get_current_admin)):
     if not admin_id:
@@ -520,7 +625,6 @@ async def profile_view(request: Request, admin_id: ObjectId = Depends(get_curren
         "drivers": my_drivers
     })
 
-# PURPOSE: Update Admin Profile
 @admin_router.post("/update-profile")
 async def update_profile(
     request: Request, 

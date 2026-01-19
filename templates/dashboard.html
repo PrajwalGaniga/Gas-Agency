@@ -35,6 +35,11 @@
             100% { background-position: 1000px 0; }
         }
         
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
         .animate-float { animation: float 3s ease-in-out infinite; }
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
         .animate-slide-in-left { animation: slideInLeft 0.5s ease-out forwards; }
@@ -43,6 +48,7 @@
             background-size: 1000px 100%;
             animation: shimmer 2s infinite linear;
         }
+        .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         
         /* Card hover effects */
         .card-hover {
@@ -136,11 +142,6 @@
             animation: shimmer 1.5s infinite;
         }
         
-        /* Progress ring */
-        .progress-ring {
-            transition: stroke-dashoffset 0.5s ease;
-        }
-        
         /* Tooltip */
         .tooltip {
             position: relative;
@@ -170,16 +171,6 @@
             opacity: 1;
         }
         
-        /* Pulse animation for notifications */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        .animate-pulse {
-            animation: pulse 2s infinite;
-        }
-        
         /* Responsive utilities */
         .mobile-only {
             display: block;
@@ -197,6 +188,45 @@
             .desktop-only {
                 display: block;
             }
+        }
+        
+        /* Table styles */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .table-container table {
+            min-width: 1000px;
+        }
+        
+        @media (min-width: 1200px) {
+            .table-container table {
+                min-width: auto;
+            }
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .status-online {
+            background-color: #10b981;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        }
+        
+        .status-offline {
+            background-color: #9ca3af;
+        }
+        
+        .status-busy {
+            background-color: #f59e0b;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
         }
     </style>
 </head>
@@ -242,15 +272,19 @@
                     <i class="fas fa-chart-bar text-purple-600 w-6"></i>
                     <span class="font-medium">Reports</span>
                 </a>
+                <a href="/statistics" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-purple-50 text-gray-700">
+                    <i class="fas fa-chart-line text-purple-600 w-6"></i>
+                    <span class="font-medium">Statistics</span>
+                </a>
             </div>
             
             <div class="mt-auto pt-10 border-t border-gray-200">
                 <div class="flex items-center justify-between p-3">
-                    <span class="font-medium text-gray-700">Admi</span>
-                    <a href="/profile" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
-    <i class="fas fa-id-badge"></i>
-    <span class="text-sm font-medium">My Profile</span>
-</a>
+                    <span class="font-medium text-gray-700">Admin</span>
+                    <a href="/profile" class="px-4 py-2 rounded-lg hover:bg-purple-50 transition flex items-center gap-2 text-purple-600">
+                        <i class="fas fa-id-badge"></i>
+                        <span class="text-sm font-medium">My Profile</span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -288,9 +322,9 @@
                             <span class="text-sm font-medium">Reports</span>
                         </a>
                         <a href="/statistics" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
-    <i class="fas fa-chart-line"></i>
-    <span class="text-sm font-medium">Statistics</span>
-</a>
+                            <i class="fas fa-chart-line"></i>
+                            <span class="text-sm font-medium">Statistics</span>
+                        </a>
                     </div>
                 </div>
                 
@@ -305,20 +339,20 @@
                         <span class="text-sm font-medium hidden md:inline">Refresh</span>
                     </button>
                     <div class="flex items-center space-x-4">
-    <div class="flex items-center space-x-2">
-        <a href="/profile" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
-            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                <i class="fas fa-user text-sm"></i>
-            </div>
-            <span class="text-sm font-medium hidden md:inline">Admin</span>
-        </a>
-    </div>
-
-    <a href="/logout" class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition flex items-center gap-2 shadow-md">
-        <i class="fas fa-sign-out-alt"></i>
-        <span class="text-sm font-medium hidden md:inline">Logout</span>
-    </a>
-</div>
+                        <div class="flex items-center space-x-2">
+                            <a href="/profile" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
+                                <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-sm"></i>
+                                </div>
+                                <span class="text-sm font-medium hidden md:inline">Admin</span>
+                            </a>
+                        </div>
+                        <a href="/logout" class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition flex items-center gap-2 shadow-md">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span class="text-sm font-medium hidden md:inline">Logout</span>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
@@ -356,7 +390,17 @@
                 </div>
             </div>
         </div>
-
+        {% if stats.unassigned > 0 %}
+<div class="mb-4 p-4 bg-orange-100 border-l-4 border-orange-500 text-orange-700 rounded shadow-sm flex justify-between items-center animate-pulse">
+    <div>
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        <strong>{{ stats.unassigned }} Unassigned Orders:</strong> These orders are pending but haven't been given to a driver yet.
+    </div>
+    <a href="/assignments" class="bg-orange-500 text-white px-3 py-1 rounded text-sm font-bold hover:bg-orange-600 transition">
+        Assign Now
+    </a>
+</div>
+{% endif %}
         <!-- Stats Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             <!-- Drivers Card -->
@@ -445,49 +489,141 @@
             </div>
         </div>
 
-        <!-- Charts and Upload Section -->
+        <!-- Main Content Section -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             
-            <!-- Chart Section -->
-            <div class="lg:col-span-2 card-hover glass-effect rounded-xl p-6 shadow animate-fade-in-up" style="animation-delay: 0.6s">
-                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <!-- Live Fleet Control Center -->
+            <div class="lg:col-span-2 card-hover glass-effect rounded-xl shadow animate-fade-in-up" style="animation-delay: 0.6s">
+                <div class="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-800">Order Analytics</h3>
-                        <p class="text-sm text-gray-500 mt-1">Distribution across all statuses</p>
+                        <h3 class="text-xl font-bold text-gray-800 mb-1">
+                            <i class="fas fa-satellite-dish text-indigo-600 mr-2"></i>Live Fleet Control Center
+                        </h3>
+                        <p class="text-sm text-gray-600">Real-time driver auditing and tracking</p>
                     </div>
-                    <div class="flex items-center gap-2 mt-3 md:mt-0">
-                        <button onclick="switchChartType('bar')" 
-                                class="px-3 py-1.5 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-1">
-                            <i class="fas fa-chart-bar text-xs"></i>
-                            <span>Bar</span>
-                        </button>
-                        <button onclick="switchChartType('doughnut')" 
-                                class="px-3 py-1.5 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-1">
-                            <i class="fas fa-chart-pie text-xs"></i>
-                            <span>Donut</span>
-                        </button>
-                        <button onclick="switchChartType('line')" 
-                                class="px-3 py-1.5 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-1">
-                            <i class="fas fa-chart-line text-xs"></i>
-                            <span>Line</span>
-                        </button>
+                    <div class="mt-3 md:mt-0">
+                        <span class="bg-indigo-100 text-indigo-700 text-xs font-medium px-3 py-1.5 rounded-full">
+                            <i class="fas fa-sync-alt mr-1 animate-spin"></i> Live Updates
+                        </span>
                     </div>
                 </div>
-                <div class="relative" style="height: 280px;">
-                    <canvas id="orderChart"></canvas>
+                
+                <div class="table-container">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b">
+                                <th class="p-4 font-semibold">Driver</th>
+                                <th class="p-4 font-semibold">Status</th>
+                                <th class="p-4 font-semibold">Working Hours</th>
+                                <th class="p-4 font-semibold text-center">Completed</th>
+                                <th class="p-4 font-semibold text-center">Pending</th>
+                                <th class="p-4 font-semibold text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for driver in drivers %}
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-full {% if driver.is_online %}bg-indigo-100 text-indigo-600{% else %}bg-gray-100 text-gray-500{% endif %} flex items-center justify-center font-bold">
+                                            {{ driver.name[:1] }}
+                                        </div>
+                                        <div>
+                                            <div class="font-semibold text-gray-800">{{ driver.name }}</div>
+                                            <div class="text-xs text-gray-500">{{ driver.phone }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-4">
+                                    {% if driver.is_online %}
+                                    <div class="flex items-center gap-2">
+                                        <span class="relative flex h-3 w-3">
+                                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                        </span>
+                                        <span class="text-sm font-medium text-green-600">Online</span>
+                                    </div>
+                                    {% else %}
+                                    <div class="flex items-center gap-2">
+                                        <span class="h-3 w-3 rounded-full bg-gray-300"></span>
+                                        <div class="flex flex-col">
+                                            <span class="text-sm font-medium text-gray-500">Offline</span>
+                                            {% if driver.last_seen %}
+                                            <span class="text-[10px] text-gray-400">Last: {{ driver.last_seen.strftime('%H:%M') }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td class="p-4">
+                                    <span class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold">
+                                        {{ driver.work_time }}
+                                    </span>
+                                </td>
+                                <td class="p-4 text-center">
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold">
+                                        {{ driver.completed }}
+                                    </span>
+                                </td>
+                                <td class="p-4 text-center">
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-700 font-bold">
+                                        {{ driver.pending }}
+                                    </span>
+                                </td>
+                                <td class="p-4 text-center">
+                                    <a href="/track/{{ driver.id }}" 
+                                       target="_blank" 
+                                       class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                                        <i class="fas fa-map-marked-alt"></i> Track
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            
+                            {% if not drivers %}
+                            <tr>
+                                <td colspan="6" class="p-8 text-center text-gray-500">
+                                    <div class="flex flex-col items-center justify-center py-8">
+                                        <i class="fas fa-truck text-4xl text-gray-300 mb-4"></i>
+                                        <p class="text-gray-500 font-medium">No drivers found in the system.</p>
+                                        <p class="text-sm text-gray-400 mt-1">Add drivers to start tracking your fleet</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="mt-4 grid grid-cols-3 gap-2 text-center">
-                    <div class="p-2 bg-yellow-50 rounded">
-                        <p class="text-xs text-yellow-700 font-medium">Pending</p>
-                        <p class="text-lg font-bold text-yellow-800">{{ stats.pending }}</p>
-                    </div>
-                    <div class="p-2 bg-orange-50 rounded">
-                        <p class="text-xs text-orange-700 font-medium">In Transit</p>
-                        <p class="text-lg font-bold text-orange-800">{{ stats.in_progress }}</p>
-                    </div>
-                    <div class="p-2 bg-green-50 rounded">
-                        <p class="text-xs text-green-700 font-medium">Delivered</p>
-                        <p class="text-lg font-bold text-green-800">{{ stats.delivered }}</p>
+                
+                <div class="p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                                <i class="fas fa-check text-green-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">System Status</p>
+                                <p class="font-bold text-gray-800">Operational</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                                <i class="fas fa-history text-orange-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Audit Sync</p>
+                                <p class="font-bold text-gray-800">Every 5 Minutes</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                <i class="fas fa-satellite text-blue-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">GPS Accuracy</p>
+                                <p class="font-bold text-gray-800">High Precision</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -651,106 +787,6 @@
     </div>
 
     <script>
-        let currentChart = null;
-        let currentChartType = 'bar';
-        
-        const chartData = {
-            labels: ['Pending', 'In Transit', 'Delivered'],
-            datasets: [{
-                label: 'Orders',
-                data: [{{ stats.pending }}, {{ stats.in_progress }}, {{ stats.delivered }}],
-                backgroundColor: [
-                    'rgba(234, 179, 8, 0.8)',
-                    'rgba(249, 115, 22, 0.8)',
-                    'rgba(34, 197, 94, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(234, 179, 8, 1)',
-                    'rgba(249, 115, 22, 1)',
-                    'rgba(34, 197, 94, 1)'
-                ],
-                borderWidth: 2,
-                borderRadius: 6
-            }]
-        };
-
-        function createChart(type) {
-            const ctx = document.getElementById('orderChart').getContext('2d');
-            
-            if (currentChart) {
-                currentChart.destroy();
-            }
-            
-            const config = {
-                type: type,
-                data: chartData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: type === 'doughnut',
-                            position: 'bottom',
-                            labels: {
-                                padding: 15,
-                                font: { size: 12, family: 'Inter' },
-                                usePointStyle: true
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            padding: 10,
-                            cornerRadius: 6,
-                            titleFont: { size: 13, family: 'Inter' },
-                            bodyFont: { size: 12, family: 'Inter' },
-                            displayColors: true,
-                            boxPadding: 4
-                        }
-                    },
-                    scales: type !== 'doughnut' ? {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { 
-                                stepSize: 1, 
-                                font: { family: 'Inter', size: 11 },
-                                padding: 5
-                            },
-                            grid: { 
-                                color: 'rgba(0, 0, 0, 0.05)',
-                                drawBorder: false
-                            }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { 
-                                font: { family: 'Inter', size: 11 },
-                                padding: 10
-                            }
-                        }
-                    } : {}
-                }
-            };
-            
-            currentChart = new Chart(ctx, config);
-        }
-
-        function switchChartType(type) {
-            currentChartType = type;
-            createChart(type);
-            
-            // Update active button state
-            document.querySelectorAll('button[onclick^="switchChartType"]').forEach(btn => {
-                btn.classList.remove('bg-purple-200');
-                btn.classList.add('bg-purple-100');
-            });
-            
-            const activeBtn = document.querySelector(`button[onclick="switchChartType('${type}')"]`);
-            if (activeBtn) {
-                activeBtn.classList.remove('bg-purple-100');
-                activeBtn.classList.add('bg-purple-200');
-            }
-        }
-
         function updateFileName(input) {
             const fileName = input.files[0]?.name || 'Click to browse files';
             document.getElementById('fileName').textContent = fileName;
@@ -823,13 +859,8 @@
             }
         });
 
-        // Initialize chart on load
+        // Initialize animations on load
         window.addEventListener('load', () => {
-            createChart('bar');
-            
-            // Set initial active button for chart type
-            switchChartType('bar');
-            
             // Add animation delays for cards on mobile
             if (window.innerWidth < 768) {
                 const cards = document.querySelectorAll('.animate-fade-in-up');
@@ -837,14 +868,24 @@
                     card.style.animationDelay = `${(index + 1) * 0.1}s`;
                 });
             }
+            
+            // Add hover effects to table rows
+            const tableRows = document.querySelectorAll('tbody tr');
+            tableRows.forEach(row => {
+                row.addEventListener('mouseenter', function() {
+                    this.classList.add('bg-gray-50');
+                });
+                row.addEventListener('mouseleave', function() {
+                    this.classList.remove('bg-gray-50');
+                });
+            });
         });
         
-        // Responsive adjustments
-        window.addEventListener('resize', function() {
-            if (currentChart) {
-                currentChart.resize();
-            }
-        });
+        // Auto-refresh fleet data every 30 seconds
+        setInterval(() => {
+            // You can implement AJAX refresh here
+            console.log('Auto-refresh fleet data...');
+        }, 30000);
     </script>
 </body>
 </html>

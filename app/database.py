@@ -47,3 +47,6 @@ customer_collection = db["customers"] if db is not None else None
 order_collection = db["orders"] if db is not None else None
 # 👇 ADD THIS LINE
 cities_collection = db["cities"]
+
+driver_audit_collection = db["driver_audit_logs"]
+driver_location_collection = db["driver_locations"]

@@ -28,9 +28,15 @@
             50% { opacity: 0.7; }
         }
         
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
         .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
         .animate-slide-in { animation: slideIn 0.4s ease-out forwards; }
         .animate-pulse { animation: pulse 2s infinite; }
+        .animate-modal-in { animation: modalFadeIn 0.3s ease-out forwards; }
         
         .card-hover {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -74,28 +80,6 @@
             text-transform: uppercase;
         }
         
-        .modal-enter {
-            opacity: 0;
-            transform: scale(0.9);
-        }
-        
-        .modal-enter-active {
-            opacity: 1;
-            transform: scale(1);
-            transition: opacity 0.3s, transform 0.3s;
-        }
-        
-        .modal-exit {
-            opacity: 1;
-            transform: scale(1);
-        }
-        
-        .modal-exit-active {
-            opacity: 0;
-            transform: scale(0.9);
-            transition: opacity 0.3s, transform 0.3s;
-        }
-        
         .mobile-only { display: block; }
         .desktop-only { display: none; }
         
@@ -119,6 +103,80 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 10px;
         }
+        
+        /* Table hover effect */
+        .table-row-hover:hover { 
+            background-color: #f9fafb; 
+            transition: background-color 0.2s ease;
+        }
+        
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+        
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+        
+        /* Notification styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateX(100%);
+            opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .notification.success { background: #10b981; }
+        .notification.error { background: #ef4444; }
+        .notification.info { background: #3b82f6; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
@@ -150,12 +208,12 @@
                         <span class="text-xs font-medium">Live</span>
                     </div>
                     
-                    <button onclick="openAddCityModal()" class="px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition flex items-center gap-2">
+                    <button onclick="openModal('addCityModal')" class="px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition flex items-center gap-2">
                         <i class="fas fa-city"></i>
                         <span class="desktop-only text-sm font-medium">Add City</span>
                     </button>
                     
-                    <button onclick="openAddCustomerModal()" class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition flex items-center gap-2">
+                    <button onclick="openModal('addCustModal')" class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition flex items-center gap-2 shadow-md">
                         <i class="fas fa-user-plus"></i>
                         <span class="desktop-only text-sm font-medium">Add Customer</span>
                     </button>
@@ -171,57 +229,8 @@
 
     <div class="container mx-auto px-4 lg:px-6 py-6">
         
-        <!-- Search and Filter Section -->
-        <div class="mb-8 animate-fade-in">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Search Bar -->
-                <div class="lg:col-span-2">
-                    <form action="/customers" method="GET" class="flex shadow-lg rounded-xl overflow-hidden">
-                        <div class="flex-1 relative">
-                            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                            <input type="text" 
-                                   name="search" 
-                                   value="{{ search_query }}" 
-                                   placeholder="Search customers by name, phone, or city..." 
-                                   class="w-full p-4 pl-12 outline-none focus:ring-2 focus:ring-blue-300">
-                        </div>
-                        <button type="submit" class="gradient-primary text-white px-6 font-medium hover:opacity-90 transition">
-                            <i class="fas fa-search desktop-only mr-2"></i>
-                            <span class="desktop-only">Search</span>
-                            <span class="mobile-only">Go</span>
-                        </button>
-                    </form>
-                </div>
-                
-                <!-- Filter Buttons -->
-                <div class="flex flex-wrap gap-2 items-center">
-                    <span class="text-sm text-gray-600 font-medium mobile-only w-full mb-2">Filter by Status:</span>
-                    <a href="/customers?filter_type=all" 
-                       class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'all' %} gradient-primary text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
-                        <i class="fas fa-layer-group mr-2"></i>
-                        <span>All</span>
-                    </a>
-                    <a href="/customers?filter_type=delivered" 
-                       class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'delivered' %} gradient-success text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
-                        <i class="fas fa-check-circle mr-2"></i>
-                        <span>Delivered</span>
-                    </a>
-                    <a href="/customers?filter_type=in_progress" 
-                       class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'in_progress' %} gradient-info text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
-                        <i class="fas fa-truck mr-2"></i>
-                        <span>In Progress</span>
-                    </a>
-                    <a href="/customers?filter_type=pending" 
-                       class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'pending' %} gradient-warning text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
-                        <i class="fas fa-clock mr-2"></i>
-                        <span>Pending</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-        
         <!-- Stats Summary -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 animate-fade-in">
             <div class="bg-white p-4 rounded-xl shadow">
                 <div class="flex items-center justify-between">
                     <div>
@@ -276,198 +285,253 @@
                 </div>
             </div>
         </div>
+
+        <!-- Search and Bulk Actions Section -->
+        <div class="mb-6 animate-fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <!-- Search Form -->
+                <form action="/customers" method="GET" class="w-full md:w-1/3 relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" 
+                           name="search" 
+                           value="{{ search_query }}" 
+                           placeholder="Search by name, phone, city..." 
+                           class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none shadow-sm">
+                </form>
+
+                <!-- Bulk Order Button (Hidden initially) -->
+                <button id="bulkOrderBtn" 
+                        onclick="submitBulkOrder()" 
+                        class="hidden gradient-primary text-white px-6 py-3 rounded-xl shadow-md font-medium hover:opacity-90 transition flex items-center gap-2">
+                    <i class="fas fa-box-open"></i>
+                    <span class="desktop-only">Place Order for Selected</span>
+                    <span class="mobile-only">Bulk Order</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Buttons -->
+        <div class="flex flex-wrap gap-2 mb-6">
+            <span class="text-sm text-gray-600 font-medium w-full md:w-auto mb-2 md:mb-0">Filter by Status:</span>
+            <div class="flex flex-wrap gap-2">
+                <a href="/customers?filter_type=all" 
+                   class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'all' %} gradient-primary text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
+                    <i class="fas fa-layer-group mr-2"></i>
+                    <span>All</span>
+                </a>
+                <a href="/customers?filter_type=delivered" 
+                   class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'delivered' %} gradient-success text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <span>Delivered</span>
+                </a>
+                <a href="/customers?filter_type=in_progress" 
+                   class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'in_progress' %} gradient-info text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
+                    <i class="fas fa-truck mr-2"></i>
+                    <span>In Progress</span>
+                </a>
+                <a href="/customers?filter_type=pending" 
+                   class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'pending' %} gradient-warning text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
+                    <i class="fas fa-clock mr-2"></i>
+                    <span>Pending</span>
+                </a>
+            </div>
+        </div>
         
-        <!-- Customer Cards Grid -->
-        {% if customers %}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {% for person in customers %}
-            <div class="card-hover bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden animate-fade-in" 
-                 style="animation-delay: {{ loop.index * 0.05 }}s">
+        <!-- Customer Table -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 animate-fade-in">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-50 text-gray-600 text-xs uppercase font-semibold">
+                        <tr>
+                            <th class="p-4 border-b text-center w-12">
+                                <input type="checkbox" 
+                                       id="selectAll" 
+                                       onclick="toggleAll(this)" 
+                                       class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer">
+                            </th>
+                            <th class="p-4 border-b">Customer Info</th>
+                            <th class="p-4 border-b">Location</th>
+                            <th class="p-4 border-b">GPS Status</th>
+                            <th class="p-4 border-b">Order Status</th>
+                            <th class="p-4 border-b w-48">Assigned Driver</th>
+                            <th class="p-4 border-b text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-sm">
+                        {% for c in customers %}
+                        <tr class="table-row-hover transition">
+                            <td class="p-4 text-center">
+                                <input type="checkbox" 
+                                       name="customer_select" 
+                                       value="{{ c._id }}" 
+                                       onclick="updateBulkBtn()" 
+                                       class="w-4 h-4 rounded text-purple-600 cursor-pointer">
+                            </td>
+                            <td class="p-4">
+                                <div class="font-bold text-gray-800">{{ c.name }}</div>
+                                <div class="text-xs text-blue-600 font-medium">{{ c.phone_number }}</div>
+                                <div class="text-[10px] text-gray-400 mt-1">
+                                    <i class="far fa-clock mr-1"></i>
+                                    {% if c.created_at %}
+                                        {{ c.created_at.strftime('%d %b %Y') }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="p-4">
+                                <div class="text-gray-700 font-medium">{{ c.city }}</div>
+                                <div class="text-xs text-gray-500 truncate w-32" title="{{ c.landmark }}">{{ c.landmark }}</div>
+                                {% if c.pincode %}
+                                <div class="text-[10px] text-gray-400">Pin: {{ c.pincode }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="p-4">
+                                {% if c.is_verified %}
+                                <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold flex items-center w-max gap-1">
+                                    <i class="fas fa-map-marker-alt"></i> Verified
+                                </span>
+                                <div class="text-[10px] text-gray-400 mt-1 font-mono">
+                                    {{ "%.4f"|format(c.verified_lat) if c.verified_lat else '' }}, {{ "%.4f"|format(c.verified_lng) if c.verified_lng else '' }}
+                                </div>
+                                {% else %}
+                                <span class="bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-bold flex items-center w-max gap-1">
+                                    <i class="fas fa-times-circle"></i> Not Verified
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="p-4">
+                                {% if c.current_status == 'PENDING' %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 font-bold text-[10px]">
+                                        <i class="fas fa-clock mr-1"></i> PENDING
+                                    </span>
+                                {% elif c.current_status == 'IN_PROGRESS' %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-bold text-[10px]">
+                                        <i class="fas fa-truck mr-1"></i> IN PROGRESS
+                                    </span>
+                                {% elif c.current_status == 'DELIVERED' %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 font-bold text-[10px]">
+                                        <i class="fas fa-check-circle mr-1"></i> DELIVERED
+                                    </span>
+                                {% else %}
+                                    <span class="text-gray-400 text-[10px]">No Active Order</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-4">
+                                {% if c.active_order_id and c.current_status in ['PENDING', 'IN_PROGRESS'] %}
+                                    <select onchange="reassignDriver('{{ c.active_order_id }}', this.value)" 
+                                            class="w-full text-[10px] border-gray-300 rounded focus:ring-purple-500 p-1 border bg-white shadow-sm">
+                                        <option value="" disabled>Reassign Driver</option>
+                                        {% for d in drivers %}
+                                            <option value="{{ d._id }}" {% if d._id|string == c.assigned_driver_id %}selected{% endif %}>
+                                                {{ d.name }} ({{ d.assigned_cities[0] if d.assigned_cities else 'N/A' }})
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    <span class="text-xs text-gray-400 italic">--</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-4">
+                                <div class="flex items-center justify-center gap-3">
+                                    {% if c.current_status in ['PENDING', 'IN_PROGRESS'] %}
+                                        <button disabled class="text-gray-300 cursor-not-allowed">
+                                            <i class="fas fa-plus-circle text-xl"></i>
+                                        </button>
+                                    {% else %}
+                                        <button onclick="openQuickAssignModal('{{ c._id }}', '{{ c.name }}', '{{ c.city }}')" 
+                                                class="text-green-500 hover:text-green-700 transition transform hover:scale-110">
+                                            <i class="fas fa-plus-circle text-xl"></i>
+                                        </button>
+                                    {% endif %}
+                                    <button onclick="openEditModal('{{ c._id }}', '{{ c.name }}', '{{ c.phone_number }}', '{{ c.city }}', '{{ c.landmark }}', '{{ c.pincode or "" }}')" 
+                                            class="text-gray-400 hover:text-blue-600 transition transform hover:scale-110">
+                                        <i class="fas fa-edit text-lg"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Order Modal -->
+    <div id="assignModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Assign Delivery</h2>
+                <button onclick="closeModal('assignModal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p class="text-sm text-gray-600 mb-6">Order for <span id="assignCustName" class="font-bold text-gray-800"></span> in <span id="assignCity" class="font-bold text-indigo-600"></span></p>
+            
+            <form action="/create-order" method="POST" class="space-y-4">
+                <input type="hidden" id="assignCustId" name="customer_id">
                 
-                <!-- Status Indicator Bar -->
-                <div class="h-2 w-full 
-                    {% if person.current_status == 'DELIVERED' %} bg-gradient-to-r from-green-400 to-green-500
-                    {% elif person.current_status == 'IN_PROGRESS' %} bg-gradient-to-r from-blue-400 to-blue-500
-                    {% elif person.current_status == 'PENDING' %} bg-gradient-to-r from-yellow-400 to-yellow-500
-                    {% else %} bg-gray-300 {% endif %}">
+                <div class="space-y-3">
+                    <label class="flex items-center p-4 border-2 border-indigo-100 rounded-xl cursor-pointer hover:bg-indigo-50 transition bg-indigo-50/50">
+                        <input type="radio" name="driver_id" value="auto" checked class="w-5 h-5 text-indigo-600 focus:ring-indigo-500">
+                        <div class="ml-4">
+                            <p class="font-bold text-indigo-700">🚀 Smart Auto-Assign</p>
+                            <p class="text-[10px] text-indigo-500">Assigns to the least busy active driver in this city</p>
+                        </div>
+                    </label>
+
+                    <div id="driverList" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        <!-- Drivers will be populated here -->
+                    </div>
+
+                    <label class="flex items-center p-4 border-2 border-gray-100 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                        <input type="radio" name="driver_id" value="later" class="w-5 h-5 text-gray-400">
+                        <div class="ml-4">
+                            <p class="font-bold text-gray-700">🕒 Assign Later</p>
+                            <p class="text-[10px] text-gray-500">Keep order unassigned for manual review</p>
+                        </div>
+                    </label>
                 </div>
-                
-                <div class="p-5">
-                    <!-- Header -->
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex-1">
-                            <h3 class="font-bold text-lg text-gray-800 truncate">{{ person.name }}</h3>
-                            <div class="flex items-center mt-1">
-                                <i class="fas fa-phone-alt text-gray-400 text-xs mr-2"></i>
-                                <p class="text-blue-600 font-medium text-sm truncate">{{ person.phone_number }}</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Status Badge -->
-                        <div class="flex flex-col items-end">
-                            <span class="status-badge px-2 py-1 rounded-full 
-                                {% if person.current_status == 'DELIVERED' %} bg-green-100 text-green-700 
-                                {% elif person.current_status == 'IN_PROGRESS' %} bg-blue-100 text-blue-700 
-                                {% elif person.current_status == 'PENDING' %} bg-yellow-100 text-yellow-700 
-                                {% else %} bg-gray-100 text-gray-600 {% endif %}">
-                                {{ person.current_status }}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <!-- Customer Details -->
-                    <div class="space-y-3 mb-5">
-                        <div class="flex items-start">
-                            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-city text-purple-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500">City</p>
-                                <p class="text-sm font-medium text-gray-800">{{ person.city }}</p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-start">
-                            <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-map-marker-alt text-indigo-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500">Address & Landmark</p>
-                                <p class="text-sm font-medium text-gray-800 truncate">{{ person.landmark }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Action Buttons -->
-                    <div class="flex gap-2">
-                        <form action="/create-order" method="POST" class="flex-1">
-                            <input type="hidden" name="customer_id" value="{{ person._id }}">
-                            <button type="submit" 
-                                    class="w-full gradient-warning text-white py-2.5 rounded-lg font-bold hover:opacity-90 transition flex items-center justify-center gap-2">
-                                <i class="fas fa-gas-pump"></i>
-                                <span>Request Order</span>
-                            </button>
-                        </form>
-                        
-                        <button onclick="openEditModal('{{ person._id }}', '{{ person.name }}', '{{ person.phone_number }}', '{{ person.city }}', '{{ person.landmark }}')" 
-                                class="px-4 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition flex items-center justify-center">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        
-        <!-- Empty State -->
-        {% else %}
-        <div class="text-center py-16 animate-fade-in">
-            <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i class="fas fa-users text-gray-400 text-3xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-gray-700 mb-2">No customers found</h3>
-            <p class="text-gray-500 mb-6">Try adjusting your search or add new customers</p>
-            <button onclick="openAddCustomerModal()" class="gradient-primary text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition inline-flex items-center gap-2">
-                <i class="fas fa-user-plus"></i>
-                <span>Add First Customer</span>
-            </button>
-        </div>
-        {% endif %}
-        
-        <!-- Pagination (if needed) -->
-        {% if customers|length >= 12 %}
-        <div class="mt-10 flex justify-center">
-            <div class="flex items-center gap-2">
-                <button class="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 transition">
-                    <i class="fas fa-chevron-left text-gray-600"></i>
+
+                <button type="submit" class="w-full gradient-primary text-white py-4 rounded-xl font-bold shadow-lg hover:opacity-90 transition mt-4 flex items-center justify-center gap-2">
+                    <i class="fas fa-check-circle"></i> Confirm Order Creation
                 </button>
-                <button class="w-10 h-10 gradient-primary text-white rounded-lg shadow">1</button>
-                <button class="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 transition">2</button>
-                <button class="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 transition">3</button>
-                <button class="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 transition">
-                    <i class="fas fa-ellipsis-h text-gray-400"></i>
-                </button>
-                <button class="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 transition">
-                    <i class="fas fa-chevron-right text-gray-600"></i>
-                </button>
-            </div>
+            </form>
         </div>
-        {% endif %}
     </div>
 
     <!-- Add Customer Modal -->
-    <div id="addCustModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
+    <div id="addCustModal" class="modal-overlay">
+        <div class="modal-content">
             <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-800">Register New Customer</h2>
-                    <p class="text-sm text-gray-500 mt-1">Add customer to the database</p>
-                </div>
-                <button onclick="closeAddCustomerModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times text-xl"></i>
+                <h2 class="text-xl font-bold text-gray-800">Register New Customer</h2>
+                <button onclick="closeModal('addCustModal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
-            
             <form action="/add-customer" method="POST" class="space-y-4">
-                <div>
-                    <label class="text-sm font-medium text-gray-700 mb-1 block">Full Name</label>
-                    <div class="relative">
-                        <i class="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <input type="text" 
-                               name="name" 
-                               placeholder="Enter full name" 
-                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                               required>
-                    </div>
-                </div>
-                
-                <div>
-                    <label class="text-sm font-medium text-gray-700 mb-1 block">Phone Number</label>
-                    <div class="relative">
-                        <i class="fas fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <input type="text" 
-                               name="phone" 
-                               placeholder="Enter phone number" 
-                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                               required>
-                    </div>
-                </div>
-                
-                <div>
-                    <label class="text-sm font-medium text-gray-700 mb-1 block">City</label>
-                    <div class="relative">
-                        <i class="fas fa-city absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <select name="city" 
-                                class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none">
-                            {% for city in cities %}
-                            <option value="{{ city.name }}">{{ city.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-                    </div>
-                </div>
-                
-                <div>
-                    <label class="text-sm font-medium text-gray-700 mb-1 block">Address & Landmark</label>
-                    <div class="relative">
-                        <i class="fas fa-map-marker-alt absolute left-3 top-3 text-gray-400"></i>
-                        <textarea name="landmark" 
-                                  placeholder="Enter complete address with landmark" 
-                                  rows="3"
-                                  class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"></textarea>
-                    </div>
-                </div>
-                
-                <div class="flex gap-3 pt-4">
-                    <button type="button" 
-                            onclick="closeAddCustomerModal()" 
-                            class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition">
+                <input type="text" name="name" placeholder="Full Name *" 
+                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required>
+                <input type="text" name="phone" placeholder="Phone Number *" 
+                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required>
+                <select name="city" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none appearance-none" required>
+                    {% for city in cities %}
+                    <option value="{{ city.name }}">{{ city.name }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="pincode" placeholder="Pincode" 
+                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none">
+                <textarea name="landmark" placeholder="Complete Address & Landmark *" rows="3" 
+                          class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required></textarea>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeModal('addCustModal')" 
+                            class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium">
                         Cancel
                     </button>
                     <button type="submit" 
-                            class="flex-1 gradient-success text-white py-3 rounded-lg font-medium hover:opacity-90 transition flex items-center justify-center gap-2">
-                        <i class="fas fa-user-plus"></i>
-                        <span>Register Customer</span>
+                            class="flex-1 gradient-success text-white py-3 rounded-lg font-medium shadow-md">
+                        Register
                     </button>
                 </div>
             </form>
@@ -475,122 +539,54 @@
     </div>
 
     <!-- Add City Modal -->
-    <div id="addCityModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-fade-in">
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-800">Add Service City</h2>
-                    <p class="text-sm text-gray-500 mt-1">Expand your service area</p>
-                </div>
-                <button onclick="closeAddCityModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times text-xl"></i>
+    <div id="addCityModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Add Service City</h2>
+                <button onclick="closeModal('addCityModal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
-            
             <form action="/add-city" method="POST" class="space-y-4">
-                <div>
-                    <label class="text-sm font-medium text-gray-700 mb-1 block">City Name</label>
-                    <div class="relative">
-                        <i class="fas fa-map-pin absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <input type="text" 
-                               name="city_name" 
-                               placeholder="Enter city name" 
-                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                               required>
-                    </div>
-                </div>
-                
+                <input type="text" name="city_name" placeholder="Enter city name *" 
+                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required>
                 <button type="submit" 
-                        class="w-full gradient-primary text-white py-3 rounded-lg font-medium hover:opacity-90 transition flex items-center justify-center gap-2">
-                    <i class="fas fa-plus-circle"></i>
-                    <span>Add City to Service Area</span>
-                </button>
-                
-                <button type="button" 
-                        onclick="closeAddCityModal()" 
-                        class="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition">
-                    Cancel
+                        class="w-full gradient-primary text-white py-3 rounded-lg font-bold shadow-md hover:opacity-90 transition">
+                    Add City
                 </button>
             </form>
         </div>
     </div>
 
     <!-- Edit Customer Modal -->
-    <div id="editCustModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
+    <div id="editCustModal" class="modal-overlay">
+        <div class="modal-content">
             <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-800">Edit Customer</h2>
-                    <p class="text-sm text-gray-500 mt-1">Update customer information</p>
-                </div>
-                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times text-xl"></i>
+                <h2 class="text-xl font-bold text-gray-800">Edit Customer</h2>
+                <button onclick="closeModal('editCustModal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
-            
             <form action="/update-customer" method="POST" class="space-y-4">
                 <input type="hidden" id="edit_customer_id" name="customer_id">
-                
-                <div>
-                    <label class="text-sm font-medium text-gray-700 mb-1 block">Full Name</label>
-                    <div class="relative">
-                        <i class="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <input type="text" 
-                               id="edit_name" 
-                               name="name" 
-                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-                    </div>
-                </div>
-                
-                <div>
-                    <label class="text-sm font-medium text-gray-700 mb-1 block">Phone Number</label>
-                    <div class="relative">
-                        <i class="fas fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <input type="text" 
-                               id="edit_phone" 
-                               name="phone_number" 
-                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-                    </div>
-                </div>
-                
-                <div>
-                    <label class="text-sm font-medium text-gray-700 mb-1 block">City</label>
-                    <div class="relative">
-                        <i class="fas fa-city absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <select id="edit_city" 
-                                name="city" 
-                                class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none">
-                            {% for city in cities %}
-                            <option value="{{ city.name }}">{{ city.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-                    </div>
-                </div>
-                
-                <div>
-                    <label class="text-sm font-medium text-gray-700 mb-1 block">Address & Landmark</label>
-                    <div class="relative">
-                        <i class="fas fa-map-marker-alt absolute left-3 top-3 text-gray-400"></i>
-                        <textarea id="edit_landmark" 
-                                  name="landmark" 
-                                  rows="3"
-                                  class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"></textarea>
-                    </div>
-                </div>
-                
-                <div class="flex gap-3 pt-4">
-                    <button type="button" 
-                            onclick="closeEditModal()" 
-                            class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition">
-                        Cancel
-                    </button>
-                    <button type="submit" 
-                            class="flex-1 gradient-primary text-white py-3 rounded-lg font-medium hover:opacity-90 transition flex items-center justify-center gap-2">
-                        <i class="fas fa-save"></i>
-                        <span>Save Changes</span>
-                    </button>
-                </div>
+                <input type="text" id="edit_name" name="name" placeholder="Full Name *" 
+                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required>
+                <input type="text" id="edit_phone" name="phone_number" placeholder="Phone Number *" 
+                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required>
+                <select id="edit_city" name="city" 
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none appearance-none" required>
+                    {% for city in cities %}
+                    <option value="{{ city.name }}">{{ city.name }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" id="edit_pincode" name="pincode" placeholder="Pincode" 
+                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none">
+                <textarea id="edit_landmark" name="landmark" placeholder="Address & Landmark *" rows="3" 
+                          class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required></textarea>
+                <button type="submit" 
+                        class="w-full gradient-primary text-white py-3 rounded-lg font-bold shadow-md">
+                    Save Changes
+                </button>
             </form>
         </div>
     </div>
@@ -603,106 +599,197 @@
         </div>
     </div>
 
+    <!-- Notification Container -->
+    <div id="notificationContainer"></div>
+
     <script>
-        // Modal Functions
-        function openAddCustomerModal() {
-            document.getElementById('addCustModal').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('addCustModal').classList.add('modal-enter-active');
-            }, 10);
+        // Driver data passed from backend
+        const allDrivers = {{ drivers|tojson|safe }}; 
+
+        // Modal Logic
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
         }
-        
-        function closeAddCustomerModal() {
-            const modal = document.getElementById('addCustModal');
-            modal.classList.remove('modal-enter-active');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300);
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
         }
-        
-        function openAddCityModal() {
-            document.getElementById('addCityModal').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('addCityModal').classList.add('modal-enter-active');
-            }, 10);
+
+        // Quick Assign Modal Logic
+        function openQuickAssignModal(id, name, city) {
+            document.getElementById('assignCustId').value = id;
+            document.getElementById('assignCustName').textContent = name;
+            document.getElementById('assignCity').textContent = city;
+
+            const list = document.getElementById('driverList');
+            list.innerHTML = "";
+            
+            // Normalize city name for accurate matching
+            const targetCity = city.trim().toLowerCase();
+
+            // Filter drivers who are active AND serve this city
+            const cityDrivers = allDrivers.filter(d => 
+                d.is_active && 
+                d.assigned_cities && 
+                d.assigned_cities.some(c => c && c.trim().toLowerCase() === targetCity)
+            );
+
+            if(cityDrivers.length > 0) {
+                cityDrivers.forEach(d => {
+                    list.innerHTML += `
+                        <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-blue-50 transition">
+                            <input type="radio" name="driver_id" value="${d._id.$oid || d._id}" class="w-4 h-4 text-blue-600">
+                            <div class="ml-3">
+                                <p class="text-sm font-semibold text-gray-800">${d.name}</p>
+                                <p class="text-[10px] text-gray-400">Direct Assign (Manual Override)</p>
+                            </div>
+                        </label>
+                    `;
+                });
+            } else {
+                list.innerHTML = `
+                    <div class="p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-2">
+                        <i class="fas fa-exclamation-triangle text-orange-500 mt-0.5"></i>
+                        <p class="text-[10px] text-orange-700 font-medium">
+                            No active drivers found for "${city}". Orders can still be created and assigned later.
+                        </p>
+                    </div>
+                `;
+            }
+            openModal('assignModal');
         }
-        
-        function closeAddCityModal() {
-            const modal = document.getElementById('addCityModal');
-            modal.classList.remove('modal-enter-active');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300);
-        }
-        
-        function openEditModal(id, name, phone, city, landmark) {
+
+        // Edit Modal Initialization
+        function openEditModal(id, name, phone, city, landmark, pincode = '') {
             document.getElementById('edit_customer_id').value = id;
             document.getElementById('edit_name').value = name;
             document.getElementById('edit_phone').value = phone;
             document.getElementById('edit_city').value = city;
             document.getElementById('edit_landmark').value = landmark;
-            
-            const modal = document.getElementById('editCustModal');
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.add('modal-enter-active');
-            }, 10);
+            document.getElementById('edit_pincode').value = pincode;
+            openModal('editCustModal');
         }
-        
-        function closeEditModal() {
-            const modal = document.getElementById('editCustModal');
-            modal.classList.remove('modal-enter-active');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300);
-        }
-        
-        // Close modals on outside click
-        document.addEventListener('click', function(event) {
-            const modals = ['addCustModal', 'addCityModal', 'editCustModal'];
-            modals.forEach(modalId => {
-                const modal = document.getElementById(modalId);
-                if (modal && !modal.classList.contains('hidden') && event.target === modal) {
-                    if (modalId === 'addCustModal') closeAddCustomerModal();
-                    if (modalId === 'addCityModal') closeAddCityModal();
-                    if (modalId === 'editCustModal') closeEditModal();
-                }
-            });
-        });
-        
-        // Close modals on ESC key
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeAddCustomerModal();
-                closeAddCityModal();
-                closeEditModal();
+
+        // Bulk Actions
+        function toggleAll(source) {
+            const checkboxes = document.getElementsByName('customer_select');
+            for(let cb of checkboxes) {
+                cb.checked = source.checked;
             }
-        });
-        
-        // Search input focus
+            updateBulkBtn();
+        }
+
+        function updateBulkBtn() {
+            const checked = document.querySelectorAll('input[name="customer_select"]:checked').length;
+            const btn = document.getElementById('bulkOrderBtn');
+            if (checked > 0) {
+                btn.classList.remove('hidden');
+                btn.innerHTML = `<i class="fas fa-box-open"></i><span class="desktop-only">Place Order for ${checked} Selected</span><span class="mobile-only">Order (${checked})</span>`;
+            } else {
+                btn.classList.add('hidden');
+            }
+        }
+
+        async function submitBulkOrder() {
+            const checkboxes = document.querySelectorAll('input[name="customer_select"]:checked');
+            if(checkboxes.length === 0) return;
+            if(!confirm(`Place auto-assigned orders for ${checkboxes.length} customers?`)) return;
+
+            const formData = new FormData();
+            Array.from(checkboxes).forEach(cb => formData.append('customer_ids', cb.value));
+
+            try {
+                const res = await fetch('/customers/bulk-order', { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                const data = await res.json();
+                if(data.success) {
+                    showNotification(data.message, 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showNotification('Error: ' + data.message, 'error');
+                }
+            } catch (e) { 
+                showNotification('Failed to place bulk order.', 'error'); 
+            }
+        }
+
+        async function reassignDriver(orderId, driverId) {
+            if (!driverId) return;
+            const formData = new FormData();
+            formData.append('order_id', orderId);
+            formData.append('driver_id', driverId);
+
+            try {
+                const res = await fetch('/customers/reassign-driver', { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                const data = await res.json();
+                if(data.success) {
+                    showNotification('Driver reassigned successfully!', 'success');
+                } else {
+                    showNotification('Failed: ' + data.message, 'error');
+                }
+            } catch (e) { 
+                showNotification('Network error.', 'error'); 
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i><span>${message}</span>`;
+            container.appendChild(notification);
+            setTimeout(() => notification.classList.add('show'), 10);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Close on Overlay click
+        window.onclick = function(e) { 
+            if (e.target.classList.contains('modal-overlay')) {
+                closeModal(e.target.id);
+            }
+        }
+
+        // Close on ESC key
+        document.onkeydown = function(e) { 
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.active').forEach(m => {
+                    closeModal(m.id);
+                });
+            }
+        };
+
+        // Initialize animations on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Add animation delays for table rows
+            const rows = document.querySelectorAll('tbody tr');
+            rows.forEach((row, index) => {
+                row.style.animationDelay = `${index * 0.05}s`;
+            });
+            
+            // Focus search input on desktop
             const searchInput = document.querySelector('input[name="search"]');
             if (searchInput && window.innerWidth > 768) {
-                searchInput.focus();
+                setTimeout(() => {
+                    searchInput.focus();
+                }, 100);
             }
-            
-            // Add animation delays for cards
-            const cards = document.querySelectorAll('.card-hover');
-            cards.forEach((card, index) => {
-                card.style.animationDelay = `${index * 0.05}s`;
-            });
         });
-        
-        // Mobile back button functionality
-        window.addEventListener('popstate', function() {
-            closeAllModals();
-        });
-        
-        function closeAllModals() {
-            closeAddCustomerModal();
-            closeAddCityModal();
-            closeEditModal();
-        }
     </script>
 </body>
 </html>
