@@ -45,4 +45,5 @@ admin_collection = db["admins"] if db is not None else None
 driver_collection = db["drivers"] if db is not None else None
 customer_collection = db["customers"] if db is not None else None
 order_collection = db["orders"] if db is not None else None
-
+# 👇 ADD THIS LINE
+cities_collection = db["cities"]
