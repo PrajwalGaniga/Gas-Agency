@@ -59,3 +59,37 @@ def send_otp_email(receiver_email, otp):
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
         return False
+    
+from datetime import datetime, timedelta, timezone
+
+# Global IST Timezone Object
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def to_ist(dt):
+    """Converts any datetime (aware or naive) to IST. Assumes naive is UTC."""
+    if not dt: return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(IST)
+
+def to_utc(dt):
+    """Converts an aware datetime to UTC for database storage."""
+    if not dt: return None
+    return dt.astimezone(timezone.utc)
+
+def ist_now():
+    """Returns current time in Indian Standard Time."""
+    return datetime.now(timezone.utc).astimezone(IST)
+
+def ist_day_start(date_obj):
+    """Returns the UTC equivalent of 00:00:00 IST for a given date."""
+    ist_start = datetime.combine(date_obj, datetime.min.time()).replace(tzinfo=IST)
+    return to_utc(ist_start)
+
+def ist_day_end(date_obj):
+    """Returns the UTC equivalent of 23:59:59 IST for a given date."""
+    ist_end = datetime.combine(date_obj, datetime.max.time()).replace(tzinfo=IST)
+    return to_utc(ist_end)
+
+# 🛠️ CRITICAL FIX: Inject helpers into Jinja2 environment (Fixes UndefinedError)
+

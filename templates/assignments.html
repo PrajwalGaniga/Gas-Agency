@@ -9,140 +9,117 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { font-family: 'Inter', sans-serif; }
-        .card-hover { transition: all 0.2s ease; }
-        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(249, 115, 22, 0.15); }
-        .gradient-orange { background: linear-gradient(135deg, #f97316 0%, #fb923c 100%); }
+        .assignment-card:hover { transform: translateY(-2px); transition: all 0.2s; }
     </style>
 </head>
-<body class="bg-gradient-to-br from-orange-50 to-amber-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen pb-12">
     
-    <nav class="bg-orange-600 text-white p-4 shadow-lg sticky top-0 z-50">
+    <nav class="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-truck-loading"></i>
-                </div>
-                <h1 class="text-xl font-bold">Delivery Assignment</h1>
+            <div class="flex items-center gap-3">
+                <i class="fas fa-tasks text-xl"></i>
+                <h1 class="text-xl font-bold tracking-tight">Manual Driver Assignment</h1>
             </div>
-            <a href="/dashboard" class="text-sm border border-orange-400 px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
-                <i class="fas fa-arrow-left"></i> <span>Dashboard</span>
+            <a href="/dashboard" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                <i class="fas fa-arrow-left"></i> Dashboard
             </a>
         </div>
     </nav>
 
     <div class="container mx-auto p-4 md:p-8">
-        <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-                <h2 class="text-3xl font-extrabold text-gray-800">Pending Requests</h2>
-                <p class="text-gray-600 mt-1">{{ orders|length }} orders awaiting driver allocation</p>
-            </div>
-            <div class="bg-white px-4 py-2 rounded-full shadow-sm border border-orange-100 flex items-center gap-2">
-                <div class="w-2 h-2 bg-orange-500 rounded-full animate-ping"></div>
-                <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Live Sync Enabled</span>
-            </div>
+        <div class="mb-10">
+            <h2 class="text-3xl font-black text-gray-800">Pending Allocation Queue</h2>
+            <p class="text-gray-500 mt-1 font-medium">Assign {{ orders|length }} unallocated orders to your active fleet</p>
         </div>
 
         {% if not orders %}
-        <div class="bg-white rounded-3xl shadow-xl p-12 text-center max-w-2xl mx-auto border border-gray-100">
-            <div class="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i class="fas fa-check-double text-green-500 text-4xl"></i>
+        <div class="bg-white rounded-3xl shadow-sm border p-16 text-center max-w-2xl mx-auto">
+            <div class="w-20 h-20 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-check-double text-3xl"></i>
             </div>
-            <h3 class="text-2xl font-bold text-gray-800 mb-2">Zero Pending Orders! 🎉</h3>
-            <p class="text-gray-500 mb-8">All deliveries have been assigned to your fleet.</p>
-            <a href="/customers" class="inline-flex items-center gap-2 bg-orange-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-700 transition shadow-lg">
-                <i class="fas fa-users"></i> View Customers
-            </a>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">Queue is Empty</h3>
+            <p class="text-gray-500">All pending orders have been assigned to drivers.</p>
         </div>
         {% else %}
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for order in orders %}
             
-            {# 🚀 STEP 1: INITIALIZE SCOPE-SAFE MATCH COUNT AT THE TOP OF EACH CARD #}
-            {% set city_match = namespace(count=0, list=[]) %}
+            {# 🚀 LOGIC: Sort drivers into 'Local' vs 'Others' for this specific order #}
             {% set target_city = order.city|lower|trim %}
+            {% set local_drivers = [] %}
+            {% set other_drivers = [] %}
             
             {% for driver in drivers %}
-                {% set match_found = false %}
+                {% set city_match = false %}
                 {% for d_city in driver.assigned_cities %}
                     {% if d_city|lower|trim == target_city %}
-                        {% set match_found = true %}
+                        {% set city_match = true %}
                     {% endif %}
                 {% endfor %}
                 
-                {% if match_found %}
-                    {% set city_match.count = city_match.count + 1 %}
-                    {% do city_match.list.append(driver) %}
+                {% if city_match %}
+                    {% do local_drivers.append(driver) %}
+                {% else %}
+                    {% do other_drivers.append(driver) %}
                 {% endif %}
             {% endfor %}
 
-            <div class="card-hover bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 flex flex-col">
-                <div class="p-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 class="font-bold text-xl text-gray-800">{{ order.customer_name }}</h3>
-                            <p class="text-xs text-orange-600 font-bold uppercase mt-1 tracking-wider">
-                                <i class="fas fa-map-pin mr-1"></i>{{ order.city }}
-                            </p>
-                        </div>
-                        <span class="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded">
-                            {{ order.created_at.strftime('%I:%M %p') if order.created_at else 'Pending' }}
+            <div class="assignment-card bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+                <div class="p-6 bg-gray-50/50 border-b">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-extrabold text-xl text-gray-900 leading-tight">{{ order.customer_name }}</h3>
+                        <span class="text-[10px] font-black bg-gray-200 text-gray-600 px-2 py-1 rounded uppercase tracking-tighter">
+                            {{ to_ist(order.created_at).strftime('%I:%M %p') if order.created_at else 'JUST NOW' }}
                         </span>
+                    </div>
+                    <div class="flex items-center text-indigo-600 gap-1.5">
+                        <i class="fas fa-map-marker-alt text-xs"></i>
+                        <span class="text-xs font-bold uppercase tracking-widest">{{ order.city }}</span>
                     </div>
                 </div>
 
-                <div class="p-6 flex-grow">
-                    <form action="/assign-delivery" method="POST" class="space-y-4">
+                <div class="p-6 flex-grow bg-white">
+                    <form action="/assign-delivery" method="POST" class="space-y-5">
                         <input type="hidden" name="order_id" value="{{ order._id }}">
                         
                         <div>
-                            <label class="text-[10px] font-black text-gray-400 uppercase mb-3 block">Choose Assignment Method</label>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block tracking-widest">Select Assignment Target</label>
                             
-                            <div class="relative group">
-                                <select name="driver_id" class="w-full p-4 border-2 border-gray-100 rounded-xl bg-gray-50 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500 appearance-none transition-all cursor-pointer" required>
-                                    {# ALWAYS ENABLE AUTO-ASSIGN AS OPTION 1 #}
-                                    <option value="auto" selected>🚀 Smart Auto-Assign (Recommended)</option>
-                                    
-                                    {% if city_match.count > 0 %}
-                                    <optgroup label="Direct Manual Assignment">
-                                        {% for driver in city_match.list %}
-                                            <option value="{{ driver._id }}">{{ driver.name }} • {{ driver.phone_number }}</option>
-                                        {% endfor %}
-                                    </optgroup>
-                                    {% endif %}
-                                </select>
-                                <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none group-focus-within:text-orange-500"></i>
-                            </div>
-                            
-                            {# 🚀 STEP 2: DYNAMIC STATUS BADGES BASED ON city_match.count #}
-                            {% if city_match.count > 0 %}
-                                <div class="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100 flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center text-xs font-bold shadow-md">
-                                        {{ city_match.count }}
-                                    </div>
-                                    <p class="text-[10px] text-blue-700 font-bold uppercase">
-                                        Drivers serving {{ order.city }} found
-                                    </p>
-                                </div>
-                            {% else %}
-                                <div class="mt-4 p-4 bg-orange-50 border border-orange-100 rounded-xl flex items-start gap-3">
-                                    <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
-                                    <p class="text-[10px] text-orange-700 font-medium">
-                                        <strong>No drivers mapped to "{{ order.city }}".</strong><br>
-                                        Manual list is empty. Auto-assign will search for best match.
-                                    </p>
-                                </div>
-                            {% endif %}
+                            <select name="driver_id" class="w-full p-4 border-2 border-gray-100 rounded-xl bg-gray-50 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all cursor-pointer" required>
+                                <option value="auto">🚀 Smart Auto-Assign (Recommended)</option>
+                                
+                                {% if local_drivers %}
+                                <optgroup label="Direct Match: {{ order.city }}">
+                                    {% for d in local_drivers %}
+                                        <option value="{{ d._id }}">{{ d.name }} • {{ d.phone_number }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endif %}
+
+                                <optgroup label="Manual: Other Active Drivers">
+                                    {% for d in other_drivers %}
+                                        <option value="{{ d._id }}">{{ d.name }} • {{ d.phone_number }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            </select>
                         </div>
 
-                        {# 🚀 STEP 3: ENABLE BUTTON REGARDLESS (Auto-assign might still work or will show error on submit) #}
-                        <button type="submit" 
-                                class="w-full bg-orange-600 text-white py-4 rounded-xl font-bold hover:bg-orange-700 transition shadow-lg flex items-center justify-center gap-3 transform active:scale-95">
-                            <i class="fas fa-check-circle"></i>
-                            <span>Confirm Assignment</span>
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 active:scale-95 flex items-center justify-center gap-2">
+                            <i class="fas fa-user-check"></i>
+                            Confirm Assignment
                         </button>
                     </form>
                 </div>
+                
+                {% if local_drivers|length == 0 %}
+                <div class="px-6 py-3 bg-amber-50 border-t border-amber-100">
+                    <p class="text-[10px] text-amber-700 font-bold flex items-center gap-1.5">
+                        <i class="fas fa-info-circle"></i>
+                        No drivers mapped to this city. Use 'Auto' or choose from others.
+                    </p>
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
@@ -150,16 +127,11 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const forms = document.querySelectorAll('form');
-            forms.forEach(form => {
-                form.addEventListener('submit', function(e) {
-                    const submitBtn = this.querySelector('button[type="submit"]');
-                    if (!submitBtn.disabled) {
-                        submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processing...';
-                        // Do not disable actually, just change text for feedback
-                    }
-                });
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function() {
+                const btn = this.querySelector('button');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
             });
         });
     </script>

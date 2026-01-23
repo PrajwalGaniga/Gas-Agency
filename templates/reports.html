@@ -331,8 +331,14 @@
                             </th>
                             <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 <div class="flex items-center">
+                                    <i class="fas fa-shipping-fast mr-2"></i>
+                                    Delivered Time
+                                </div>
+                            </th>
+                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <div class="flex items-center">
                                     <i class="fas fa-calendar-alt mr-2"></i>
-                                    Date & Time
+                                    Created Date
                                 </div>
                             </th>
                         </tr>
@@ -380,27 +386,33 @@
                                     {% if order.status == 'DELIVERED' %} bg-green-100 text-green-700
                                     {% elif order.status == 'IN_PROGRESS' %} bg-blue-100 text-blue-700
                                     {% else %} bg-orange-100 text-orange-700 {% endif %}">
-                                    {% if order.status == 'DELIVERED' %}
-                                    <i class="fas fa-check-circle mr-1.5"></i>
-                                    {% elif order.status == 'IN_PROGRESS' %}
-                                    <i class="fas fa-truck-moving mr-1.5"></i>
-                                    {% else %}
-                                    <i class="fas fa-clock mr-1.5"></i>
-                                    {% endif %}
                                     {{ order.status }}
                                 </span>
                             </td>
                             <td class="p-4">
                                 <div class="flex items-center">
+                                    {% if order.status == 'DELIVERED' and order.delivered_at %}
+                                        <i class="far fa-check-circle text-green-500 mr-2 text-sm"></i>
+                                        <div class="text-xs">
+                                            <span class="text-gray-800 font-bold block">{{ to_ist(order.delivered_at).strftime('%d %b %Y') }}</span>
+                                            <span class="text-gray-400 block">{{ to_ist(order.delivered_at).strftime('%I:%M %p') }}</span>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-gray-300">—</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="p-4">
+                                <div class="flex items-center text-xs">
                                     <i class="far fa-clock text-gray-400 mr-2 text-sm"></i>
-                                    <span class="text-sm font-medium text-gray-600">{{ order.created_at.strftime('%d %b') }}</span>
-                                    <span class="text-xs text-gray-400 ml-2">{{ order.created_at.strftime('%I:%M %p') }}</span>
+                                    <span class="text-gray-600 font-medium">{{ to_ist(order.created_at).strftime('%d %b %Y') }}</span>
+                                    <span class="text-gray-400 ml-2">{{ to_ist(order.created_at).strftime('%I:%M %p') }}</span>
                                 </div>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="5" class="p-8 text-center">
+                            <td colspan="6" class="p-8 text-center">
                                 <div class="flex flex-col items-center">
                                     <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                         <i class="fas fa-chart-bar text-gray-400 text-2xl"></i>
@@ -450,59 +462,64 @@
         </div>
     </div>
 
-    <script>
-        // Add animation delays for cards
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.animate-fade-in');
-            cards.forEach((card, index) => {
-                card.style.animationDelay = `${index * 0.1}s`;
+   <script>
+    // Add animation delays for cards
+    document.addEventListener('DOMContentLoaded', function() {
+        const cards = document.querySelectorAll('.animate-fade-in');
+        cards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+        });
+        
+        // Add row hover effects
+        const rows = document.querySelectorAll('.table-row-hover');
+        rows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.001)';
+                this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
             });
             
-            // Add row hover effects
-            const rows = document.querySelectorAll('.table-row-hover');
-            rows.forEach(row => {
-                row.addEventListener('mouseenter', function() {
-                    this.style.transform = 'scale(1.001)';
-                    this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
-                });
+            row.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+                this.style.boxShadow = 'none';
+            });
+        });
+        
+        // Add click effect to download button
+        const downloadBtn = document.querySelector('a[href*="export-report"]');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', function(e) {
+                // Get the number of orders from a data attribute or check table rows
+                const orderRows = document.querySelectorAll('tbody tr.table-row-hover');
+                const emptyTable = document.querySelector('td[colspan="6"]');
                 
-                row.addEventListener('mouseleave', function() {
-                    this.style.transform = 'scale(1)';
-                    this.style.boxShadow = 'none';
-                });
+                // Check if there are no order rows or if the empty table message is displayed
+                if (orderRows.length === 0 || emptyTable) {
+                    e.preventDefault();
+                    alert('No data available to export for this period.');
+                }
             });
-            
-            // Add click effect to download button
-            const downloadBtn = document.querySelector('a[href*="export-report"]');
-            if (downloadBtn) {
-                downloadBtn.addEventListener('click', function(e) {
-                    if ({{ orders|length }} === 0) {
-                        e.preventDefault();
-                        alert('No data available to export for this period.');
-                    }
-                });
-            }
+        }
+    });
+    
+    // Mobile back button functionality
+    window.addEventListener('popstate', function() {
+        // Handle navigation if needed
+    });
+    
+    // Auto-highlight current period
+    const currentPeriod = "{{ period }}";
+    console.log(`Current reporting period: ${currentPeriod}`);
+    
+    // Add subtle animation to stats on page load
+    setTimeout(() => {
+        const stats = document.querySelectorAll('.stat-card');
+        stats.forEach(stat => {
+            stat.classList.add('animate-pulse');
+            setTimeout(() => {
+                stat.classList.remove('animate-pulse');
+            }, 1000);
         });
-        
-        // Mobile back button functionality
-        window.addEventListener('popstate', function() {
-            // Handle navigation if needed
-        });
-        
-        // Auto-highlight current period
-        const currentPeriod = "{{ period }}";
-        console.log(`Current reporting period: ${currentPeriod}`);
-        
-        // Add subtle animation to stats on page load
-        setTimeout(() => {
-            const stats = document.querySelectorAll('.stat-card');
-            stats.forEach(stat => {
-                stat.classList.add('animate-pulse');
-                setTimeout(() => {
-                    stat.classList.remove('animate-pulse');
-                }, 1000);
-            });
-        }, 1000);
-    </script>
+    }, 1000);
+</script>
 </body>
 </html>

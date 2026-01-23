@@ -3,188 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Fleet Tracking | GasFlow</title>
+    <title>Fleet Intelligence | {{ driver_name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA98WJQMxOftlN9q6zth9ax1n6rqBoWJ6g&libraries=geometry&callback=initMap" async defer></script>
     
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        #map { height: calc(100vh - 80px); width: 100%; z-index: 1; background: #f8fafc; }
-        .info-panel { position: absolute; top: 100px; left: 20px; z-index: 1000; width: 320px; }
-        
-        /* Custom Icon Styles */
-        .marker-pin { display: flex; align-items: center; justify-content: center; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); width: 40px; height: 40px; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .marker-pin i { transform: rotate(45deg); font-size: 18px; color: white; }
-        
-        .pulse-car { position: relative; }
-        .pulse-car::after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; background: rgba(59, 130, 246, 0.4); animation: pulse-ring 2s infinite; }
-        
-        @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2.5); opacity: 0; } }
+        #map { height: 100%; width: 100%; transition: all 0.3s ease; }
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .custom-marker { transition: transform 0.2s ease-out; }
+        /* Custom scrollbar for sidebar */
+        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-gray-100 overflow-hidden">
+<body class="bg-slate-900 h-screen overflow-hidden font-sans">
 
-    <div class="bg-white h-[80px] shadow-md flex items-center justify-between px-6 z-50 relative border-b border-gray-200">
+    <nav class="h-16 glass-panel border-b border-slate-200 px-6 flex items-center justify-between fixed top-0 w-full z-50">
         <div class="flex items-center gap-4">
-            <a href="/dashboard" class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full text-gray-500 hover:bg-indigo-600 hover:text-white transition-all">
-                <i class="fas fa-arrow-left"></i>
+            <a href="/dashboard" class="text-slate-500 hover:text-indigo-600 transition">
+                <i class="fas fa-chevron-left text-xl"></i>
             </a>
             <div>
-                <h1 class="text-xl font-bold text-gray-800">Tracking: <span class="text-indigo-600">{{ driver_name }}</span></h1>
-                <p class="text-xs text-gray-500 font-medium uppercase tracking-widest flex items-center gap-2">
-                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Live Telemetry Active
-                </p>
+                <h1 class="text-xl font-black text-slate-800 tracking-tight">{{ driver_name }} <span class="text-xs font-normal text-slate-400 ml-2">Live Pathing</span></h1>
+                <p class="text-[10px] text-indigo-500 font-bold uppercase tracking-widest" id="statusLabel">Initializing Satellite Link...</p>
             </div>
         </div>
-        <div class="flex gap-4">
-            <div class="bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-xl text-center">
-                <p class="text-[10px] font-bold text-indigo-400 uppercase">Current Status</p>
-                <p id="statusBadge" class="text-sm font-bold text-indigo-700">Connecting...</p>
-            </div>
+        <div class="flex items-center gap-3">
+            <span class="bg-green-100 text-green-700 text-[10px] font-black px-3 py-1 rounded-full animate-pulse">LIVE CONNECTED</span>
+            <button onclick="location.reload()" class="p-2 hover:bg-slate-100 rounded-lg transition"><i class="fas fa-sync-alt text-slate-600"></i></button>
         </div>
-    </div>
+    </nav>
 
-    <div class="relative">
-        <div id="map"></div>
-        
-        <div class="info-panel space-y-4">
-            <div class="bg-white/95 backdrop-blur shadow-2xl rounded-2xl p-5 border border-white/50">
-                <h3 class="font-bold text-gray-800 mb-4 border-b pb-2 flex items-center justify-between">
-                    <span>Navigation Details</span>
-                    <i class="fas fa-location-crosshairs text-indigo-500"></i>
-                </h3>
-                
-                <div class="space-y-4">
-                    <div>
-                        <p class="text-[10px] text-gray-400 font-black uppercase mb-1">Human Readable Address</p>
-                        <p id="addressText" class="text-sm text-gray-800 font-medium leading-relaxed italic">Locating driver...</p>
+    <main class="flex h-full pt-16">
+        <aside class="w-80 glass-panel border-r border-slate-200 hidden md:flex flex-col z-40">
+            <div class="p-6 border-b border-slate-100">
+                <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Shift Summary</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <p class="text-[10px] font-bold text-slate-400">Path Points</p>
+                        <p class="text-lg font-black text-slate-800" id="pathCount">0</p>
                     </div>
-                    
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
-                            <p class="text-[9px] text-indigo-400 font-bold uppercase">Latitude</p>
-                            <p id="latText" class="font-mono text-xs font-bold text-indigo-700">-</p>
-                        </div>
-                        <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
-                            <p class="text-[9px] text-indigo-400 font-bold uppercase">Longitude</p>
-                            <p id="lngText" class="font-mono text-xs font-bold text-indigo-700">-</p>
-                        </div>
-                    </div>
-
-                    <div class="pt-2 border-t border-gray-100">
-                        <div class="flex items-center justify-between text-xs mb-2">
-                            <span class="flex items-center gap-2"><i class="fas fa-car text-blue-500"></i> Current Position</span>
-                            <span class="flex items-center gap-2"><i class="fas fa-fire text-green-500"></i> Delivered</span>
-                        </div>
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="flex items-center gap-2"><i class="fas fa-fire text-orange-500"></i> Pending</span>
-                            <span class="flex items-center gap-2 font-bold text-indigo-600"><i class="fas fa-arrow-right"></i> Travel Path</span>
-                        </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <p class="text-[10px] font-bold text-slate-400">Total Orders</p>
+                        <p class="text-lg font-black text-slate-800" id="markerCount">0</p>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+            <div class="flex-grow sidebar-scroll overflow-y-auto p-6">
+                <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Marker Legend</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-4 h-4 rounded-full bg-green-500 shadow-sm shadow-green-200"></div>
+                        <span class="text-sm font-bold text-slate-600">Delivered (Verified)</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-4 h-4 rounded-full bg-blue-500 shadow-sm shadow-blue-200"></div>
+                        <span class="text-sm font-bold text-slate-600">Ongoing (In-Transit)</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-4 h-4 rounded-full bg-orange-500 shadow-sm shadow-orange-200"></div>
+                        <span class="text-sm font-bold text-slate-600">Pending Assignment</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 bg-indigo-600 text-white">
+                <p class="text-[10px] font-black uppercase opacity-60 mb-1">Last Update Received</p>
+                <p class="text-sm font-bold" id="lastSeen">Fetching...</p>
+            </div>
+        </aside>
+
+        <section class="flex-grow relative">
+            <div id="map"></div>
+            
+            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 z-40">
+                <div class="glass-panel p-4 rounded-2xl shadow-2xl border border-white">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-black text-slate-500">ROUTE TIMELINE</span>
+                        <span class="text-xs font-bold text-indigo-600" id="timeIndicator">00:00</span>
+                    </div>
+                    <input type="range" id="pathSlider" min="0" max="100" value="100" 
+                           class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                </div>
+            </div>
+        </section>
+    </main>
+
     <script>
-        const driverId = "{{ driver_id }}";
-        let map, currentMarker, pathLine;
-        const deliveryMarkers = [];
+        let map, poly, truckMarker;
+        let pathData = [];
 
-        function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([12.9716, 77.5946], 13);
-            L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '©OpenStreetMap'
-            }).addTo(map);
-
-            fetchData();
-            setInterval(fetchData, 8000); 
-        }
-
-        async function fetchData() {
+        async function initMap() {
             try {
-                const response = await fetch(`/api/track-data/${driverId}`);
-                const data = await response.json();
-                if(data.current_pos) updateMap(data);
-            } catch (e) { console.error("Update failed", e); }
-        }
-
-        function createIcon(type) {
-            let color = '#f97316'; // Pending
-            let icon = 'fa-fire';
-            if (type === 'DELIVERED') color = '#10b981';
-            if (type === 'DRIVER') { color = '#3b82f6'; icon = 'fa-car'; }
-
-            return L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div class="marker-pin ${type === 'DRIVER' ? 'pulse-car' : ''}" style="background-color:${color}">
-                        <i class="fas ${icon}"></i>
-                       </div>`,
-                iconSize: [40, 42],
-                iconAnchor: [20, 42]
-            });
-        }
-
-        function updateMap(data) {
-            const { current_pos, path, markers } = data;
-
-            // 1. Driver Location
-            const driverLatLng = [current_pos.lat, current_pos.lng];
-            if (!currentMarker) {
-                currentMarker = L.marker(driverLatLng, { icon: createIcon('DRIVER') }).addTo(map);
-                map.panTo(driverLatLng);
-            } else {
-                currentMarker.setLatLng(driverLatLng);
-            }
-
-            document.getElementById('latText').innerText = current_pos.lat.toFixed(5);
-            document.getElementById('lngText').innerText = current_pos.lng.toFixed(5);
-            document.getElementById('statusBadge').innerText = "MOVING";
-
-            // 2. Path Arrows Logic
-            const pathPoints = path.map(p => [p.lat, p.lng]);
-            if (pathLine) pathLine.setLatLngs(pathPoints);
-            else {
-                pathLine = L.polyline(pathPoints, {
-                    color: '#6366f1',
-                    weight: 5,
-                    opacity: 0.6,
-                    dashArray: '10, 10'
-                }).addTo(map);
-            }
-
-            // 3. Delivery Stations (Gas Icons)
-            deliveryMarkers.forEach(m => map.removeLayer(m));
-            deliveryMarkers.length = 0;
-
-            markers.forEach(pt => {
-                const m = L.marker([pt.lat, pt.lng], { icon: createIcon(pt.status) })
-                    .bindPopup(`<div class="p-2 font-sans">
-                                    <p class="font-bold text-indigo-600">${pt.customer}</p>
-                                    <p class="text-xs text-gray-500">${pt.address}</p>
-                                    <p class="mt-2 text-[10px] font-black uppercase text-gray-400">Status: ${pt.status}</p>
-                                </div>`)
-                    .addTo(map);
-                deliveryMarkers.push(m);
-            });
-
-            reverseGeocode(current_pos.lat, current_pos.lng);
-        }
-
-        async function reverseGeocode(lat, lng) {
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                // 1. Fetch Data from our Senior API
+                const res = await fetch('/api/track-data/{{ driver_id }}');
                 const data = await res.json();
-                document.getElementById('addressText').innerText = data.display_name.split(',').slice(0, 3).join(',');
-            } catch (e) { document.getElementById('addressText').innerText = "Street Location Detected"; }
-        }
+                
+                if (!data.success) return;
 
-        window.onload = initMap;
+                pathData = data.path;
+                document.getElementById('pathCount').innerText = pathData.length;
+                document.getElementById('markerCount').innerText = data.markers.length;
+                document.getElementById('lastSeen').innerText = data.current_pos.last_seen || "Just now";
+                document.getElementById('statusLabel').innerText = `Viewing Activity for ${data.date_label}`;
+
+                const center = data.current_pos.lat ? data.current_pos : (pathData[0] || {lat: 12.9716, lng: 77.5946});
+
+                // 2. Setup Google Map
+                map = new google.maps.Map(document.getElementById("map"), {
+                    zoom: 15,
+                    center: center,
+                    styles: [
+                        { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
+                        { "featureType": "transit", "stylers": [{ "visibility": "off" }] }
+                    ],
+                    disableDefaultUI: true,
+                    zoomControl: true
+                });
+
+                // 3. 🛰️ Draw the Breadcrumb Trail (Polyline)
+                poly = new google.maps.Polyline({
+                    path: pathData,
+                    geodesic: true,
+                    strokeColor: "#6366f1",
+                    strokeOpacity: 0.8,
+                    strokeWeight: 6,
+                    map: map
+                });
+
+                // 4. 📦 Drop Status Markers
+                data.markers.forEach(m => {
+                    let markerColor = "orange";
+                    if (m.status === 'DELIVERED') markerColor = "green";
+                    if (m.status === 'IN_PROGRESS') markerColor = "blue";
+
+                    const marker = new google.maps.Marker({
+                        position: {lat: m.lat, lng: m.lng},
+                        map: map,
+                        title: m.customer,
+                        icon: {
+                            url: `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`,
+                            scaledSize: new google.maps.Size(40, 40)
+                        }
+                    });
+
+                    const info = new google.maps.InfoWindow({
+                        content: `<div class="p-2 font-sans"><b>${m.customer}</b><br><span class="text-xs">${m.address}</span><br><span class="text-indigo-600 font-bold">${m.status}</span></div>`
+                    });
+                    marker.addListener("click", () => info.open(map, marker));
+                });
+
+                // 5. 🚛 Truck Icon for Live Position
+                if (data.current_pos.lat) {
+                    truckMarker = new google.maps.Marker({
+                        position: data.current_pos,
+                        map: map,
+                        icon: {
+                            url: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png',
+                            scaledSize: new google.maps.Size(45, 45),
+                            anchor: new google.maps.Point(22, 22)
+                        }
+                    });
+                }
+
+                // 6. 🕒 Timeline Scrubbing Logic
+                const slider = document.getElementById('pathSlider');
+                slider.max = pathData.length - 1;
+                slider.oninput = function() {
+                    const point = pathData[this.value];
+                    poly.setPath(pathData.slice(0, parseInt(this.value) + 1));
+                    document.getElementById('timeIndicator').innerText = point.time || "--:--";
+                };
+
+            } catch (e) {
+                console.error("Map Load Failed:", e);
+                alert("Satellite Link Failed. Check your API Key and Network.");
+            }
+        }
     </script>
 </body>
 </html>

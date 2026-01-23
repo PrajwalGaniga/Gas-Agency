@@ -50,3 +50,7 @@ cities_collection = db["cities"]
 
 driver_audit_collection = db["driver_audit_logs"]
 driver_location_collection = db["driver_locations"]
+# Add this to your collections in app/database.py
+change_requests_collection = db["customer_change_requests"]
+# app/database.py (Add this line)
+daily_stats_collection = db["daily_stats"]

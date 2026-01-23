@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Driver Audit | Compliance Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sticky-filter { position: sticky; top: 0; z-index: 40; }
+        .table-row-hover:hover { background-color: #f8fafc; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+
+    <nav class="bg-indigo-900 text-white p-6 shadow-2xl">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-6">
+                <a href="/dashboard" class="w-10 h-10 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight">Audit & Compliance</h1>
+                    <p class="text-xs text-indigo-300 font-bold uppercase tracking-widest">Fleet Performance Intelligence</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="/export-driver-audit?period={{ active_period }}" class="bg-green-600 hover:bg-green-700 px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg transition flex items-center gap-2">
+                    <i class="fas fa-file-excel"></i> Export Analytics
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto py-8 px-4 lg:px-0">
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-10">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Total Work Hours</p>
+                <h3 class="text-3xl font-black text-indigo-600">{{ summary.total_hours }}h</h3>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Avg Hours / Day</p>
+                <h3 class="text-3xl font-black text-slate-800">{{ summary.avg_hours or 0 }}h</h3>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Deliveries Done</p>
+                <h3 class="text-3xl font-black text-green-600">{{ summary.total_deliveries }}</h3>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Active Days</p>
+                <h3 class="text-3xl font-black text-slate-800">{{ summary.active_days }}</h3>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-amber-200 bg-amber-50/30">
+                <p class="text-xs font-bold text-amber-600 uppercase mb-2">Pending Requests</p>
+                <h3 class="text-3xl font-black text-amber-600">{{ summary.pending_requests }}</h3>
+            </div>
+        </div>
+
+        <div class="sticky-filter bg-white p-4 rounded-2xl shadow-md border border-slate-200 mb-8 flex flex-wrap gap-4 items-center">
+            <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                {% for p in ['24h', '1w', '1m'] %}
+                <a href="/driver-audit?period={{ p }}&driver_id={{ selected_driver or '' }}" 
+                   class="px-4 py-2 rounded-lg text-sm font-bold transition {% if active_period == p %} bg-white text-indigo-600 shadow-sm {% else %} text-slate-500 hover:text-slate-700 {% endif %}">
+                    {{ p.upper() }}
+                </a>
+                {% endfor %}
+            </div>
+
+            <form action="/driver-audit" method="GET" class="flex flex-grow gap-4">
+                <input type="hidden" name="period" value="{{ active_period }}">
+                <select name="driver_id" onchange="this.form.submit()" class="flex-grow p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">All Drivers (Fleet View)</option>
+                    {% for d in drivers %}
+                    <option value="{{ d._id }}" {% if selected_driver == d._id|string %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden mb-12">
+            <div class="p-6 border-b border-slate-100">
+                <h2 class="text-xl font-black text-slate-800 flex items-center gap-3">
+                    <i class="fas fa-stopwatch text-indigo-600"></i> Daily Work Analytics
+                </h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-slate-100">
+                            <th class="p-5">Driver</th>
+                            <th class="p-5">Date</th>
+                            <th class="p-5">Clock In</th>
+                            <th class="p-5">Clock Out</th>
+                            <th class="p-5">Duration</th>
+                            <th class="p-5 text-center">Deliveries</th>
+                            <th class="p-5 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for audit in audits %}
+                        <tr class="table-row-hover transition-colors">
+                            <td class="p-5 font-bold text-slate-700">{{ audit.driver_name }}</td>
+                            <td class="p-5 text-sm text-slate-500">{{ audit.date.strftime('%b %d, %Y') }}</td>
+                            <td class="p-5 text-xs text-slate-600 font-mono">{{ to_ist(audit.first_ping).strftime('%I:%M %p') }}</td>
+                            <td class="p-5 text-xs text-slate-600 font-mono">{{ to_ist(audit.last_ping).strftime('%I:%M %p') }}</td>
+                            <td class="p-5">
+                                <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-black">{{ audit.duration }}</span>
+                            </td>
+                            <td class="p-5 text-center">
+                                <span class="text-green-600 font-bold">{{ audit.deliveries }}</span>
+                            </td>
+                            <td class="p-5 text-center">
+                                <button class="text-slate-400 hover:text-indigo-600 transition" title="View Timeline"><i class="fas fa-history"></i></button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-xl border border-amber-100 overflow-hidden">
+            <div class="p-6 bg-amber-50/50 border-b border-amber-100 flex items-center justify-between">
+                <h2 class="text-xl font-black text-slate-800 flex items-center gap-3">
+                    <i class="fas fa-exchange-alt text-amber-500"></i> Field Change Queue
+                </h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-400 text-[10px] font-black uppercase border-b">
+                            <th class="p-5">Requested</th>
+                            <th class="p-5">Driver</th>
+                            <th class="p-5">Customer (Click to Edit)</th>
+                            <th class="p-5">Type</th>
+                            <th class="p-5">Change (Old → New)</th>
+                            <th class="p-5">Status</th>
+                            <th class="p-5">Resolved At</th>
+                            <th class="p-5 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for req in requests %}
+                        <tr class="table-row-hover">
+                            <td class="p-5 text-[10px] font-bold text-slate-400">{{ to_ist(req.timestamp).strftime('%d %b, %H:%M') }}</td>
+                            <td class="p-5 font-bold text-slate-700 text-sm">{{ req.driver_name }}</td>
+                            <td class="p-5">
+                                <a href="/customers?search={{ req.customer_name }}&edit_id={{ req.customer_id_str }}" 
+                                   class="group flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition">
+                                    <span class="font-bold border-b border-indigo-200 group-hover:border-indigo-600">{{ req.customer_name }}</span>
+                                    <i class="fas fa-external-link-alt text-[10px] opacity-0 group-hover:opacity-100"></i>
+                                </a>
+                            </td>
+                            <td class="p-5 text-[10px] font-black"><span class="bg-slate-100 px-2 py-1 rounded">{{ req.request_type }}</span></td>
+                            <td class="p-5 text-xs">
+                                <span class="text-slate-400 line-through">{{ req.old_value }}</span> → 
+                                <span class="text-indigo-600 font-bold">{{ req.new_value }}</span>
+                            </td>
+                            <td class="p-5">
+                                <span class="text-[10px] font-black px-2 py-1 rounded uppercase
+                                    {% if req.status == 'PENDING' %} text-amber-600 bg-amber-50 
+                                    {% elif req.status == 'APPROVED' %} text-green-600 bg-green-50 
+                                    {% else %} text-red-600 bg-red-50 {% endif %}">
+                                    {{ 'Resolved' if req.status == 'APPROVED' else req.status }}
+                                </span>
+                            </td>
+                            <td class="p-5 text-[10px] text-slate-500 font-mono">
+                                {{ to_ist(req.decision_timestamp).strftime('%d %b, %H:%M') if req.decision_timestamp else '—' }}
+                            </td>
+                            <td class="p-5 text-center">
+                                {% if req.status == 'PENDING' %}
+                                <div class="flex justify-center gap-2">
+                                    <form action="/api/resolve-request" method="POST" class="inline">
+                                        <input type="hidden" name="request_id" value="{{ req._id }}">
+                                        <input type="hidden" name="action" value="reject">
+                                        <button class="w-8 h-8 rounded-lg text-red-500 border border-red-100 hover:bg-red-500 hover:text-white transition">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </form>
+                                    <form action="/api/resolve-request" method="POST" class="inline">
+                                        <input type="hidden" name="request_id" value="{{ req._id }}">
+                                        <input type="hidden" name="action" value="approve">
+                                        <button class="w-8 h-8 rounded-lg text-green-600 border border-green-100 hover:bg-green-600 hover:text-white transition">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                {% else %}
+                                <i class="fas fa-check-double text-slate-300"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Optional: Tooltip or Modal logic can be added here
+        console.log("Audit Intelligence Engine Loaded.");
+    </script>
+</body>
+</html>

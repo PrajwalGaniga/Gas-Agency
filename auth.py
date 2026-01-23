@@ -48,3 +48,4 @@ def get_current_driver(token: str = Depends(oauth2_scheme)):
         return ObjectId(driver_id)
     except JWTError:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
+    

@@ -790,6 +790,21 @@
                 }, 100);
             }
         });
+
+        // Add to the bottom of script section in customers.html
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit_id');
+
+    if (editId) {
+        // Find the "Edit" button for this customer in the table and click it
+        const editBtn = document.querySelector(`button[onclick*='${editId}']`);
+        if (editBtn) {
+            console.log("🚀 Auto-opening edit modal for requested customer...");
+            editBtn.click();
+        }
+    }
+});
     </script>
 </body>
 </html>
