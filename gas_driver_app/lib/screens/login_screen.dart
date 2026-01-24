@@ -15,34 +15,50 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _handleLogin() async {
-    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
-      return;
-    }
+  if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please fill all fields")),
+    );
+    return;
+  }
 
-    setState(() => _isLoading = true);
+  setState(() => _isLoading = true);
+  
+  try {
     final res = await ApiService().login(_phoneController.text, _passwordController.text);
     setState(() => _isLoading = false);
 
-    if (res['success'] == true) {
-      // 🚀 SUCCESS: Move to Home Screen and pass the driver data + token
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(
-            driverData: res['driver'],
-            token: res['access_token'],
+    // 🛡️ SENIOR SAFETY CHECK: Ensure token and driver data are actually present
+    if (res['success'] == true && res['access_token'] != null && res['driver'] != null) {
+      
+      // Save the session to local storage for auto-login
+      await ApiService().saveSession(
+        res['access_token'].toString(), 
+        res['driver'] as Map<String, dynamic>
+      );
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(
+              driverData: res['driver'],
+              token: res['access_token'].toString(), // Force to string safely
+            ),
           ),
-        ),
-      );
+        );
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res['message'] ?? "Login Failed")),
-      );
+      String msg = res['message'] ?? "Login Failed: Server returned incomplete data";
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
+  } catch (e) {
+    setState(() => _isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Connection Error: Server might be waking up. Try again in 30 seconds."))
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

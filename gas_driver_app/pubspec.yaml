@@ -1,5 +1,5 @@
 name: gas_driver_app
-description: "A new Flutter project."
+description: "A new Flutter project for GasFlow Driver."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -11,27 +11,34 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The bridge to your FastAPI backend
+  # 🌐 Networking
   http: ^1.1.0
   
-  # For one-time login data storage
+  # 🔑 Session & Local Storage
   shared_preferences: ^2.2.2
   
-  # For real-time distance sorting in the Work List
-  geolocator: ^10.1.0
+  # 📦 Offline Database (Hive)
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.1
   
-  # For the 2-column delivery map
+  # 🛰️ Location & Maps
+  geolocator: ^10.1.0
   google_maps_flutter: ^2.5.0
   
-  # To trigger the "Call Button" in your Work List
+  # 📞 System Integrations
   url_launcher: ^6.2.1
-
   cupertino_icons: ^1.0.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  # 🚀 Added for automated icon generation
+  
+  # 🏗️ Hive Code Generation
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.6
+  
+  # 🚀 Icon Generation
   flutter_launcher_icons: "^0.13.1"
   flutter_lints: ^3.0.0
 
@@ -40,7 +47,6 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/icon/app_icon.png"
-  # Support for modern Android adaptive icons
   adaptive_icon_background: "#121212" 
   adaptive_icon_foreground: "assets/icon/app_icon.png"
 

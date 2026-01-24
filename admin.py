@@ -683,16 +683,54 @@ async def upload_customers(request: Request, file: UploadFile = File(...), admin
         "message": f"✅ Uploaded successfully."
     })
 
+# admin.py
+
 @admin_router.get("/profile")
 async def profile_view(request: Request, admin_id: ObjectId = Depends(get_current_admin)):
-    if not admin_id: return RedirectResponse(url="/", status_code=303)
+    if not admin_id: 
+        return RedirectResponse(url="/", status_code=303)
+        
     admin = admin_collection.find_one({"_id": admin_id})
     my_drivers = list(driver_collection.find({"admin_id": admin_id}))
+    
+    # 📊 Advanced Stats Calculation
+    total_orders = order_collection.count_documents({"admin_id": admin_id})
+    delivered_orders = order_collection.count_documents({"admin_id": admin_id, "status": "DELIVERED"})
+    
+    # Success Rate (Percentage)
+    success_rate = round((delivered_orders / total_orders * 100), 1) if total_orders > 0 else 0
+    
+    # Account Age (Days)
+    account_age = (datetime.now(timezone.utc) - admin["created_at"].replace(tzinfo=timezone.utc)).days if admin.get("created_at") else 0
+    
+    # Driver Efficiency (Avg deliveries per driver)
+    driver_efficiency = round(delivered_orders / len(my_drivers), 1) if my_drivers else 0
+
+    # 🎖️ Level System (Gamification)
+    level = "Bronze"
+    if delivered_orders > 500: level = "Platinum"
+    elif delivered_orders > 100: level = "Gold"
+    elif delivered_orders > 20: level = "Silver"
+
+    # Process Driver List for Table
     for d in my_drivers:
         d["_id"] = str(d["_id"])
         reg_date_ist = to_ist(d.get("created_at"))
         d["date_str"] = reg_date_ist.strftime("%d %b %Y") if reg_date_ist else "N/A"
-    return templates.TemplateResponse("profile.html", {"request": request, "admin": admin, "drivers": my_drivers})
+
+    return templates.TemplateResponse("profile.html", {
+        "request": request,
+        "admin": admin,
+        "drivers": my_drivers,
+        "stats": {
+            "total_orders": total_orders,
+            "success_rate": success_rate,
+            "account_age": account_age,
+            "efficiency": driver_efficiency,
+            "level": level,
+            "active_drivers": len([d for d in my_drivers if d.get("is_active")])
+        }
+    })
 
 @admin_router.post("/update-profile")
 async def update_profile(request: Request, phone: str = Form(None), age: str = Form(None), agency_name: str = Form(None), admin_id: ObjectId = Depends(get_current_admin)):

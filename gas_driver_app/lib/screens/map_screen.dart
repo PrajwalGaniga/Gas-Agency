@@ -16,78 +16,90 @@ class _MapScreenState extends State<MapScreen> {
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
   Map? _inProgressOrder;
-  List _unverified = [];
   bool _isMapReady = false;
   late GoogleMapController _mapController;
 
   // UX Constants
   final Color kNavBlue = const Color(0xFF1976D2);
   final Color kDarkSurface = const Color(0xFF212121);
+  final Color kSuccessGreen = const Color(0xFF00E676);
 
   @override
   void initState() {
     super.initState();
-    _processRouteData();
+    _processDailyRoute();
   }
 
+  // 🛡️ Safe Value Parser: Prevents 'String is not a subtype of double'
   double _val(dynamic v) => (v is double) ? v : double.tryParse(v.toString()) ?? 0.0;
 
-  void _processRouteData() {
-    // 1. Identify Active Order
+  void _processDailyRoute() {
+    Set<Marker> newMarkers = {};
+    List<LatLng> journeyPath = [];
+
+    // 1. Sort orders chronologically to draw the path
+    List sortedOrders = List.from(widget.orders);
+    sortedOrders.sort((a, b) {
+      var timeA = a['created_at'] ?? "";
+      var timeB = b['created_at'] ?? "";
+      return timeA.compareTo(timeB);
+    });
+
+    // 2. Identify Current Active Job
     _inProgressOrder = widget.orders.firstWhere(
-      (o) => o['status'] == 'IN_PROGRESS' && o['verified_lat'] != null,
+      (o) => o['status'] == 'IN_PROGRESS',
       orElse: () => null,
     );
 
-    // 2. Filter Lists
-    List verified = widget.orders.where((o) => 
-      o['verified_lat'] != null && o['_id'] != _inProgressOrder?['_id']
-    ).toList();
-    
-    _unverified = widget.orders.where((o) => o['verified_lat'] == null).toList();
+    // 3. Loop through all orders to build Markers and the Path
+    for (var o in sortedOrders) {
+      if (o['verified_lat'] == null) continue;
 
-    // 3. Build Route Logic (Simplified Nearest Neighbor for demo)
-    List<LatLng> polyPoints = [LatLng(widget.currentPos.latitude, widget.currentPos.longitude)];
-    Set<Marker> newMarkers = {};
-
-    // A. Add Active Order (High Priority Marker)
-    if (_inProgressOrder != null) {
-      LatLng ipLatLng = LatLng(_val(_inProgressOrder!['verified_lat']), _val(_inProgressOrder!['verified_lng']));
-      polyPoints.add(ipLatLng);
+      LatLng point = LatLng(_val(o['verified_lat']), _val(o['verified_lng']));
+      String status = o['status'] ?? 'PENDING';
       
-      newMarkers.add(Marker(
-        markerId: const MarkerId('active_target'),
-        position: ipLatLng,
-        // In production, use a custom BitmapDescriptor for a big Green/Red Pin
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen), 
-        zIndex: 10, // Force on top
-        infoWindow: InfoWindow(title: "TARGET: ${_inProgressOrder!['customer_name']}"),
-      ));
-    }
+      // Add point to the journey line if it's already delivered or active
+      if (status != 'PENDING') {
+        journeyPath.add(point);
+      }
 
-    // B. Add Verified Orders (Low Priority Markers)
-    for (var o in verified) {
+      // Determine Marker Color
+      double hue = BitmapDescriptor.hueOrange; // Pending
+      if (status == 'DELIVERED') hue = BitmapDescriptor.hueGreen;
+      if (status == 'IN_PROGRESS') hue = BitmapDescriptor.hueAzure;
+
       newMarkers.add(Marker(
         markerId: MarkerId(o['_id'].toString()),
-        position: LatLng(_val(o['verified_lat']), _val(o['verified_lng'])),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-        alpha: 0.8, // Slightly faded to reduce noise
+        position: point,
+        icon: BitmapDescriptor.defaultMarkerWithHue(hue),
+        infoWindow: InfoWindow(
+          title: o['customer_name'] ?? "Customer",
+          snippet: "${o['address'] ?? ''} (${status.toLowerCase()})",
+        ),
       ));
     }
 
+    // 4. Add Driver's Current Location (The Car)
+    LatLng driverPoint = LatLng(widget.currentPos.latitude, widget.currentPos.longitude);
+    newMarkers.add(Marker(
+      markerId: const MarkerId('driver_car'),
+      position: driverPoint,
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+      infoWindow: const InfoWindow(title: "Your Current Location"),
+    ));
+
     setState(() {
+      _markers = newMarkers;
+      // 🗺️ Draw the blue path connecting deliveries
       _polylines = {
         Polyline(
-          polylineId: const PolylineId("master_route"),
-          points: polyPoints,
-          color: kNavBlue,
-          width: 6, // Thick line for visibility
+          polylineId: const PolylineId("journey_trail"),
+          points: journeyPath,
+          color: kNavBlue.withOpacity(0.7),
+          width: 5,
           jointType: JointType.round,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
         )
       };
-      _markers = newMarkers;
       _isMapReady = true;
     });
   }
@@ -96,190 +108,84 @@ class _MapScreenState extends State<MapScreen> {
     final Uri googleMapsUrl = Uri.parse("google.navigation:q=$lat,$lng&mode=d");
     if (await canLaunchUrl(googleMapsUrl)) {
       await launchUrl(googleMapsUrl);
-    } else {
-      // Fallback
-      await launchUrl(Uri.parse("https://www.google.com/maps/dir/?api=1&destination=$lat,$lng"));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: kDarkSurface,
+        foregroundColor: Colors.white,
+        title: const Text("WORK DAY MAP", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
+      ),
       body: Stack(
         children: [
-          // 🗺️ LAYER 1: CLEAN MAP
           GoogleMap(
             initialCameraPosition: CameraPosition(
               target: LatLng(widget.currentPos.latitude, widget.currentPos.longitude), 
-              zoom: 15,
-              tilt: 40 // Slight tilt for "Driver Perspective"
+              zoom: 14,
             ),
             markers: _markers,
             polylines: _polylines,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false, // We build our own custom button
-            zoomControlsEnabled: false, // Remove clutter
-            mapToolbarEnabled: false, // Remove clutter
+            myLocationEnabled: false, // We use our custom blue marker instead
+            mapType: MapType.normal,
             onMapCreated: (c) => _mapController = c,
-            padding: const EdgeInsets.only(top: 140, bottom: 100), // Safe area for overlays
+            padding: const EdgeInsets.only(bottom: 120),
           ),
 
-          // 🧭 LAYER 2: TOP NAVIGATION CARD (Active Order)
+          // 🏁 HUD: Heads Up Display for Active Job
           if (_inProgressOrder != null)
-             Positioned(
-              top: 50, left: 16, right: 16,
-              child: _buildTopNavCard(),
+            Positioned(
+              top: 20, left: 15, right: 15,
+              child: _buildNavigationCard(),
             ),
 
-          // 📍 LAYER 3: RE-CENTER BUTTON
+          // 📍 Center Button
           Positioned(
-            right: 16, bottom: 120, // Above the bottom sheet
+            right: 15, bottom: 20,
             child: FloatingActionButton(
               backgroundColor: Colors.white,
-              foregroundColor: Colors.black87,
-              elevation: 4,
-              child: const Icon(Icons.gps_fixed),
-              onPressed: () {
-                _mapController.animateCamera(
-                  CameraUpdate.newLatLng(LatLng(widget.currentPos.latitude, widget.currentPos.longitude))
-                );
-              },
+              child: const Icon(Icons.my_location, color: Colors.black),
+              onPressed: () => _mapController.animateCamera(
+                CameraUpdate.newLatLng(LatLng(widget.currentPos.latitude, widget.currentPos.longitude))
+              ),
             ),
-          ),
-
-          // 📂 LAYER 4: BOTTOM SHEET (Unverified/Queue)
-          DraggableScrollableSheet(
-            initialChildSize: 0.1,
-            minChildSize: 0.1,
-            maxChildSize: 0.5,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: kDarkSurface,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, -2))]
-                ),
-                child: ListView(
-                  controller: scrollController,
-                  padding: EdgeInsets.zero,
-                  children: [
-                    // Handle
-                    Center(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 12),
-                        width: 40, height: 4,
-                        decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2)),
-                      ),
-                    ),
-                    
-                    // Header
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: Colors.orangeAccent, size: 20),
-                          const SizedBox(width: 10),
-                          const Text("Unverified Address Queue", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          const Spacer(),
-                          Text("${_unverified.length}", style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                    const Divider(color: Colors.white10),
-                    
-                    // List
-                    ..._unverified.map((o) => ListTile(
-                      dense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                      title: Text(o['customer_name'], style: const TextStyle(color: Colors.white70)),
-                      subtitle: Text(o['address'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white30)),
-                      trailing: const Icon(Icons.chevron_right, color: Colors.white24),
-                    )),
-                    // Spacer for scrolling
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              );
-            },
-          ),
+          )
         ],
       ),
     );
   }
 
-  // 🚀 COMPONENT: The "Heads Up" Display
-  Widget _buildTopNavCard() {
+  Widget _buildNavigationCard() {
     return Container(
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 5))
-        ]
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)]
       ),
-      child: Column(
+      child: Row(
         children: [
-          // Status Bar
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-            decoration: BoxDecoration(
-              color: kNavBlue.withOpacity(0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16))
-            ),
-            child: Row(
+          const Icon(Icons.local_gas_station, color: Colors.blue, size: 30),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.flash_on, size: 14, color: kNavBlue),
-                const SizedBox(width: 4),
-                Text("CURRENT DESTINATION", style: TextStyle(color: kNavBlue, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
-                const Spacer(),
-                Text("${(_inProgressOrder?['distance'] ?? 0).toStringAsFixed(1)} km away", style: const TextStyle(color: Colors.black54, fontSize: 11, fontWeight: FontWeight.bold)),
+                const Text("ACTIVE DELIVERY", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                Text(_inProgressOrder!['customer_name'] ?? "Unknown", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(_inProgressOrder!['address'] ?? "No address", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.black54)),
               ],
             ),
           ),
-          
-          // Main Info Area
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _inProgressOrder!['customer_name'].toString(), 
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87)
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _inProgressOrder!['address'].toString(), 
-                        style: const TextStyle(fontSize: 13, color: Colors.black54, height: 1.2),
-                        maxLines: 2, 
-                        overflow: TextOverflow.ellipsis
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                
-                // 🧭 Big CTA Button
-                SizedBox(
-                  height: 50, width: 50,
-                  child: FloatingActionButton(
-                    onPressed: () => _launchTurnByTurn(
-                      _val(_inProgressOrder!['verified_lat']), 
-                      _val(_inProgressOrder!['verified_lng'])
-                    ),
-                    backgroundColor: kNavBlue,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: const Icon(Icons.navigation, size: 28, color: Colors.white),
-                  ),
-                )
-              ],
-            ),
-          ),
+          IconButton(
+            onPressed: () => _launchTurnByTurn(_val(_inProgressOrder!['verified_lat']), _val(_inProgressOrder!['verified_lng'])),
+            icon: const Icon(Icons.navigation, color: Colors.blue, size: 35),
+          )
         ],
       ),
     );

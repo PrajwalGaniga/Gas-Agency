@@ -4,896 +4,761 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GasFlow Admin Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
     <style>
-        * { 
-            font-family: 'Inter', sans-serif; 
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        /* Mobile-first animations */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes slideInLeft {
-            from { opacity: 0; transform: translateX(-30px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        @keyframes shimmer {
-            0% { background-position: -1000px 0; }
-            100% { background-position: 1000px 0; }
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        .animate-float { animation: float 3s ease-in-out infinite; }
-        .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
-        .animate-slide-in-left { animation: slideInLeft 0.5s ease-out forwards; }
-        .animate-shimmer {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 1000px 100%;
-            animation: shimmer 2s infinite linear;
-        }
-        .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        
-        /* Card hover effects */
-        .card-hover {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Gradient backgrounds */
-        .gradient-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        
-        .gradient-success {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-        
-        .gradient-warning {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        }
-        
-        .gradient-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        }
-        
-        .gradient-info {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        }
-        
-        /* Glass effect */
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-        }
-        
-        /* Mobile menu animation */
-        .mobile-menu-enter {
-            transform: translateX(-100%);
-        }
-        
-        .mobile-menu-enter-active {
-            transform: translateX(0);
-            transition: transform 0.3s ease-out;
-        }
-        
-        .mobile-menu-exit {
-            transform: translateX(0);
-        }
-        
-        .mobile-menu-exit-active {
-            transform: translateX(-100%);
-            transition: transform 0.3s ease-out;
-        }
-        
-        /* Loading skeleton */
-        .skeleton {
-            background-color: #e0e0e0;
-            border-radius: 8px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .skeleton::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            animation: shimmer 1.5s infinite;
-        }
-        
-        /* Tooltip */
-        .tooltip {
-            position: relative;
-            display: inline-block;
-        }
-        
-        .tooltip .tooltip-text {
-            visibility: hidden;
-            background-color: rgba(0, 0, 0, 0.9);
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 8px 12px;
-            position: absolute;
-            z-index: 100;
-            bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 12px;
-            white-space: nowrap;
-        }
-        
-        .tooltip:hover .tooltip-text {
-            visibility: visible;
-            opacity: 1;
-        }
-        
-        /* Responsive utilities */
-        .mobile-only {
-            display: block;
-        }
-        
-        .desktop-only {
-            display: none;
-        }
-        
-        @media (min-width: 768px) {
-            .mobile-only {
-                display: none;
-            }
+        /* -----------------------------------------------------------------
+           1. STRICT COLOR SYSTEM & VARIABLES
+           ----------------------------------------------------------------- */
+        :root {
+            /* Backgrounds */
+            --bg-page: #0F172A;
+            --bg-surface: #111827;
+            --bg-surface-sec: #1E293B;
+            --bg-hover: #1E293B;
+            --bg-active: rgba(59, 130, 246, 0.15);
+
+            /* Borders */
+            --border-color: #273244;
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+
+            /* Colors */
+            --accent: #3B82F6;
+            --success: #22C55E;
+            --warning: #F59E0B;
+            --error: #EF4444;
+
+            /* Text */
+            --text-primary: #E5E7EB;
+            --text-secondary: #9CA3AF;
+            --text-muted: #6B7280;
+            --text-on-accent: #FFFFFF;
+
+            /* Typography */
+            --font-family: 'Inter', sans-serif;
             
-            .desktop-only {
-                display: block;
-            }
+            /* Layout */
+            --header-height: 64px;
+            --container-width: 1280px;
         }
+
+        /* -----------------------------------------------------------------
+           2. RESET & BASE STYLES
+           ----------------------------------------------------------------- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-page);
+            color: var(--text-primary);
+            line-height: 1.5;
+            font-size: 14px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        a { text-decoration: none; color: inherit; transition: color 0.2s; }
+        ul { list-style: none; }
+        button, input { font-family: inherit; }
+
+        /* Typography Hierarchy */
+        h1, h2, h3, h4 {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        h1 { font-size: 1.5rem; } /* 24px */
+        h2 { font-size: 1.25rem; } /* 20px */
+        h3 { font-size: 1rem; font-weight: 600; } /* 16px */
+        p { color: var(--text-secondary); }
+
+        /* Icons */
+        .material-symbols-outlined {
+            font-size: 20px;
+            vertical-align: middle;
+        }
+        .icon-sm { font-size: 18px; }
+        .icon-lg { font-size: 24px; }
+
+        /* -----------------------------------------------------------------
+           3. LAYOUT UTILITIES
+           ----------------------------------------------------------------- */
+        .container {
+            width: 100%;
+            max-width: var(--container-width);
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .gap-2 { gap: 8px; }
+        .gap-3 { gap: 12px; }
+        .gap-4 { gap: 16px; }
+        .gap-6 { gap: 24px; }
         
-        /* Table styles */
-        .table-container {
-            overflow-x: auto;
+        .grid { display: grid; }
+        .grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
+        
+        /* Spacing */
+        .mt-1 { margin-top: 4px; }
+        .mt-2 { margin-top: 8px; }
+        .mt-4 { margin-top: 16px; }
+        .mt-6 { margin-top: 24px; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mb-6 { margin-bottom: 24px; }
+        .py-4 { padding-top: 16px; padding-bottom: 16px; }
+        .p-4 { padding: 16px; }
+        .p-6 { padding: 24px; }
+
+        /* Responsive */
+        @media (min-width: 768px) {
+            .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+            .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+            .grid-cols-5 { grid-template-columns: repeat(5, 1fr); }
+            .desktop-flex { display: flex; }
+            .mobile-only { display: none !important; }
+        }
+
+        @media (max-width: 767px) {
+            .desktop-only { display: none !important; }
+            .grid-cols-1-mobile { grid-template-columns: 1fr; }
+            .container { padding: 0 16px; }
+        }
+
+        /* -----------------------------------------------------------------
+           4. COMPONENTS
+           ----------------------------------------------------------------- */
+        
+        /* Navbar */
+        .navbar {
+            background-color: var(--bg-surface);
+            height: var(--header-height);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.15s ease;
+        }
+        .nav-link:hover {
+            background-color: var(--bg-hover);
+            color: var(--text-primary);
+        }
+        .nav-link.active {
+            background-color: var(--bg-active);
+            color: var(--accent);
+        }
+        .nav-badge {
+            background-color: var(--error);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            border-color: #374151;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        /* Stats Card Specifics */
+        .stat-card { padding: 20px; }
+        .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary); margin-top: 8px; }
+        .stat-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+        .stat-icon {
+            width: 40px; 
+            height: 40px; 
+            border-radius: 8px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            background-color: var(--bg-surface-sec);
+            color: var(--text-primary);
+        }
+        /* Contextual Colors for Icons */
+        .text-accent { color: var(--accent); }
+        .text-success { color: var(--success); }
+        .text-warning { color: var(--warning); }
+        .text-error { color: var(--error); }
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 16px;
+            height: 40px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            transition: background-color 0.15s;
+        }
+        .btn-primary {
+            background-color: var(--accent);
+            color: var(--text-on-accent);
+        }
+        .btn-primary:hover { background-color: #2563EB; } /* Darker shade of blue */
+        
+        .btn-secondary {
+            background-color: var(--bg-surface-sec);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        .btn-secondary:hover { background-color: #374151; }
+
+        .btn-danger {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .btn-danger:hover { background-color: rgba(239, 68, 68, 0.2); }
+
+        .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; }
+        .btn-block { width: 100%; }
+
+        /* Forms */
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 13px; }
+        .input-field {
+            width: 100%;
+            height: 44px;
+            background-color: var(--bg-page);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        .input-field::placeholder { color: var(--text-muted); }
+
+        /* File Upload Zone */
+        .upload-zone {
+            border: 2px dashed var(--border-color);
             border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background-color: var(--bg-page);
         }
-        
-        .table-container table {
-            min-width: 1000px;
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--accent);
+            background-color: var(--bg-active);
         }
-        
-        @media (min-width: 1200px) {
-            .table-container table {
-                min-width: auto;
-            }
+
+        /* Tables */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: var(--border-radius-sm);
+            border: 1px solid var(--border-color);
         }
-        
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        thead { background-color: var(--bg-surface-sec); }
+        th {
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background-color: var(--bg-hover); }
+
+        /* Status Indicators */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-online { background-color: rgba(34, 197, 94, 0.1); color: var(--success); }
+        .status-offline { background-color: rgba(107, 114, 128, 0.1); color: var(--text-muted); }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background-color: currentColor; }
+
+        /* Alerts */
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .alert-success { background-color: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); color: var(--success); }
+        .alert-warning { background-color: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: var(--warning); }
+
+        /* Utility specific to this dashboard */
+        .avatar {
+            width: 32px; height: 32px;
             border-radius: 50%;
-            margin-right: 6px;
+            background-color: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 12px; color: white;
         }
-        
-        .status-online {
-            background-color: #10b981;
-            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        .live-dot {
+            width: 8px; height: 8px; background-color: var(--success); border-radius: 50%;
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse 2s infinite;
         }
-        
-        .status-offline {
-            background-color: #9ca3af;
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
-        
-        .status-busy {
-            background-color: #f59e0b;
-            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+
+        /* Mobile Menu */
+        .mobile-menu {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: 100%;
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px;
+            display: none;
+            z-index: 49;
+        }
+        .mobile-menu.open { display: block; }
+        .mobile-menu a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            color: var(--text-primary);
+        }
+        .mobile-menu a:hover { background-color: var(--bg-hover); }
+
+        /* Footer */
+        .footer {
+            margin-top: auto;
+            border-top: 1px solid var(--border-color);
+            padding: 24px 0;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-    
-    <!-- Mobile Navigation Toggle -->
-    <div class="mobile-only fixed top-4 left-4 z-50">
-        <button id="mobileMenuToggle" class="gradient-primary text-white p-3 rounded-xl shadow-lg">
-            <i class="fas fa-bars text-lg"></i>
-        </button>
-    </div>
-    
-    <!-- Mobile Navigation Menu -->
-    <div id="mobileMenu" class="mobile-only fixed inset-0 z-40 hidden">
-        <div class="absolute inset-0 bg-black bg-opacity-50" id="menuOverlay"></div>
-        <div class="absolute inset-y-0 left-0 w-64 bg-white shadow-2xl p-6">
-            <div class="flex items-center justify-between mb-10">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 gradient-primary rounded-lg flex items-center justify-center">
-                        <i class="fas fa-fire text-white"></i>
-                    </div>
-                    <h1 class="text-xl font-bold text-gray-800">GasFlow</h1>
-                </div>
-                <button id="closeMobileMenu" class="text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            
-            <div class="space-y-4">
-                <a href="/customers" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-purple-50 text-gray-700">
-                    <i class="fas fa-users text-purple-600 w-6"></i>
-                    <span class="font-medium">Customers</span>
+<body>
+
+    <nav class="navbar">
+        <div class="container flex justify-between items-center">
+            <div class="flex items-center gap-6">
+                <a href="/" class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent icon-lg">local_fire_department</span>
+                    <span style="font-weight: 700; font-size: 18px; color: var(--text-primary);">GasFlow Admin</span>
                 </a>
-                <a href="/drivers" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-purple-50 text-gray-700">
-                    <i class="fas fa-truck text-purple-600 w-6"></i>
-                    <span class="font-medium">Drivers</span>
-                </a>
-                <a href="/assignments" class="flex items-center space-x-3 p-3 rounded-lg gradient-primary text-white">
-                    <i class="fas fa-boxes w-6"></i>
-                    <span class="font-medium">Assignments</span>
-                </a>
-                <a href="/reports" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-purple-50 text-gray-700">
-                    <i class="fas fa-chart-bar text-purple-600 w-6"></i>
-                    <span class="font-medium">Reports</span>
-                </a>
-                <a href="/statistics" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-purple-50 text-gray-700">
-                    <i class="fas fa-chart-line text-purple-600 w-6"></i>
-                    <span class="font-medium">Statistics</span>
-                </a>
-                <a href="/driver-audit" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-purple-50 text-gray-700">
-                    <i class="fas fa-chart-line text-purple-600 w-6"></i>
-                    <span class="font-medium">Driver Audit</span>
-                </a>
-            </div>
-            
-            <div class="mt-auto pt-10 border-t border-gray-200">
-                <div class="flex items-center justify-between p-3">
-                    <span class="font-medium text-gray-700">Admin</span>
-                    <a href="/profile" class="px-4 py-2 rounded-lg hover:bg-purple-50 transition flex items-center gap-2 text-purple-600">
-                        <i class="fas fa-id-badge"></i>
-                        <span class="text-sm font-medium">My Profile</span>
+
+                <div class="desktop-only flex items-center gap-2">
+                    <a href="/customers" class="nav-link">
+                        <span class="material-symbols-outlined icon-sm">group</span> Customers
+                    </a>
+                    <a href="/drivers" class="nav-link">
+                        <span class="material-symbols-outlined icon-sm">local_shipping</span> Drivers
+                    </a>
+                    <a href="/assignments" class="nav-link">
+                        <span class="material-symbols-outlined icon-sm">inventory_2</span> Assignments
+                        {% if stats.pending > 0 %}
+                        <span class="nav-badge">{{ stats.pending }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="/reports" class="nav-link">
+                        <span class="material-symbols-outlined icon-sm">bar_chart</span> Reports
+                    </a>
+                    <a href="/driver-audit" class="nav-link">
+                        <span class="material-symbols-outlined icon-sm">fact_check</span> Audit
                     </a>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- Navigation -->
-    <nav class="gradient-primary text-white shadow-xl sticky top-0 z-30 desktop-only">
-        <div class="container mx-auto px-4 lg:px-6 py-3">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-8">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-fire"></i>
-                        </div>
-                        <h1 class="text-xl font-bold">GasFlow Admin</h1>
-                    </div>
-                    <div class="hidden md:flex space-x-1">
-                        <a href="/customers" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
-                            <i class="fas fa-users"></i>
-                            <span class="text-sm font-medium">Customers</span>
-                        </a>
-                        <a href="/drivers" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
-                            <i class="fas fa-truck"></i>
-                            <span class="text-sm font-medium">Drivers</span>
-                        </a>
-                        <a href="/assignments" class="px-4 py-2 rounded-lg bg-white bg-opacity-20 flex items-center gap-2">
-                            <i class="fas fa-boxes"></i>
-                            <span class="text-sm font-medium">Assignments</span>
-                            {% if stats.pending > 0 %}
-                            <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{{ stats.pending }}</span>
-                            {% endif %}
-                        </a>
-                        <a href="/reports" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
-                            <i class="fas fa-chart-bar"></i>
-                            <span class="text-sm font-medium">Reports</span>
-                        </a>
-                        <a href="/statistics" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
-                            <i class="fas fa-chart-line"></i>
-                            <span class="text-sm font-medium">Statistics</span>
-                        </a>
-                        <a href="/driver-audit" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
-                            <i class="fas fa-chart-line"></i>
-                            <span class="text-sm font-medium">Driver Audit</span>
-                        </a>
-                    </div>
+
+            <div class="flex items-center gap-4">
+                <div class="desktop-only flex items-center gap-2 px-3 py-1 rounded-full" style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2);">
+                    <div class="live-dot"></div>
+                    <span style="font-size: 12px; font-weight: 600; color: var(--success);">Live System</span>
                 </div>
-                
-                <div class="flex items-center space-x-4">
-                    <div class="hidden md:flex items-center space-x-2 bg-white bg-opacity-10 px-3 py-2 rounded-lg">
-                        <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        <span class="text-xs font-medium">Live</span>
-                    </div>
-                    <button onclick="window.location.reload()" 
-                            class="px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition flex items-center gap-2">
-                        <i class="fas fa-redo"></i>
-                        <span class="text-sm font-medium hidden md:inline">Refresh</span>
-                    </button>
-                    <div class="flex items-center space-x-4">
-                        <div class="flex items-center space-x-2">
-                            <a href="/profile" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-10 transition flex items-center gap-2">
-                                <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-user text-sm"></i>
-                                </div>
-                                <span class="text-sm font-medium hidden md:inline">Admin</span>
-                            </a>
-                        </div>
-                        <a href="/logout" class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition flex items-center gap-2 shadow-md">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span class="text-sm font-medium hidden md:inline">Logout</span>
-                        </a>
-                    </div>
+
+                <button onclick="window.location.reload()" class="btn btn-secondary btn-sm desktop-only">
+                    <span class="material-symbols-outlined icon-sm">refresh</span> Refresh
+                </button>
+
+                <div class="flex items-center gap-3">
+                    <a href="/profile" class="flex items-center gap-2">
+                        <div class="avatar">AD</div>
+                        <span class="desktop-only" style="font-weight: 500; font-size: 14px;">Admin</span>
+                    </a>
+                    <a href="/logout" class="btn btn-danger btn-sm">
+                        <span class="material-symbols-outlined icon-sm">logout</span>
+                    </a>
                 </div>
+
+                <button id="mobileMenuToggle" class="mobile-only btn btn-secondary btn-sm">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
             </div>
         </div>
     </nav>
 
-    <div class="container mx-auto px-4 lg:px-6 py-6">
+    <div id="mobileMenu" class="mobile-menu">
+        <a href="/customers">
+            <span class="material-symbols-outlined">group</span> Customers
+        </a>
+        <a href="/drivers">
+            <span class="material-symbols-outlined">local_shipping</span> Drivers
+        </a>
+        <a href="/assignments">
+            <span class="material-symbols-outlined">inventory_2</span> Assignments
+            {% if stats.pending > 0 %}
+            <span class="nav-badge">{{ stats.pending }}</span>
+            {% endif %}
+        </a>
+        <a href="/reports">
+            <span class="material-symbols-outlined">bar_chart</span> Reports
+        </a>
+        <a href="/driver-audit">
+            <span class="material-symbols-outlined">fact_check</span> Driver Audit
+        </a>
+    </div>
+
+    <main class="container py-4">
         
-        <!-- Success Message -->
         {% if message %}
-        <div class="animate-fade-in-up mb-6 gradient-success text-white p-4 rounded-xl shadow-lg flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <i class="fas fa-check-circle text-xl"></i>
-                <div>
-                    <span class="font-medium">{{ message }}</span>
-                    <p class="text-xs opacity-90 mt-1">Operation completed successfully</p>
-                </div>
+        <div class="alert alert-success">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span>{{ message }}</span>
             </div>
-            <button onclick="this.parentElement.remove()" class="text-white hover:text-gray-200">
-                <i class="fas fa-times"></i>
+            <button onclick="this.parentElement.remove()" style="background:none; border:none; color:inherit; cursor:pointer;">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
         {% endif %}
 
-        <!-- Header Section -->
-        <div class="mb-8 animate-fade-in-up">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Dashboard Overview</h2>
-                    <p class="text-gray-600">Real-time analytics and operations management</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="text-sm bg-white px-3 py-2 rounded-lg shadow border">
-                        <i class="far fa-clock text-purple-600 mr-2"></i>
-                        <span id="currentTime">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
         {% if stats.unassigned > 0 %}
-<div class="mb-4 p-4 bg-orange-100 border-l-4 border-orange-500 text-orange-700 rounded shadow-sm flex justify-between items-center animate-pulse">
-    <div>
-        <i class="fas fa-exclamation-triangle mr-2"></i>
-        <strong>{{ stats.unassigned }} Unassigned Orders:</strong> These orders are pending but haven't been given to a driver yet.
-    </div>
-    <a href="/assignments" class="bg-orange-500 text-white px-3 py-1 rounded text-sm font-bold hover:bg-orange-600 transition">
-        Assign Now
-    </a>
-</div>
-{% endif %}
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-            <!-- Drivers Card -->
-            <div class="card-hover glass-effect rounded-xl p-5 shadow animate-fade-in-up" style="animation-delay: 0.1s">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 gradient-info rounded-xl flex items-center justify-center">
-                        <i class="fas fa-truck text-white text-lg"></i>
+        <div class="alert alert-warning">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined">warning</span>
+                <span><strong>{{ stats.unassigned }} Unassigned Orders</strong> require immediate attention.</span>
+            </div>
+            <a href="/assignments" class="btn btn-primary btn-sm">Assign Now</a>
+        </div>
+        {% endif %}
+
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1>Dashboard Overview</h1>
+                <p>Real-time fleet analytics and operations</p>
+            </div>
+            <div class="text-secondary" style="font-size: 13px;">
+                <span class="material-symbols-outlined icon-sm" style="vertical-align: text-bottom;">schedule</span>
+                <span id="currentTime">Loading...</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 grid-cols-5 gap-4 mb-6">
+            <div class="card stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="stat-label">Total Drivers</div>
+                        <div class="stat-value">{{ stats.drivers }}</div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-xs text-gray-500 font-semibold">Total Drivers</p>
-                        <h1 class="text-3xl font-bold text-gray-800 mt-1">{{ stats.drivers }}</h1>
+                    <div class="stat-icon text-accent">
+                        <span class="material-symbols-outlined">local_shipping</span>
                     </div>
-                </div>
-                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span class="text-xs text-blue-600 font-medium">Active Fleet</span>
-                    <i class="fas fa-arrow-right text-blue-500 text-xs"></i>
                 </div>
             </div>
 
-            <!-- Customers Card -->
-            <div class="card-hover glass-effect rounded-xl p-5 shadow animate-fade-in-up" style="animation-delay: 0.2s">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 gradient-primary rounded-xl flex items-center justify-center">
-                        <i class="fas fa-users text-white text-lg"></i>
+            <div class="card stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="stat-label">Customers</div>
+                        <div class="stat-value">{{ stats.customers }}</div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-xs text-gray-500 font-semibold">Customers</p>
-                        <h1 class="text-3xl font-bold text-gray-800 mt-1">{{ stats.customers }}</h1>
+                    <div class="stat-icon text-accent">
+                        <span class="material-symbols-outlined">group</span>
                     </div>
-                </div>
-                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span class="text-xs text-purple-600 font-medium">Database</span>
-                    <i class="fas fa-arrow-right text-purple-500 text-xs"></i>
                 </div>
             </div>
 
-            <!-- Pending Card -->
-            <div class="card-hover glass-effect rounded-xl p-5 shadow animate-fade-in-up" style="animation-delay: 0.3s">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 gradient-warning rounded-xl flex items-center justify-center">
-                        <i class="fas fa-clock text-white text-lg"></i>
+            <div class="card stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="stat-label">Pending</div>
+                        <div class="stat-value">{{ stats.pending }}</div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-xs text-gray-500 font-semibold">Pending</p>
-                        <h1 class="text-3xl font-bold text-gray-800 mt-1">{{ stats.pending }}</h1>
+                    <div class="stat-icon text-warning">
+                        <span class="material-symbols-outlined">pending_actions</span>
                     </div>
-                </div>
-                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span class="text-xs text-yellow-600 font-medium">Awaiting Assignment</span>
-                    <i class="fas fa-arrow-right text-yellow-500 text-xs"></i>
                 </div>
             </div>
 
-            <!-- In Progress Card -->
-            <div class="card-hover glass-effect rounded-xl p-5 shadow animate-fade-in-up" style="animation-delay: 0.4s">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 gradient-danger rounded-xl flex items-center justify-center">
-                        <i class="fas fa-shipping-fast text-white text-lg"></i>
+            <div class="card stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="stat-label">In Transit</div>
+                        <div class="stat-value">{{ stats.in_progress }}</div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-xs text-gray-500 font-semibold">In Transit</p>
-                        <h1 class="text-3xl font-bold text-gray-800 mt-1">{{ stats.in_progress }}</h1>
+                    <div class="stat-icon text-accent">
+                        <span class="material-symbols-outlined">rocket_launch</span>
                     </div>
-                </div>
-                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span class="text-xs text-red-600 font-medium">On The Way</span>
-                    <i class="fas fa-arrow-right text-red-500 text-xs"></i>
                 </div>
             </div>
 
-            <!-- Delivered Card -->
-            <div class="card-hover glass-effect rounded-xl p-5 shadow animate-fade-in-up" style="animation-delay: 0.5s">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 gradient-success rounded-xl flex items-center justify-center">
-                        <i class="fas fa-check-circle text-white text-lg"></i>
+            <div class="card stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="stat-label">Delivered</div>
+                        <div class="stat-value">{{ stats.delivered }}</div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-xs text-gray-500 font-semibold">Delivered</p>
-                        <h1 class="text-3xl font-bold text-gray-800 mt-1">{{ stats.delivered }}</h1>
+                    <div class="stat-icon text-success">
+                        <span class="material-symbols-outlined">check_circle</span>
                     </div>
-                </div>
-                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span class="text-xs text-green-600 font-medium">Completed</span>
-                    <i class="fas fa-arrow-right text-green-500 text-xs"></i>
                 </div>
             </div>
         </div>
 
-        <!-- Main Content Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 grid-cols-3 gap-6">
             
-            <!-- Live Fleet Control Center -->
-            <div class="lg:col-span-2 card-hover glass-effect rounded-xl shadow animate-fade-in-up" style="animation-delay: 0.6s">
-                <div class="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50">
-                    <div>
-                        <h3 class="text-xl font-bold text-gray-800 mb-1">
-                            <i class="fas fa-satellite-dish text-indigo-600 mr-2"></i>Live Fleet Control Center
-                        </h3>
-                        <p class="text-sm text-gray-600">Real-time driver auditing and tracking</p>
-                    </div>
-                    <div class="mt-3 md:mt-0">
-                        <span class="bg-indigo-100 text-indigo-700 text-xs font-medium px-3 py-1.5 rounded-full">
-                            <i class="fas fa-sync-alt mr-1 animate-spin"></i> Live Updates
-                        </span>
-                    </div>
+            <div class="card" style="grid-column: span 2;">
+                <div class="card-header">
+                    <h3 class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent">satellite_alt</span>
+                        Live Fleet Control
+                    </h3>
+                    <span class="status-badge status-online">
+                        <span class="dot"></span> Live Sync
+                    </span>
                 </div>
-                
+
                 <div class="table-container">
-                    <table class="w-full text-left">
+                    <table>
                         <thead>
-                            <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b">
-                                <th class="p-4 font-semibold">Driver</th>
-                                <th class="p-4 font-semibold">Status</th>
-                                <th class="p-4 font-semibold">Working Hours</th>
-                                <th class="p-4 font-semibold text-center">Completed</th>
-                                <th class="p-4 font-semibold text-center">Pending</th>
-                                <th class="p-4 font-semibold text-center">Action</th>
+                            <tr>
+                                <th>Driver</th>
+                                <th>Status</th>
+                                <th>Shift</th>
+                                <th>Done</th>
+                                <th>Queue</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody>
                             {% for driver in drivers %}
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="p-4">
+                            <tr>
+                                <td>
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-full {% if driver.is_online %}bg-indigo-100 text-indigo-600{% else %}bg-gray-100 text-gray-500{% endif %} flex items-center justify-center font-bold">
+                                        <div class="avatar" style="background-color: var(--bg-surface-sec); color: var(--text-secondary);">
                                             {{ driver.name[:1] }}
                                         </div>
                                         <div>
-                                            <div class="font-semibold text-gray-800">{{ driver.name }}</div>
-                                            <div class="text-xs text-gray-500">{{ driver.phone }}</div>
+                                            <div style="font-weight: 500;">{{ driver.name }}</div>
+                                            <div style="font-size: 12px; color: var(--text-secondary);">{{ driver.phone }}</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="p-4">
+                                <td>
                                     {% if driver.is_online %}
-                                    <div class="flex items-center gap-2">
-                                        <span class="relative flex h-3 w-3">
-                                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                                        </span>
-                                        <span class="text-sm font-medium text-green-600">Online</span>
-                                    </div>
+                                    <span class="status-badge status-online">
+                                        <span class="dot"></span> Online
+                                    </span>
                                     {% else %}
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-3 w-3 rounded-full bg-gray-300"></span>
-                                        <div class="flex flex-col">
-                                            <span class="text-sm font-medium text-gray-500">Offline</span>
-                                            {% if driver.last_seen %}
-                                            <span class="text-[10px] text-gray-400">Last: {{ driver.last_seen.strftime('%H:%M') }}</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
+                                    <span class="status-badge status-offline">
+                                        <span class="dot"></span> Offline
+                                    </span>
                                     {% endif %}
                                 </td>
-                                <td class="p-4">
-                                    <span class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold">
-                                        {{ driver.work_time }}
-                                    </span>
+                                <td style="font-size: 13px;">{{ driver.work_time }}</td>
+                                <td>
+                                    <span style="font-weight: 600; color: var(--success);">{{ driver.completed }}</span>
                                 </td>
-                                <td class="p-4 text-center">
-                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold">
-                                        {{ driver.completed }}
-                                    </span>
+                                <td>
+                                    <span style="font-weight: 600; color: var(--warning);">{{ driver.pending }}</span>
                                 </td>
-                                <td class="p-4 text-center">
-                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-700 font-bold">
-                                        {{ driver.pending }}
-                                    </span>
-                                </td>
-                                <td class="p-4 text-center">
-                                    <a href="/track/{{ driver.id }}" 
-                                       target="_blank" 
-                                       class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
-                                        <i class="fas fa-map-marked-alt"></i> Track
+                                <td>
+                                    <a href="/track/{{ driver.id }}" target="_blank" class="btn btn-secondary btn-sm">
+                                        <span class="material-symbols-outlined icon-sm">map</span> Track
                                     </a>
                                 </td>
                             </tr>
-                            {% endfor %}
-                            
-                            {% if not drivers %}
+                            {% else %}
                             <tr>
-                                <td colspan="6" class="p-8 text-center text-gray-500">
-                                    <div class="flex flex-col items-center justify-center py-8">
-                                        <i class="fas fa-truck text-4xl text-gray-300 mb-4"></i>
-                                        <p class="text-gray-500 font-medium">No drivers found in the system.</p>
-                                        <p class="text-sm text-gray-400 mt-1">Add drivers to start tracking your fleet</p>
-                                    </div>
+                                <td colspan="6" style="text-align: center; padding: 40px;">
+                                    <span class="material-symbols-outlined" style="font-size: 48px; color: var(--border-color);">no_transfer</span>
+                                    <p class="mt-2">No drivers found in the system.</p>
                                 </td>
                             </tr>
-                            {% endif %}
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            <div class="flex flex-col gap-6">
                 
-                <div class="p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                                <i class="fas fa-check text-green-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500">System Status</p>
-                                <p class="font-bold text-gray-800">Operational</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                                <i class="fas fa-history text-orange-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500">Audit Sync</p>
-                                <p class="font-bold text-gray-800">Every 5 Minutes</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                <i class="fas fa-satellite text-blue-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500">GPS Accuracy</p>
-                                <p class="font-bold text-gray-800">High Precision</p>
-                            </div>
-                        </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Quick Actions</h3>
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <a href="/assignments" class="btn btn-primary btn-block">
+                            <span class="material-symbols-outlined">inventory_2</span> Manage Assignments
+                        </a>
+                        <a href="/customers" class="btn btn-secondary btn-block">
+                            <span class="material-symbols-outlined">group_add</span> Add New Customer
+                        </a>
+                        <a href="/drivers" class="btn btn-secondary btn-block">
+                            <span class="material-symbols-outlined">local_shipping</span> Fleet Management
+                        </a>
                     </div>
                 </div>
-            </div>
 
-            <!-- Upload Section -->
-            <div class="card-hover glass-effect rounded-xl p-6 shadow border-2 border-dashed border-purple-200 animate-fade-in-up" style="animation-delay: 0.7s">
-                <div class="text-center mb-6">
-                    <div class="w-16 h-16 gradient-primary rounded-xl mx-auto mb-4 flex items-center justify-center animate-float">
-                        <i class="fas fa-file-upload text-white text-2xl"></i>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Bulk Import</h3>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-800 mb-2">Bulk Import</h3>
-                    <p class="text-sm text-gray-500">Upload customer database</p>
+                    <form action="/upload-customers" method="POST" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <div class="upload-zone" id="fileDropArea">
+                                <input type="file" name="file" id="fileInput" accept=".csv, .xlsx" class="hidden" style="display:none;" onchange="updateFileName(this)" required>
+                                <label for="fileInput" style="cursor: pointer; display: block;">
+                                    <span class="material-symbols-outlined" style="font-size: 32px; color: var(--accent);">cloud_upload</span>
+                                    <p class="mt-2" style="font-weight: 500; color: var(--text-primary);" id="fileName">Click to browse or drop file</p>
+                                    <p style="font-size: 12px; margin-top: 4px;">Supports CSV, XLSX (Max 10MB)</p>
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <span class="material-symbols-outlined">upload_file</span> Upload Database
+                        </button>
+                    </form>
                 </div>
-                
-                <form action="/upload-customers" method="POST" enctype="multipart/form-data" class="space-y-4">
-                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-purple-400 transition cursor-pointer" id="fileDropArea">
-                        <input type="file" 
-                               name="file" 
-                               accept=".csv, .xlsx" 
-                               id="fileInput"
-                               class="hidden"
-                               onchange="updateFileName(this)"
-                               required>
-                        <label for="fileInput" class="cursor-pointer block text-center">
-                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                            <p class="text-sm text-gray-600 font-medium" id="fileName">Click to browse files</p>
-                            <p class="text-xs text-gray-400 mt-1">Supports CSV, XLSX</p>
-                            <p class="text-xs text-purple-600 mt-2 font-medium">
-                                <i class="fas fa-info-circle mr-1"></i> Max size: 10MB
-                            </p>
-                        </label>
-                    </div>
-                    
-                    <button type="submit" class="w-full gradient-primary text-white px-6 py-3.5 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
-                        <i class="fas fa-upload"></i>
-                        <span>Upload & Sync</span>
-                    </button>
-                </form>
-                
-                <div class="mt-4 p-3 bg-purple-50 rounded-lg">
-                    <p class="text-xs text-purple-700">
-                        <i class="fas fa-lightbulb mr-1"></i>
-                        <strong>Tip:</strong> Ensure headers match: Name, Phone, City, Address, Landmark
-                    </p>
-                </div>
+
             </div>
         </div>
+    </main>
 
-        <!-- Quick Actions -->
-        <div class="card-hover glass-effect rounded-xl p-6 shadow animate-fade-in-up" style="animation-delay: 0.8s">
-            <div class="mb-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-2">Quick Actions</h3>
-                <p class="text-sm text-gray-500">Access management portals</p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- Assignments Portal -->
-                <a href="/assignments" class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-50 to-orange-100 p-5 hover:shadow-lg transition-all duration-300 border border-orange-200">
-                    <div class="absolute top-0 right-0 w-24 h-24 bg-orange-200 rounded-full -mr-12 -mt-12 opacity-20"></div>
-                    <div class="relative">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center text-white">
-                                <i class="fas fa-boxes text-lg"></i>
-                            </div>
-                            {% if stats.pending > 0 %}
-                            <span class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
-                                {{ stats.pending }} New
-                            </span>
-                            {% endif %}
-                        </div>
-                        <h4 class="text-lg font-bold text-orange-900 mb-1">Order Assignments</h4>
-                        <p class="text-sm text-orange-700">Assign pending deliveries to drivers</p>
-                        <div class="mt-4 flex items-center text-orange-600 text-sm font-medium">
-                            <span>Manage Now</span>
-                            <i class="fas fa-arrow-right ml-2 group-hover:ml-3 transition-all"></i>
-                        </div>
-                    </div>
-                </a>
-
-                <!-- Customer Database -->
-                <a href="/customers" class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 p-5 hover:shadow-lg transition-all duration-300 border border-blue-200">
-                    <div class="absolute top-0 right-0 w-24 h-24 bg-blue-200 rounded-full -mr-12 -mt-12 opacity-20"></div>
-                    <div class="relative">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white">
-                                <i class="fas fa-users text-lg"></i>
-                            </div>
-                        </div>
-                        <h4 class="text-lg font-bold text-blue-900 mb-1">Customer Database</h4>
-                        <p class="text-sm text-blue-700">View and manage all customers</p>
-                        <div class="mt-4 flex items-center text-blue-600 text-sm font-medium">
-                            <span>View All</span>
-                            <i class="fas fa-arrow-right ml-2 group-hover:ml-3 transition-all"></i>
-                        </div>
-                    </div>
-                </a>
-
-                <!-- Driver Management -->
-                <a href="/drivers" class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 p-5 hover:shadow-lg transition-all duration-300 border border-purple-200">
-                    <div class="absolute top-0 right-0 w-24 h-24 bg-purple-200 rounded-full -mr-12 -mt-12 opacity-20"></div>
-                    <div class="relative">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center text-white">
-                                <i class="fas fa-truck text-lg"></i>
-                            </div>
-                        </div>
-                        <h4 class="text-lg font-bold text-purple-900 mb-1">Driver Fleet</h4>
-                        <p class="text-sm text-purple-700">Manage driver accounts & cities</p>
-                        <div class="mt-4 flex items-center text-purple-600 text-sm font-medium">
-                            <span>Manage Fleet</span>
-                            <i class="fas fa-arrow-right ml-2 group-hover:ml-3 transition-all"></i>
-                        </div>
-                    </div>
-                </a>
-            </div>
-        </div>
-        
-        <!-- Recent Activity (Mobile Only) -->
-        <div class="mobile-only mt-6 card-hover glass-effect rounded-xl p-5 shadow">
-            <div class="mb-4">
-                <h3 class="text-lg font-bold text-gray-800 mb-2">Quick Stats</h3>
-            </div>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-truck text-blue-600 text-sm"></i>
-                        </div>
-                        <span class="font-medium text-gray-700">Available Drivers</span>
-                    </div>
-                    <span class="font-bold text-gray-800">{{ stats.drivers }}</span>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-clock text-yellow-600 text-sm"></i>
-                        </div>
-                        <span class="font-medium text-gray-700">Pending Orders</span>
-                    </div>
-                    <span class="font-bold text-gray-800">{{ stats.pending }}</span>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-check-circle text-green-600 text-sm"></i>
-                        </div>
-                        <span class="font-medium text-gray-700">Completed Today</span>
-                    </div>
-                    <span class="font-bold text-gray-800">{{ stats.delivered }}</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="container mx-auto px-4 lg:px-6 py-6">
-        <div class="text-center text-gray-500 text-sm">
-            <p>GasFlow Admin Dashboard v2.0 • Real-time Monitoring System</p>
-            <p class="mt-1">© 2023 GasFlow Delivery Services. All rights reserved.</p>
-        </div>
-    </div>
+    <footer class="footer container">
+        <p>GasFlow Admin Dashboard v2.0 &bull; Enterprise Edition</p>
+        <p class="mt-1">&copy; 2026 GasFlow Delivery Services. All rights reserved.</p>
+    </footer>
 
     <script>
+        // Update file name display
         function updateFileName(input) {
-            const fileName = input.files[0]?.name || 'Click to browse files';
+            const fileName = input.files[0]?.name || 'Click to browse or drop file';
             document.getElementById('fileName').textContent = fileName;
-            
-            // Add visual feedback
-            const dropArea = document.getElementById('fileDropArea');
-            dropArea.classList.remove('border-gray-300');
-            dropArea.classList.add('border-purple-400', 'bg-purple-50');
-            
-            setTimeout(() => {
-                dropArea.classList.remove('bg-purple-50');
-            }, 1000);
         }
 
-        // Mobile menu functionality
-        document.getElementById('mobileMenuToggle').addEventListener('click', function() {
-            const menu = document.getElementById('mobileMenu');
-            menu.classList.remove('hidden');
-            setTimeout(() => {
-                menu.classList.add('mobile-menu-enter-active');
-            }, 10);
-        });
+        // Mobile Menu Toggle
+        const menuToggle = document.getElementById('mobileMenuToggle');
+        const mobileMenu = document.getElementById('mobileMenu');
+        
+        if(menuToggle && mobileMenu) {
+            menuToggle.addEventListener('click', () => {
+                mobileMenu.classList.toggle('open');
+            });
+        }
 
-        document.getElementById('closeMobileMenu').addEventListener('click', function() {
-            const menu = document.getElementById('mobileMenu');
-            menu.classList.remove('mobile-menu-enter-active');
-            setTimeout(() => {
-                menu.classList.add('hidden');
-            }, 300);
-        });
-
-        document.getElementById('menuOverlay').addEventListener('click', function() {
-            const menu = document.getElementById('mobileMenu');
-            menu.classList.remove('mobile-menu-enter-active');
-            setTimeout(() => {
-                menu.classList.add('hidden');
-            }, 300);
-        });
-
-        // Update current time
+        // Real-time Clock
         function updateTime() {
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const dateString = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-            document.getElementById('currentTime').textContent = `${dateString} • ${timeString}`;
+            const el = document.getElementById('currentTime');
+            if(el) el.textContent = `${dateString} • ${timeString}`;
         }
-        
         updateTime();
-        setInterval(updateTime, 60000); // Update every minute
+        setInterval(updateTime, 60000);
 
-        // File drop area functionality
-        const fileDropArea = document.getElementById('fileDropArea');
+        // Drag and Drop Visuals
+        const dropArea = document.getElementById('fileDropArea');
         const fileInput = document.getElementById('fileInput');
-        
-        fileDropArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            fileDropArea.classList.add('border-purple-400', 'bg-purple-50');
-        });
-        
-        fileDropArea.addEventListener('dragleave', () => {
-            fileDropArea.classList.remove('border-purple-400', 'bg-purple-50');
-        });
-        
-        fileDropArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            fileDropArea.classList.remove('border-purple-400', 'bg-purple-50');
-            if (e.dataTransfer.files.length) {
-                fileInput.files = e.dataTransfer.files;
-                updateFileName(fileInput);
-            }
-        });
 
-        // Initialize animations on load
-        window.addEventListener('load', () => {
-            // Add animation delays for cards on mobile
-            if (window.innerWidth < 768) {
-                const cards = document.querySelectorAll('.animate-fade-in-up');
-                cards.forEach((card, index) => {
-                    card.style.animationDelay = `${(index + 1) * 0.1}s`;
-                });
-            }
-            
-            // Add hover effects to table rows
-            const tableRows = document.querySelectorAll('tbody tr');
-            tableRows.forEach(row => {
-                row.addEventListener('mouseenter', function() {
-                    this.classList.add('bg-gray-50');
-                });
-                row.addEventListener('mouseleave', function() {
-                    this.classList.remove('bg-gray-50');
-                });
+        if(dropArea) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
             });
-        });
-        
-        // Auto-refresh fleet data every 30 seconds
-        setInterval(() => {
-            // You can implement AJAX refresh here
-            console.log('Auto-refresh fleet data...');
-        }, 30000);
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            dropArea.addEventListener('dragover', () => dropArea.classList.add('drag-over'));
+            dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-over'));
+            dropArea.addEventListener('drop', (e) => {
+                dropArea.classList.remove('drag-over');
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if(fileInput) {
+                    fileInput.files = files;
+                    updateFileName(fileInput);
+                }
+            });
+        }
     </script>
 </body>
 </html>

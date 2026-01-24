@@ -363,11 +363,16 @@ async def reassign_driver(
 
     return JSONResponse(content={"success": True, "message": "Driver updated"})
 
+# customer.py
+
+from typing import Optional # Add this import at the top
+
 @customer_router.post("/update-customer")
 async def update_customer(
     customer_id: str = Form(...),
     name: str = Form(...),
-    phone: str = Form(...),
+    # 🚀 Change: Make phone optional to prevent 422 errors if it's missing
+    phone: Optional[str] = Form(None), 
     city: str = Form(...),
     landmark: str = Form(...),
     pincode: str = Form(""),
@@ -376,15 +381,21 @@ async def update_customer(
     if not admin_id:
         return RedirectResponse(url="/", status_code=303)
 
+    # 📋 Build update dictionary dynamically
+    update_data = {
+        "name": name,
+        "city": city,
+        "landmark": landmark,
+        "pincode": pincode,
+        "updated_at": datetime.utcnow()
+    }
+    
+    # 📱 Only update phone if it was actually provided in the request
+    if phone:
+        update_data["phone_number"] = phone
+
     customer_collection.update_one(
         {"_id": ObjectId(customer_id), "admin_id": admin_id},
-        {"$set": {
-            "name": name,
-            "phone_number": phone,
-            "city": city,
-            "landmark": landmark,
-            "pincode": pincode,
-            "updated_at": datetime.utcnow()
-        }}
+        {"$set": update_data}
     )
     return RedirectResponse(url="/customers?msg=Customer updated", status_code=303)
