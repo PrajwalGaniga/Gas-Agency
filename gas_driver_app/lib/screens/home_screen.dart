@@ -4,7 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import 'map_screen.dart';
-
+import 'login_screen.dart'; // 🚀 Add this line
 class HomeScreen extends StatefulWidget {
   final Map driverData;
   final String token;
@@ -21,11 +21,17 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime selectedDate = DateTime.now();
   Timer? _locationTimer;
 
+  // UX Constants for Consistency
+  final Color kBgColor = const Color(0xFF121212); // Deep Dark Background
+  final Color kCardColor = const Color(0xFF1E1E1E); // Elevated Surface
+  final Color kPrimaryBlue = const Color(0xFF2979FF); // High Vis Blue
+  final Color kSuccessGreen = const Color(0xFF00E676); // High Vis Green
+
   @override
   void initState() {
     super.initState();
     _initDashboard();
-    _startLocationPulse(); 
+    _startLocationPulse();
   }
 
   @override
@@ -34,7 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // 🛰️ Heartbeat to feed 'Work Hours' on Admin Dashboard
   void _startLocationPulse() {
     _locationTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
       if (currentPos != null) {
@@ -56,7 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       currentPos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       String cities = (widget.driverData['cities'] as List).join(',');
-      // Standardize date format for Python backend
       String dateStr = "${selectedDate.year}-${selectedDate.month}-${selectedDate.day}";
       
       final res = await ApiService().getOrders(
@@ -75,11 +79,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
-      context: context, initialDate: selectedDate, firstDate: DateTime(2025), lastDate: DateTime.now(),
+      context: context, 
+      initialDate: selectedDate, 
+      firstDate: DateTime(2025), 
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        // Custom Theme for DatePicker to match Dark Mode
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: kPrimaryBlue,
+              onPrimary: Colors.white,
+              surface: kCardColor,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null && picked != selectedDate) {
       setState(() => selectedDate = picked);
       _refreshData();
+    }
+  }
+
+  // 🛰️ DIRECT NAVIGATION ENGINE
+  Future<void> _launchNavigation(dynamic lat, dynamic lng) async {
+    if (lat == null || lng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Error: This customer address is not verified yet."))
+      );
+      return;
+    }
+
+    final String googleMapsUrl = "google.navigation:q=$lat,$lng&mode=d";
+    final String fallbackUrl = "https://www.google.com/maps/dir/?api=1&destination=$lat,$lng";
+
+    try {
+      if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
+        await launchUrl(Uri.parse(googleMapsUrl));
+      } else {
+        await launchUrl(Uri.parse(fallbackUrl), mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint("Could not launch navigation: $e");
     }
   }
 
@@ -90,134 +133,285 @@ class _HomeScreenState extends State<HomeScreen> {
     int pend = orders.where((o) => o['status'] == 'PENDING').length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212), // Sleek Dark Theme
+      backgroundColor: kBgColor,
       appBar: AppBar(
-        title: const Text("GasFlow Driver Portal", style: TextStyle(fontWeight: FontWeight.w900)),
-        backgroundColor: const Color(0xFF0D47A1),
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _refreshData),
-          IconButton(icon: const Icon(Icons.logout), onPressed: () => ApiService().logout()),
-        ],
-      ),
+  elevation: 0,
+  backgroundColor: kCardColor,
+  title: const Text(
+    "GASFLOW", 
+    style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, color: Colors.white)
+  ),
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.refresh, color: Colors.white), 
+      onPressed: _refreshData
+    ),
+    IconButton(
+      icon: const Icon(Icons.logout, color: Colors.redAccent), 
+      onPressed: () async {
+        // 1. Clear local session data (Token & Driver Info)
+        await ApiService().logout();
+        
+        // 2. 🚀 Redirection: Move back to Login Screen and prevent 'Back' button access
+        if (context.mounted) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()), 
+      (route) => false,
+    );
+  }
+      },
+    ),
+  ],
+),
       body: Column(
         children: [
-          // 📊 HEADER: Dashboard Stats
+          // 1️⃣ DRIVER PERFORMANCE DASHBOARD
           Container(
-            padding: const EdgeInsets.all(20),
-            color: const Color(0xFF1E1E1E),
+            padding: const EdgeInsets.fromLTRB(16, 5, 16, 20),
+            decoration: BoxDecoration(
+              color: kCardColor,
+              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 10, offset: const Offset(0, 5))]
+            ),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text("Date: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}", 
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(icon: const Icon(Icons.calendar_today, color: Colors.white, size: 20), onPressed: () => _selectDate(context)),
-                  ],
+                // Date Selector Row
+                InkWell(
+                  onTap: () => _selectDate(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.calendar_month, color: Colors.white70, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+                        ),
+                        const Icon(Icons.arrow_drop_down, color: Colors.white70)
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 10),
+                // Stat Cards
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _statBox("Total", orders.length.toString(), Colors.grey[800]!),
-                    _statBox("Delivered", deliv.toString(), Colors.green[900]!),
-                    _statBox("Pending", pend.toString(), Colors.orange[900]!),
-                    _statBox("Ongoing", ongoing.toString(), Colors.blue[900]!),
+                    _statCard("Total", orders.length.toString(), Colors.grey[800]!),
+                    const SizedBox(width: 10),
+                    _statCard("Done", deliv.toString(), Colors.green[900]!),
+                    const SizedBox(width: 10),
+                    _statCard("Pending", pend.toString(), Colors.orange[900]!),
+                    const SizedBox(width: 10),
+                    _statCard("Active", ongoing.toString(), kPrimaryBlue.withOpacity(0.3)),
                   ],
                 ),
               ],
             ),
           ),
-          
-          // 🗺️ NAVIGATION BUTTON
+
+          // 2️⃣ PRIMARY CTA: MAP VIEW
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2C2C2C), minimumSize: const Size(double.infinity, 55),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Colors.white12))
+                backgroundColor: kPrimaryBlue,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 56), // Large tap area
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MapScreen(orders: orders, currentPos: currentPos!))),
-              icon: const Icon(Icons.map_outlined, color: Colors.blueAccent),
-              label: const Text("VIEW ALL ON MAP", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              icon: const Icon(Icons.map, size: 28),
+              label: const Text("VIEW MAP MODE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1)),
             ),
           ),
 
-          // 📜 CHECKLIST HEADER
-          Container(
-            width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 15),
-            color: const Color(0xFF263238),
-            child: const Text("Today's Work List", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w900, fontSize: 12)),
+          // 3️⃣ LIST HEADER
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                Text("ORDERS QUEUE", style: TextStyle(color: Colors.grey[400], fontSize: 12, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                if (isLoading) const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2))
+              ],
+            ),
           ),
 
-          // 📋 THE DYNAMIC STATUS TABLE
+          // 4️⃣ SCROLLABLE ORDER LIST
           Expanded(
-            child: isLoading 
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) => _buildOrderRow(orders[index], index + 1),
-                ),
+            child: RefreshIndicator(
+              onRefresh: _refreshData,
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 80), // Space for fab or bottom area
+                itemCount: orders.length,
+                itemBuilder: (context, index) => _buildOrderRow(orders[index], index + 1),
+              ),
+            ),
           )
         ],
       ),
     );
   }
 
-  Widget _buildOrderRow(Map o, int sno) {
-    final status = o['status'] ?? 'PENDING';
-    Color rowColor;
-    
-    // 🎨 Logic: High-Contrast Color Categorization
-    switch (status) {
-      case 'DELIVERED':
-        rowColor = const Color(0xFF1B5E20).withOpacity(0.4); // Dark Green
-        break;
-      case 'IN_PROGRESS':
-        rowColor = const Color(0xFF0D47A1).withOpacity(0.4); // Dark Blue
-        break;
-      default:
-        rowColor = const Color(0xFF424242).withOpacity(0.4); // Grey/Orange Tint
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 1),
-      decoration: BoxDecoration(color: rowColor, border: const Border(bottom: BorderSide(color: Colors.white10, width: 0.5))),
-      child: ExpansionTile(
-        initiallyExpanded: status == 'IN_PROGRESS',
-        iconColor: Colors.white, collapsedIconColor: Colors.white38,
-        title: Row(
+  Widget _statCard(String label, String val, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white10)
+        ),
+        child: Column(
           children: [
-            Text("$sno.", style: const TextStyle(color: Colors.white54, fontSize: 12)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(o['customer_name'] ?? 'N/A', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-            _statusBadge(status),
+            Text(val, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text(label.toUpperCase(), style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
           ],
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(left: 22),
-          child: Text("${o['address']} • ${(o['distance'] ?? 0.0).toStringAsFixed(1)}km", 
-            style: const TextStyle(color: Colors.white38, fontSize: 11)),
+      ),
+    );
+  }
+
+  // 📝 ORDER ROW with INTEGRATED NAV BUTTON
+  Widget _buildOrderRow(Map o, int sno) {
+    final status = o['status'] ?? 'PENDING';
+    Color rowBgColor;
+    Color statusColor;
+
+    // Visual Logic: High contrast for outdoor visibility
+    switch (status) {
+      case 'DELIVERED':
+        rowBgColor = const Color(0xFF0F2E14); // Very Dark Green
+        statusColor = kSuccessGreen;
+        break;
+      case 'IN_PROGRESS':
+        rowBgColor = const Color(0xFF0D2545); // Very Dark Blue
+        statusColor = kPrimaryBlue;
+        break;
+      default:
+        rowBgColor = kCardColor;
+        statusColor = Colors.orangeAccent;
+    }
+
+    return Card(
+      color: rowBgColor,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: status == 'IN_PROGRESS' 
+            ? BorderSide(color: kPrimaryBlue, width: 2) // Active order highlight
+            : BorderSide.none
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: status == 'IN_PROGRESS',
+        iconColor: Colors.white,
+        collapsedIconColor: Colors.grey,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        
+        // 🔹 TITLE ROW
+        title: Row(
+          children: [
+            Text("#$sno", style: TextStyle(color: Colors.grey[500], fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    o['customer_name'] ?? 'Unknown', 
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                       Icon(Icons.circle, size: 8, color: statusColor),
+                       const SizedBox(width: 4),
+                       Text(status.replaceAll('_', ' '), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ],
+                  )
+                ],
+              )
+            ),
+            
+            // 🚀 THE CRITICAL NAV BUTTON
+            if (o['verified_lat'] != null)
+              GestureDetector(
+                onTap: () => _launchNavigation(o['verified_lat'], o['verified_lng']),
+                child: Container(
+                  margin: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white, // White button for max contrast against dark theme
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.near_me, color: Colors.black, size: 16),
+                      SizedBox(width: 4),
+                      Text("NAV", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
+        
+        // 🔹 SUBTITLE (Address)
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.location_on, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  "${o['address']} • ${(o['distance'] ?? 0.0).toStringAsFixed(1)} km",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.grey, fontSize: 13)
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // 🔹 EXPANDED ACTIONS
         children: [
           Container(
-            color: const Color(0xFF1E1E1E),
-            padding: const EdgeInsets.all(15),
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFF252525), // Slightly lighter internal bg
+              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12))
+            ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _actionBtn("Call", Icons.phone, Colors.blue[700]!, () => launchUrl(Uri.parse("tel:${o['phone']}"))),
+                // Call Button
+                _actionBtn(Icons.call, Colors.grey[800]!, Colors.white, "Call", () => launchUrl(Uri.parse("tel:${o['phone']}"))),
+                const SizedBox(width: 10),
                 
-                // 🚀 Functional Lifecycle: Accept -> Complete
-                if (status == 'PENDING')
-                  _actionBtn("Accept Order", Icons.play_arrow, Colors.orange[800]!, () => _handleStatusChange(o, 'accept'))
-                else if (status == 'IN_PROGRESS')
-                  _actionBtn("Mark Delivered", Icons.check_circle, Colors.green[700]!, () => _handleStatusChange(o, 'complete'))
-                else
-                  const Text("Delivered ✅", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-
-                _actionBtn("Change Req", Icons.edit_note, Colors.grey[700]!, () => _showChangeRequest(o)),
+                // Dynamic Main Action
+                Expanded(
+                  child: status == 'PENDING'
+                    ? _mainActionBtn("ACCEPT ORDER", Colors.orange[800]!, () => _handleStatusChange(o, 'accept'))
+                    : status == 'IN_PROGRESS'
+                        ? _mainActionBtn("MARK DELIVERED", kSuccessGreen, () => _handleStatusChange(o, 'complete'))
+                        : Container(
+                            height: 45,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(border: Border.all(color: Colors.green), borderRadius: BorderRadius.circular(8)),
+                            child: const Text("COMPLETED", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                          ),
+                ),
+                
+                const SizedBox(width: 10),
+                // Edit Button
+                _actionBtn(Icons.edit, Colors.grey[800]!, Colors.white, "Edit", () => _showChangeRequest(o)),
               ],
             ),
           )
@@ -226,10 +420,34 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- 🔥 LOGIC IMPLEMENTATION ---
+  // 🧱 HELPER WIDGETS FOR BUTTONS
+  Widget _actionBtn(IconData icon, Color bg, Color fg, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 50, height: 45,
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: fg, size: 20),
+      ),
+    );
+  }
 
+  Widget _mainActionBtn(String label, Color bg, VoidCallback onTap) {
+    return SizedBox(
+      height: 45,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(backgroundColor: bg, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+        onPressed: onTap,
+        child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  // --- LOGIC IMPLEMENTATION (Kept mostly same, added safe checks) ---
   Future<void> _handleStatusChange(Map o, String action) async {
     bool success = false;
+    setState(() => isLoading = true); // UX: Show loading during async
+    
     if (action == 'accept') {
       final res = await ApiService().acceptOrder(widget.token, o['_id']);
       success = res['success'];
@@ -238,69 +456,46 @@ class _HomeScreenState extends State<HomeScreen> {
       final res = await ApiService().completeOrder(widget.token, o['_id'], pos.latitude, pos.longitude);
       success = res['success'];
     }
-    if (success) _refreshData();
+    await _refreshData(); // Refresh list to reflect changes
   }
 
-  // 🚀 FIXED: Full Implementation of the Change Request Dialog
   void _showChangeRequest(Map order) {
     String cat = "ADDRESS";
     final det = TextEditingController();
     showDialog(context: context, builder: (c) => AlertDialog(
-      backgroundColor: const Color(0xFF1E1E1E),
-      title: Text("Change Request: ${order['customer_name']}", style: const TextStyle(color: Colors.white)),
+      backgroundColor: kCardColor,
+      title: Text("Change Request", style: const TextStyle(color: Colors.white)),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         DropdownButtonFormField(
           value: "ADDRESS", dropdownColor: const Color(0xFF2C2C2C),
           style: const TextStyle(color: Colors.white),
           items: const [
-            DropdownMenuItem(value: "ADDRESS", child: Text("Wrong Address/Landmark")),
+            DropdownMenuItem(value: "ADDRESS", child: Text("Wrong Address")),
             DropdownMenuItem(value: "PHONE", child: Text("New Phone Number"))
           ], 
           onChanged: (v) => cat = v!,
-          decoration: const InputDecoration(labelText: "Category", labelStyle: TextStyle(color: Colors.white60)),
+          decoration: const InputDecoration(filled: true, fillColor: Color(0xFF121212)),
         ),
         const SizedBox(height: 15),
         TextField(
           controller: det, style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(labelText: "Enter Correct Details", labelStyle: TextStyle(color: Colors.white60), border: OutlineInputBorder()),
+          decoration: const InputDecoration(labelText: "Correct Details", filled: true, fillColor: Color(0xFF121212)),
         ),
       ]),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-        ElevatedButton(onPressed: () async {
-          await ApiService().submitChangeRequest(widget.token, {
-            'customer_id': order['customer_id'], 'category': cat, 'new_details': det.text
-          });
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Request sent to Admin!")));
-        }, child: const Text("Submit Request")),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: kPrimaryBlue),
+          onPressed: () async {
+            await ApiService().submitChangeRequest(widget.token, {
+              'customer_id': order['customer_id'], 'category': cat, 'new_details': det.text
+            });
+            Navigator.pop(context);
+            _refreshData();
+          }, 
+          child: const Text("Submit", style: TextStyle(color: Colors.white))
+        ),
       ],
     ));
   }
-
-  // --- 🎨 UI WIDGETS ---
-
-  Widget _statusBadge(String status) {
-    Color bg = Colors.grey[800]!;
-    String label = "Pending";
-    if (status == 'DELIVERED') { bg = Colors.green[800]!; label = "Delivered"; }
-    if (status == 'IN_PROGRESS') { bg = Colors.blue[800]!; label = "Ongoing"; }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
-      child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-    );
-  }
-
-  Widget _statBox(String label, String val, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withOpacity(0.4))),
-    child: Column(children: [Text(label, style: const TextStyle(color: Colors.white54, fontSize: 9)), Text(val, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900))]),
-  );
-
-  Widget _actionBtn(String label, IconData icon, Color color, VoidCallback onTap) => ElevatedButton.icon(
-    onPressed: onTap, icon: Icon(icon, size: 14), label: Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
-    style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 10)),
-  );
 }

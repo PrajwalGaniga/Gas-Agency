@@ -362,3 +362,29 @@ async def reassign_driver(
     )
 
     return JSONResponse(content={"success": True, "message": "Driver updated"})
+
+@customer_router.post("/update-customer")
+async def update_customer(
+    customer_id: str = Form(...),
+    name: str = Form(...),
+    phone: str = Form(...),
+    city: str = Form(...),
+    landmark: str = Form(...),
+    pincode: str = Form(""),
+    admin_id: ObjectId = Depends(get_current_admin)
+):
+    if not admin_id:
+        return RedirectResponse(url="/", status_code=303)
+
+    customer_collection.update_one(
+        {"_id": ObjectId(customer_id), "admin_id": admin_id},
+        {"$set": {
+            "name": name,
+            "phone_number": phone,
+            "city": city,
+            "landmark": landmark,
+            "pincode": pincode,
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    return RedirectResponse(url="/customers?msg=Customer updated", status_code=303)
