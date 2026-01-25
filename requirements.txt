@@ -22,3 +22,5 @@ xlsxwriter
 
 typing-extensions
 itsdangerous
+
+geopy

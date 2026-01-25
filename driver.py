@@ -185,36 +185,58 @@ async def accept_order(data: dict = Body(...), driver_id: ObjectId = Depends(get
         return {"success": False, "message": str(e)}
 
 
+# --- ADD THESE IMPORTS TO THE TOP OF driver.py ---
+# --- ADD THESE IMPORTS TO THE TOP OF driver.py ---
+from geopy.geocoders import Nominatim
+from geopy.exc import GeopyError
+
+# Initialize the Python Geocoder (User agent is required)
+geolocator = Nominatim(user_agent="gas_flow_enterprise_system")
+
 @driver_router.post("/driver/location")
 async def update_driver_location(data: dict = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
-    """Receives 5-min GPS Heartbeat to feed 'Work Hours' and 'Live Tracking'"""
+    """
+    Receives GPS from phone, uses Python to resolve the street address,
+    and updates the driver's master record.
+    """
     try:
         lat = data.get("lat")
         lng = data.get("lng")
         now = datetime.now(timezone.utc)
         
-        # 1. Update Driver's 'Last Seen' for the Dashboard Pulse
+        # 🛰️ PYTHON REVERSE GEOCODING
+        resolved_address = "Address Pending..."
+        try:
+            # Resolves Lat/Lng to a real street name using Python
+            location = geolocator.reverse(f"{lat}, {lng}", timeout=3)
+            if location:
+                resolved_address = location.address
+        except (GeopyError, ValueError):
+            resolved_address = "Satellite Link Active (Address Busy)"
+
+        # 1. Update Driver Collection with the NEW Address field
         driver_collection.update_one(
             {"_id": driver_id},
             {"$set": {
                 "current_lat": lat, 
                 "current_lng": lng, 
+                "current_address": resolved_address, # 🚀 This fixes the display issue
                 "last_seen": now
             }}
         )
         
-        # 2. Log entry in Audit Collection to calculate work duration
-        # Your 'calculate_work_time' function in admin.py relies on these logs
+        # 2. Log entry for historical pathing
         driver_location_collection.insert_one({
             "driver_id": driver_id,
             "lat": lat,
             "lng": lng,
+            "address": resolved_address,
             "timestamp": now
         })
         
-        return {"success": True}
+        return {"success": True, "address": resolved_address}
     except Exception as e:
-        print(f"🛰️ GPS PING ERROR: {e}")
+        print(f"🛰️ GPS BACKEND ERROR: {e}")
         return {"success": False}
 
 @driver_router.post("/driver/change-request")

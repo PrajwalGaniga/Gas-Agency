@@ -1,192 +1,444 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <title>Driver Audit | Compliance Intelligence</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit & Compliance | GasFlow Enterprise</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .sticky-filter { position: sticky; top: 0; z-index: 40; }
-        .table-row-hover:hover { background-color: #f8fafc; }
+    <script>
+        tailwind.config = {
+            darkMode: ['class', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151F32',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        indigo: {
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                        }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass {
+                @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800;
+            }
+            .card-hover {
+                @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-indigo-500/30;
+            }
+            .form-input {
+                @apply w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600;
+            }
+            .nav-link-active {
+                @apply bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold;
+            }
+            /* Modal Transitions */
+            .modal-overlay {
+                @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm opacity-0 invisible transition-all duration-300;
+            }
+            .modal-overlay.active {
+                @apply opacity-100 visible;
+            }
+            .modal-content {
+                @apply bg-white dark:bg-slate-900 w-[90%] max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 transform scale-95 opacity-0 transition-all duration-300;
+            }
+            .modal-overlay.active .modal-content {
+                @apply scale-100 opacity-100;
+            }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-700 rounded-full; }
+        ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-600; }
     </style>
 </head>
-<body class="bg-slate-50 font-sans text-slate-900">
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 font-sans min-h-screen flex flex-col selection:bg-indigo-500/30">
 
-    <nav class="bg-indigo-900 text-white p-6 shadow-2xl">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-6">
-                <a href="/dashboard" class="w-10 h-10 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <div>
-                    <h1 class="text-2xl font-black tracking-tight">Audit & Compliance</h1>
-                    <p class="text-xs text-indigo-300 font-bold uppercase tracking-widest">Fleet Performance Intelligence</p>
+    <style>
+    :root {
+        /* Design Tokens */
+        --primary: #6366f1;
+        --primary-hover: #4f46e5;
+        --primary-light: rgba(99, 102, 241, 0.15);
+        --danger: #ef4444;
+        --header-h: 72px;
+        --radius-md: 12px;
+        --font-display: 'Space Grotesk', sans-serif;
+    }
+
+    /* Theme-Aware Variables */
+    [data-theme="dark"] {
+        --nav-bg: rgba(15, 23, 42, 0.8);
+        --nav-border: rgba(255, 255, 255, 0.08);
+        --nav-text: #94a3b8;
+        --nav-text-active: #f8fafc;
+        --nav-surface: #1e293b;
+    }
+    [data-theme="light"] {
+        --nav-bg: rgba(255, 255, 255, 0.8);
+        --nav-border: rgba(15, 23, 42, 0.08);
+        --nav-text: #64748b;
+        --nav-text-active: #1e293b;
+        --nav-surface: #f1f5f9;
+    }
+
+    /* Navbar Container */
+    .universal-navbar {
+        height: var(--header-h);
+        background: var(--nav-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--nav-border);
+        position: sticky;
+        top: 0;
+        z-index: 9999;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.3s ease;
+    }
+
+    .nav-inner {
+        max-width: 1400px;
+        margin: 0 auto;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+    }
+
+    /* Brand / Logo */
+    .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 22px;
+        text-decoration: none;
+        color: var(--nav-text-active);
+    }
+    .nav-brand i { 
+        color: var(--primary); 
+        font-size: 28px;
+        filter: drop-shadow(0 0 8px var(--primary-light));
+    }
+
+    /* Nav Links */
+    .nav-menu {
+        display: flex;
+        gap: 6px;
+        background: var(--nav-surface);
+        padding: 5px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--nav-border);
+    }
+
+    .nav-link {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--nav-text);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+        color: var(--nav-text-active);
+        background: rgba(99, 102, 241, 0.05);
+    }
+
+    .nav-link.active {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* Badges */
+    .nav-badge {
+        background: var(--danger);
+        color: white;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 1px 6px;
+        border-radius: 10px;
+        margin-left: 4px;
+    }
+
+    /* Actions */
+    .nav-actions { display: flex; align-items: center; gap: 16px; }
+
+    .nav-btn {
+        width: 40px; height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--nav-border);
+        display: grid; place-items: center;
+        color: var(--nav-text);
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--nav-surface);
+    }
+    .nav-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+    .nav-user {
+        display: flex; align-items: center; gap: 12px;
+        padding-left: 16px; border-left: 1px solid var(--nav-border);
+        text-decoration: none;
+    }
+
+    .nav-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #818cf8);
+        color: white; display: grid; place-items: center; font-weight: 700;
+        box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+    }
+
+    .nav-mobile-toggle { display: none; font-size: 24px; color: var(--nav-text); cursor: pointer; }
+
+    /* Responsive Logic */
+    @media (max-width: 1024px) {
+        .nav-menu { display: none; }
+        .nav-menu.is-open {
+            display: flex; flex-direction: column;
+            position: absolute; top: var(--header-h); left: 0; right: 0;
+            background: var(--nav-bg); padding: 16px; border-bottom: 1px solid var(--nav-border);
+        }
+        .nav-mobile-toggle { display: block; }
+        .desktop-only { display: none !important; }
+    }
+</style>
+
+<nav class="universal-navbar">
+    <div class="nav-inner">
+        <a href="/dashboard" class="nav-brand">
+            <i class="material-symbols-rounded">local_fire_department</i>
+            <span>GasFlow</span>
+        </a>
+
+        <div class="nav-menu" id="universalNavMenu">
+            <a href="/customers" class="nav-link">
+                <i class="material-symbols-rounded">group</i> Customers
+            </a>
+            <a href="/drivers" class="nav-link">
+                <i class="material-symbols-rounded">local_shipping</i> Drivers
+            </a>
+            <a href="/assignments" class="nav-link">
+                <i class="material-symbols-rounded">assignment</i> Assignments
+                {% if stats and stats.pending > 0 %}
+                <span class="nav-badge">{{ stats.pending }}</span>
+                {% endif %}
+            </a>
+            <a href="/reports" class="nav-link">
+                <i class="material-symbols-rounded">bar_chart</i> Reports
+            </a>
+            <a href="/driver-audit" class="nav-link">
+                <i class="material-symbols-rounded">fact_check</i> Audit
+            </a>
+        </div>
+
+        <div class="nav-actions">
+            <button class="nav-btn" id="navThemeToggle" title="Toggle Theme">
+                <i class="material-symbols-rounded">light_mode</i>
+            </button>
+            
+            <div class="nav-mobile-toggle" id="navMobileBtn">
+                <i class="material-symbols-rounded">menu</i>
+            </div>
+
+            <a href="/profile" class="nav-user desktop-only">
+                <div style="text-align: right;">
+                    <p style="font-size: 13px; font-weight: 700; color: var(--nav-text-active); margin:0;">Admin User</p>
+                    <p style="font-size: 11px; color: var(--nav-text); margin:0;">Fleet Manager</p>
                 </div>
-            </div>
-            <div class="flex items-center gap-4">
-                <a href="/export-driver-audit?period={{ active_period }}" class="bg-green-600 hover:bg-green-700 px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg transition flex items-center gap-2">
-                    <i class="fas fa-file-excel"></i> Export Analytics
-                </a>
-            </div>
-        </div>
-    </nav>
+                <div class="nav-avatar">AD</div>
+            </a>
 
-    <div class="container mx-auto py-8 px-4 lg:px-0">
+            <a href="/logout" class="nav-btn desktop-only" title="Logout">
+                <i class="material-symbols-rounded">logout</i>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<script>
+    (function() {
+        /* 1. Theme Engine Integration */
+        const themeBtn = document.getElementById('navThemeToggle');
+        const htmlEl = document.documentElement;
         
-        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-10">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Total Work Hours</p>
-                <h3 class="text-3xl font-black text-indigo-600">{{ summary.total_hours }}h</h3>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Avg Hours / Day</p>
-                <h3 class="text-3xl font-black text-slate-800">{{ summary.avg_hours or 0 }}h</h3>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Deliveries Done</p>
-                <h3 class="text-3xl font-black text-green-600">{{ summary.total_deliveries }}</h3>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Active Days</p>
-                <h3 class="text-3xl font-black text-slate-800">{{ summary.active_days }}</h3>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-amber-200 bg-amber-50/30">
-                <p class="text-xs font-bold text-amber-600 uppercase mb-2">Pending Requests</p>
-                <h3 class="text-3xl font-black text-amber-600">{{ summary.pending_requests }}</h3>
-            </div>
-        </div>
+        const applyTheme = (theme) => {
+            htmlEl.setAttribute('data-theme', theme);
+            localStorage.setItem('gasflow_theme', theme);
+            const icon = themeBtn.querySelector('i');
+            icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+        };
 
-        <div class="sticky-filter bg-white p-4 rounded-2xl shadow-md border border-slate-200 mb-8 flex flex-wrap gap-4 items-center">
-            <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
-                {% for p in ['24h', '1w', '1m'] %}
-                <a href="/driver-audit?period={{ p }}&driver_id={{ selected_driver or '' }}" 
-                   class="px-4 py-2 rounded-lg text-sm font-bold transition {% if active_period == p %} bg-white text-indigo-600 shadow-sm {% else %} text-slate-500 hover:text-slate-700 {% endif %}">
-                    {{ p.upper() }}
-                </a>
-                {% endfor %}
+        themeBtn.addEventListener('click', () => {
+            const current = htmlEl.getAttribute('data-theme') || 'dark';
+            applyTheme(current === 'dark' ? 'light' : 'dark');
+        });
+
+        // Initialize from storage
+        applyTheme(localStorage.getItem('gasflow_theme') || 'dark');
+
+        /* 2. Intelligent Active Link Detection */
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll('.nav-link');
+        
+        navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (currentPath === href || (href !== '/dashboard' && currentPath.startsWith(href))) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+
+        /* 3. Mobile Menu Toggle */
+        const mobileBtn = document.getElementById('navMobileBtn');
+        const navMenu = document.getElementById('universalNavMenu');
+        
+        mobileBtn.addEventListener('click', () => {
+            navMenu.classList.toggle('is-open');
+            const icon = mobileBtn.querySelector('i');
+            icon.textContent = navMenu.classList.contains('is-open') ? 'close' : 'menu';
+        });
+    })();
+</script>
+
+    <main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-8 w-full flex-grow">
+
+        <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8 animate-fade-in-up">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Work Hours</p>
+                <h3 class="font-display text-2xl font-bold text-indigo-500">{{ summary.total_hours }}h</h3>
+            </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Successful Tasks</p>
+                <h3 class="font-display text-2xl font-bold text-emerald-500">{{ summary.total_deliveries }}</h3>
+            </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Requests Pending</p>
+                <h3 class="font-display text-2xl font-bold text-amber-500">{{ summary.pending_requests }}</h3>
+            </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Active Days</p>
+                <h3 class="font-display text-2xl font-bold text-slate-900 dark:text-white">{{ summary.active_days }}</h3>
+            </div>
+            <a href="/export-driver-audit?period={{ active_view }}&date={{ selected_date }}" class="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-2xl shadow-sm hover:shadow-md hover:bg-emerald-500/20 transition-all flex flex-col justify-center items-center group cursor-pointer text-decoration-none">
+                <i class="material-symbols-rounded text-3xl text-emerald-600 dark:text-emerald-400 mb-1 group-hover:scale-110 transition-transform">download</i>
+                <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Download Excel</span>
+            </a>
+        </section>
+
+        <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm mb-8 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-[88px] z-30 animate-fade-in-up" style="animation-delay: 0.1s;">
+            
+            <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                <a href="/driver-audit?period=24h" class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if active_view == '24h' %} bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm {% else %} text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 {% endif %}">TODAY</a>
+                <a href="/driver-audit?period=1w" class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if active_view == '1w' %} bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm {% else %} text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 {% endif %}">7 DAYS</a>
+                <a href="/driver-audit?period=1m" class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if active_view == '1m' %} bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm {% else %} text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 {% endif %}">1 MONTH</a>
             </div>
 
-            <form action="/driver-audit" method="GET" class="flex flex-grow gap-4">
-                <input type="hidden" name="period" value="{{ active_period }}">
-                <select name="driver_id" onchange="this.form.submit()" class="flex-grow p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="">All Drivers (Fleet View)</option>
-                    {% for d in drivers %}
-                    <option value="{{ d._id }}" {% if selected_driver == d._id|string %}selected{% endif %}>{{ d.name }}</option>
-                    {% endfor %}
-                </select>
-            </form>
-        </div>
-
-        <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden mb-12">
-            <div class="p-6 border-b border-slate-100">
-                <h2 class="text-xl font-black text-slate-800 flex items-center gap-3">
-                    <i class="fas fa-stopwatch text-indigo-600"></i> Daily Work Analytics
-                </h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-slate-100">
-                            <th class="p-5">Driver</th>
-                            <th class="p-5">Date</th>
-                            <th class="p-5">Clock In</th>
-                            <th class="p-5">Clock Out</th>
-                            <th class="p-5">Duration</th>
-                            <th class="p-5 text-center">Deliveries</th>
-                            <th class="p-5 text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-50">
-                        {% for audit in audits %}
-                        <tr class="table-row-hover transition-colors">
-                            <td class="p-5 font-bold text-slate-700">{{ audit.driver_name }}</td>
-                            <td class="p-5 text-sm text-slate-500">{{ audit.date.strftime('%b %d, %Y') }}</td>
-                            <td class="p-5 text-xs text-slate-600 font-mono">{{ to_ist(audit.first_ping).strftime('%I:%M %p') }}</td>
-                            <td class="p-5 text-xs text-slate-600 font-mono">{{ to_ist(audit.last_ping).strftime('%I:%M %p') }}</td>
-                            <td class="p-5">
-                                <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-black">{{ audit.duration }}</span>
-                            </td>
-                            <td class="p-5 text-center">
-                                <span class="text-green-600 font-bold">{{ audit.deliveries }}</span>
-                            </td>
-                            <td class="p-5 text-center">
-                                <button class="text-slate-400 hover:text-indigo-600 transition" title="View Timeline"><i class="fas fa-history"></i></button>
-                            </td>
-                        </tr>
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Custom Date</span>
+                    <input type="date" value="{{ selected_date }}" onchange="location.href='/driver-audit?date='+this.value" class="bg-transparent text-sm font-semibold text-slate-900 dark:text-white outline-none border-none p-0 cursor-pointer">
+                </div>
+                
+                <div class="relative">
+                    <select onchange="location.href='/driver-audit?driver_id='+this.value" class="appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 pr-8 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer w-[200px]">
+                        <option value="">Full Fleet View</option>
+                        {% for d in drivers %}
+                        <option value="{{ d._id }}" {% if selected_driver == d._id|string %}selected{% endif %}>{{ d.name }}</option>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                    </select>
+                    <i class="material-symbols-rounded absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-lg">expand_more</i>
+                </div>
 
-        <div class="bg-white rounded-3xl shadow-xl border border-amber-100 overflow-hidden">
-            <div class="p-6 bg-amber-50/50 border-b border-amber-100 flex items-center justify-between">
-                <h2 class="text-xl font-black text-slate-800 flex items-center gap-3">
-                    <i class="fas fa-exchange-alt text-amber-500"></i> Field Change Queue
-                </h2>
+                <button onclick="location.href='/driver-audit?period=24h'" class="w-9 h-9 flex items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors" title="Go to Today">
+                    <i class="material-symbols-rounded text-lg">today</i>
+                </button>
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/30 rounded-2xl shadow-sm overflow-hidden mb-8 animate-fade-in-up" style="animation-delay: 0.2s;">
+            <div class="bg-amber-50 dark:bg-amber-900/10 px-6 py-4 border-b border-amber-100 dark:border-amber-900/30 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-500">
+                    <i class="material-symbols-rounded">notification_important</i>
+                </div>
+                <h2 class="font-display font-bold text-lg text-slate-900 dark:text-white">Field Change Verification</h2>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-400 text-[10px] font-black uppercase border-b">
-                            <th class="p-5">Requested</th>
-                            <th class="p-5">Driver</th>
-                            <th class="p-5">Customer (Click to Edit)</th>
-                            <th class="p-5">Type</th>
-                            <th class="p-5">Change (Old → New)</th>
-                            <th class="p-5">Status</th>
-                            <th class="p-5">Resolved At</th>
-                            <th class="p-5 text-center">Action</th>
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
+                        <tr>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Time</th>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Personnel</th>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Customer (Click to Review)</th>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Proposed Change</th>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         {% for req in requests %}
-                        <tr class="table-row-hover">
-                            <td class="p-5 text-[10px] font-bold text-slate-400">{{ to_ist(req.timestamp).strftime('%d %b, %H:%M') }}</td>
-                            <td class="p-5 font-bold text-slate-700 text-sm">{{ req.driver_name }}</td>
-                            <td class="p-5">
-                                <a href="/customers?search={{ req.customer_name }}&edit_id={{ req.customer_id_str }}" 
-                                   class="group flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition">
-                                    <span class="font-bold border-b border-indigo-200 group-hover:border-indigo-600">{{ req.customer_name }}</span>
-                                    <i class="fas fa-external-link-alt text-[10px] opacity-0 group-hover:opacity-100"></i>
-                                </a>
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{{ to_ist(req.timestamp).strftime('%H:%M') }}</td>
+                            <td class="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">{{ req.driver_name }}</td>
+                            <td class="px-6 py-4">
+                                <button onclick="openVerifyModal('{{ req._id }}', '{{ req.customer_id_str }}', '{{ req.customer_name }}', '{{ req.request_type }}', '{{ req.old_value }}', '{{ req.new_value }}')" class="text-sm font-bold text-indigo-600 dark:text-indigo-400 border-b border-dashed border-indigo-600 hover:text-indigo-500 transition-colors">
+                                    {{ req.customer_name }}
+                                </button>
                             </td>
-                            <td class="p-5 text-[10px] font-black"><span class="bg-slate-100 px-2 py-1 rounded">{{ req.request_type }}</span></td>
-                            <td class="p-5 text-xs">
-                                <span class="text-slate-400 line-through">{{ req.old_value }}</span> → 
-                                <span class="text-indigo-600 font-bold">{{ req.new_value }}</span>
-                            </td>
-                            <td class="p-5">
-                                <span class="text-[10px] font-black px-2 py-1 rounded uppercase
-                                    {% if req.status == 'PENDING' %} text-amber-600 bg-amber-50 
-                                    {% elif req.status == 'APPROVED' %} text-green-600 bg-green-50 
-                                    {% else %} text-red-600 bg-red-50 {% endif %}">
-                                    {{ 'Resolved' if req.status == 'APPROVED' else req.status }}
+                            <td class="px-6 py-4">
+                                <span class="inline-flex px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide border border-slate-200 dark:border-slate-700">
+                                    {{ req.request_type }}
                                 </span>
                             </td>
-                            <td class="p-5 text-[10px] text-slate-500 font-mono">
-                                {{ to_ist(req.decision_timestamp).strftime('%d %b, %H:%M') if req.decision_timestamp else '—' }}
+                            <td class="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-white max-w-[200px] truncate" title="{{ req.new_value }}">
+                                {{ req.new_value }}
                             </td>
-                            <td class="p-5 text-center">
+                            <td class="px-6 py-4">
                                 {% if req.status == 'PENDING' %}
-                                <div class="flex justify-center gap-2">
-                                    <form action="/api/resolve-request" method="POST" class="inline">
-                                        <input type="hidden" name="request_id" value="{{ req._id }}">
-                                        <input type="hidden" name="action" value="reject">
-                                        <button class="w-8 h-8 rounded-lg text-red-500 border border-red-100 hover:bg-red-500 hover:text-white transition">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
-                                    <form action="/api/resolve-request" method="POST" class="inline">
-                                        <input type="hidden" name="request_id" value="{{ req._id }}">
-                                        <input type="hidden" name="action" value="approve">
-                                        <button class="w-8 h-8 rounded-lg text-green-600 border border-green-100 hover:bg-green-600 hover:text-white transition">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> PENDING
+                                </span>
                                 {% else %}
-                                <i class="fas fa-check-double text-slate-300"></i>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ req.status }}
+                                </span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -194,12 +446,218 @@
                     </tbody>
                 </table>
             </div>
+        </section>
+
+        <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden animate-fade-in-up" style="animation-delay: 0.3s;">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                    <i class="material-symbols-rounded">history</i>
+                </div>
+                <h2 class="font-display font-bold text-lg text-slate-900 dark:text-white">Fleet Pulse Logs</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
+                        <tr>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Driver</th>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">First Pulse</th>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Last Pulse</th>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Duration</th>
+                            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tasks</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        {% for audit in audits %}
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">{{ audit.driver_name }}</td>
+                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{{ audit.date.strftime('%b %d, %Y') }}</td>
+                            <td class="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-300">
+                                {% if audit.first_ping %}
+                                    {{ to_ist(audit.first_ping).strftime('%I:%M %p') }}
+                                {% else %}
+                                    <span class="text-slate-400">--</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-300">
+                                {% if audit.last_ping %}
+                                    {{ to_ist(audit.last_ping).strftime('%I:%M %p') }}
+                                {% else %}
+                                    <span class="text-slate-400">--</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col">
+                                    <span class="inline-flex w-fit px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-500/10 text-xs font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
+                                        {{ audit.duration }}
+                                    </span>
+                                    
+                                    {% if (audit.duration == "0h 0m" or audit.duration == "0h 00m") and audit.first_ping and audit.last_ping %}
+                                    <span class="text-[10px] text-amber-600 dark:text-amber-500 mt-1 font-medium flex items-center gap-1" title="Work Duration is calculated based on continuous GPS pulses. Sparse data results in 0h duration but activity is detected.">
+                                        <i class="material-symbols-rounded text-[10px]">warning</i>
+                                        Sparse GPS Data
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="text-sm font-bold text-emerald-600 dark:text-emerald-500">{{ audit.deliveries }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="vModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="px-8 py-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white">Review Request</h2>
+                <button onclick="closeVerifyModal()" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="material-symbols-rounded">close</i>
+                </button>
+            </div>
+            
+            <div class="p-8">
+                <div class="grid grid-cols-[1fr_auto_1fr] gap-4 items-center mb-8">
+                    <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Current</p>
+                        <p id="oldT" class="text-sm text-slate-600 dark:text-slate-400 break-words">--</p>
+                    </div>
+                    
+                    <i class="material-symbols-rounded text-slate-400">arrow_forward</i>
+                    
+                    <div class="p-4 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10">
+                        <p class="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-2">Suggested</p>
+                        <p id="newT" class="text-sm font-bold text-indigo-700 dark:text-indigo-300 break-words">--</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Verify Content</p>
+                        <input type="text" id="finalVal" class="form-input">
+                    </div>
+                    
+                    <button onclick="applyResolve()" id="procBtn" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2">
+                        <i class="material-symbols-rounded">sync</i>
+                        Synchronize & Resolve
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Optional: Tooltip or Modal logic can be added here
-        console.log("Audit Intelligence Engine Loaded.");
+        (function() {
+            /* 1. Theme Engine Integration */
+            const themeBtn = document.getElementById('navThemeToggle');
+            const htmlEl = document.documentElement;
+            
+            const applyTheme = (theme) => {
+                htmlEl.setAttribute('data-theme', theme);
+                localStorage.setItem('gasflow_theme', theme);
+                
+                // Toggle Tailwind 'dark' class
+                if (theme === 'dark') {
+                    htmlEl.classList.add('dark');
+                } else {
+                    htmlEl.classList.remove('dark');
+                }
+
+                const icon = themeBtn.querySelector('i');
+                icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+            };
+
+            themeBtn.addEventListener('click', () => {
+                const current = htmlEl.getAttribute('data-theme') || 'dark';
+                applyTheme(current === 'dark' ? 'light' : 'dark');
+            });
+
+            // Initialize from storage
+            const savedTheme = localStorage.getItem('gasflow_theme') || 'dark';
+            applyTheme(savedTheme);
+
+            /* 2. Intelligent Active Link Detection */
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            navLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (currentPath === href || (href !== '/dashboard' && currentPath.startsWith(href))) {
+                    link.classList.add('active'); // Matches your CSS
+                    link.classList.add('nav-link-active'); // Matches Tailwind util
+                }
+            });
+        })();
+
+        /* 3. Modal Logic */
+        let activeReq = null;
+        
+        function openVerifyModal(rid, cid, cname, type, oldV, newV) {
+            activeReq = { rid, cid, cname };
+            document.getElementById('oldT').innerText = oldV;
+            document.getElementById('newT').innerText = newV;
+            document.getElementById('finalVal').value = newV;
+            document.getElementById('vModal').classList.add('active');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+        }
+
+        function closeVerifyModal() {
+            document.getElementById('vModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        async function applyResolve() {
+            const btn = document.getElementById('procBtn');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = `<i class="material-symbols-rounded animate-spin">sync</i> Syncing...`; 
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+            try {
+                // Update Customer
+                const f1 = new FormData(); 
+                f1.append('customer_id', activeReq.cid); 
+                f1.append('name', activeReq.cname); 
+                f1.append('landmark', document.getElementById('finalVal').value);
+                
+                await fetch('/update-customer', { method: 'POST', body: f1 });
+                
+                // Resolve Request
+                const f2 = new FormData(); 
+                f2.append('request_id', activeReq.rid); 
+                f2.append('action', 'approve');
+                
+                await fetch('/api/resolve-request', { method: 'POST', body: f2 });
+                
+                location.reload();
+            } catch (e) { 
+                alert("Error resolving request. Check console."); 
+                console.error(e);
+                btn.innerHTML = "Retry"; 
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        }
+
+        // Close modal on click outside
+        document.getElementById('vModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeVerifyModal();
+            }
+        });
+
+        // Close on Esc
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeVerifyModal();
+            }
+        });
     </script>
 </body>
 </html>

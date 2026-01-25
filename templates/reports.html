@@ -1,525 +1,561 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Performance Reports | GasFlow</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        * { 
-            font-family: 'Inter', sans-serif; 
-            -webkit-tap-highlight-color: transparent;
+        /* ============================================
+           DESIGN TOKENS & THEMING
+           ============================================ */
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-light: rgba(99, 102, 241, 0.15);
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.1);
+            --info: #3b82f6;
+
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --header-h: 72px;
+            --container-w: 1400px;
+            --font-main: 'Inter', sans-serif;
+            --font-display: 'Space Grotesk', sans-serif;
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+
+        [data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-card: #1e293b;
+            --bg-glass: rgba(15, 23, 42, 0.8);
+            --border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --input-bg: #0f172a;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
-        
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
+
+        [data-theme="light"] {
+            --bg-body: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-card: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.8);
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --input-bg: #f1f5f9;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+
+        /* ============================================
+           BASE STYLES
+           ============================================ */
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        
-        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-        .animate-slide-in { animation: slideIn 0.4s ease-out forwards; }
-        .animate-pulse { animation: pulse 2s infinite; }
-        
-        .gradient-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        .container { max-width: var(--container-w); margin: 0 auto; padding: 0 24px; width: 100%; }
+
+        /* ============================================
+           HEADER & NAV
+           ============================================ */
+        .navbar {
+            height: var(--header-h);
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            position: sticky; top: 0; z-index: 1000;
         }
-        
-        .gradient-success {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+        .nav-content { display: flex; align-items: center; justify-content: space-between; height: 100%; }
+        .brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 700; font-size: 22px; text-decoration: none; }
+        .brand i { color: var(--primary); font-size: 28px; filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4)); }
+
+        .nav-links { display: flex; gap: 8px; background: var(--bg-surface); padding: 4px; border-radius: var(--radius-md); border: 1px solid var(--border); }
+        .nav-item {
+            padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--text-muted);
+            display: flex; align-items: center; gap: 8px; text-decoration: none; transition: var(--transition);
         }
-        
-        .gradient-warning {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        .nav-item:hover { color: var(--text-main); background: var(--bg-body); }
+        .nav-item.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+        .badge { background: var(--danger); color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+
+        .nav-actions { display: flex; align-items: center; gap: 12px; }
+        .theme-toggle { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center; cursor: pointer; color: var(--text-muted); }
+        .theme-toggle:hover { color: var(--warning); border-color: var(--warning); }
+
+        .user-profile { display: flex; align-items: center; gap: 12px; padding-left: 12px; border-left: 1px solid var(--border); }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: white; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+
+        /* ============================================
+           COMPONENTS
+           ============================================ */
+        .page-header { margin: 40px 0 32px; animation: fadeInUp 0.4s ease-out; }
+        h1 { font-family: var(--font-display); font-size: 32px; font-weight: 700; }
+
+        .period-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 24px; margin-bottom: 32px;
+            display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px;
+            box-shadow: var(--shadow);
         }
-        
-        .gradient-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+
+        .filter-group { display: flex; gap: 8px; background: var(--bg-body); padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
+        .filter-btn {
+            padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--text-muted);
+            border-radius: 8px; text-decoration: none; transition: var(--transition);
         }
-        
-        .gradient-info {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        .filter-btn:hover { color: var(--text-main); }
+        .filter-btn.active { background: var(--bg-surface); color: var(--primary); box-shadow: var(--shadow); }
+
+        .btn-export {
+            background: var(--success); color: white; padding: 10px 20px; border-radius: 10px;
+            font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 10px;
+            box-shadow: 0 10px 20px -10px var(--success); text-decoration: none;
         }
-        
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .status-badge {
-            font-size: 0.7rem;
-            letter-spacing: 0.5px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-        
-        .mobile-only { display: block; }
-        .desktop-only { display: none; }
-        
-        @media (min-width: 768px) {
-            .mobile-only { display: none; }
-            .desktop-only { display: block; }
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-        }
-        
+        .btn-export:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 32px; }
         .stat-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--bg-card); border: 1px solid var(--border);
+            padding: 24px; border-radius: var(--radius-lg); position: relative;
+            display: flex; flex-direction: column; justify-content: space-between;
+            transition: var(--transition); box-shadow: var(--shadow);
         }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        .stat-card:hover { transform: translateY(-4px); border-color: var(--primary); }
+        .stat-card i { font-size: 24px; margin-bottom: 12px; }
+        .stat-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-family: var(--font-display); font-size: 32px; font-weight: 700; margin-top: 4px; }
+
+        .table-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow);
         }
+        .table-header { padding: 20px 24px; background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
         
-        .table-row-hover {
-            transition: all 0.2s ease;
+        .table-container { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { padding: 16px 24px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); }
+        td { padding: 16px 24px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+        tr:hover td { background: var(--bg-body); }
+
+        .status-pill {
+            padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800;
+            text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px;
         }
-        
-        .table-row-hover:hover {
-            background-color: #f8fafc;
-            transform: scale(1.001);
+        .delivered { background: var(--success-bg); color: var(--success); }
+        .progress { background: rgba(59, 130, 246, 0.1); color: var(--info); }
+        .pending { background: var(--warning-bg); color: var(--warning); }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 1024px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block; }
         }
-        
-        .period-active {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .period-active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            border-radius: 3px 3px 0 0;
+        @media (max-width: 640px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .period-card { flex-direction: column; align-items: flex-start; }
+            .filter-group { width: 100%; overflow-x: auto; }
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-indigo-50 min-h-screen">
-    
-    <!-- Mobile Navigation -->
-    <div class="mobile-only fixed top-4 left-4 z-40">
-        <button onclick="window.history.back()" class="gradient-primary text-white p-3 rounded-xl shadow-lg">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-    </div>
-    
-    <!-- Navigation -->
-    <nav class="gradient-primary text-white shadow-xl sticky top-0 z-30">
-        <div class="container mx-auto px-4 lg:px-6 py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-chart-bar text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold">Performance Analytics</h1>
-                        <p class="text-xs opacity-80">{{ orders|length }} orders in selected period</p>
-                    </div>
-                </div>
-                
-                <div class="flex items-center space-x-3">
-                    <div class="desktop-only flex items-center space-x-2 bg-white bg-opacity-10 px-3 py-1.5 rounded-lg">
-                        <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        <span class="text-xs font-medium">Live</span>
-                    </div>
-                    
-                    <a href="/dashboard" 
-                       class="px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition flex items-center gap-2">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span class="desktop-only text-sm font-medium">Dashboard</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </nav>
+<body>
+<style>
+    :root {
+        /* Design Tokens */
+        --primary: #6366f1;
+        --primary-hover: #4f46e5;
+        --primary-light: rgba(99, 102, 241, 0.15);
+        --danger: #ef4444;
+        --header-h: 72px;
+        --radius-md: 12px;
+        --font-display: 'Space Grotesk', sans-serif;
+    }
 
-    <div class="container mx-auto px-4 lg:px-6 py-6">
-        
-        <!-- Period Selection & Export -->
-        <div class="bg-white rounded-xl shadow-lg p-6 mb-8 animate-fade-in">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-                <div>
-                    <h2 class="text-lg font-bold text-gray-800 mb-2 flex items-center">
-                        <i class="fas fa-calendar-alt text-indigo-500 mr-2"></i>
-                        Select Reporting Period
-                    </h2>
-                    <div class="flex flex-wrap gap-2">
-                        <a href="/reports?period=24h" 
-                           class="px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center gap-2 {% if period == '24h' %} gradient-primary text-white period-active shadow-lg {% else %} bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-sm {% endif %}">
-                            <i class="fas fa-clock"></i>
-                            <span>Last 24 Hours</span>
-                        </a>
-                        <a href="/reports?period=1w" 
-                           class="px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center gap-2 {% if period == '1w' %} gradient-primary text-white period-active shadow-lg {% else %} bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-sm {% endif %}">
-                            <i class="fas fa-calendar-week"></i>
-                            <span>Last 1 Week</span>
-                        </a>
-                        <a href="/reports?period=1m" 
-                           class="px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center gap-2 {% if period == '1m' %} gradient-primary text-white period-active shadow-lg {% else %} bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-sm {% endif %}">
-                            <i class="fas fa-calendar"></i>
-                            <span>Last 1 Month</span>
-                        </a>
-                    </div>
-                </div>
-                
-                <a href="/export-report?period={{ period }}" 
-                   class="gradient-success text-white px-6 py-3 rounded-lg font-bold hover:opacity-90 transition flex items-center gap-2 shadow-lg">
-                    <i class="fas fa-file-excel text-lg"></i>
-                    <div class="text-left">
-                        <span class="block text-sm font-medium opacity-90">Download Report</span>
-                        <span class="block text-xs">Excel Format</span>
-                    </div>
-                </a>
-            </div>
-        </div>
+    /* Theme-Aware Variables */
+    [data-theme="dark"] {
+        --nav-bg: rgba(15, 23, 42, 0.8);
+        --nav-border: rgba(255, 255, 255, 0.08);
+        --nav-text: #94a3b8;
+        --nav-text-active: #f8fafc;
+        --nav-surface: #1e293b;
+    }
+    [data-theme="light"] {
+        --nav-bg: rgba(255, 255, 255, 0.8);
+        --nav-border: rgba(15, 23, 42, 0.08);
+        --nav-text: #64748b;
+        --nav-text-active: #1e293b;
+        --nav-surface: #f1f5f9;
+    }
 
-        <!-- Summary Stats -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-gray-400 animate-fade-in" style="animation-delay: 0.1s">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Activity</p>
-                        <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ summary.total }}</h2>
-                    </div>
-                    <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-chart-line text-gray-600 text-xl"></i>
-                    </div>
-                </div>
-                <p class="text-xs text-gray-500 mt-3">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Total orders in selected period
-                </p>
-            </div>
-            
-            <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-green-500 animate-fade-in" style="animation-delay: 0.2s">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-green-600 uppercase tracking-wider">Delivered</p>
-                        <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ summary.delivered }}</h2>
-                    </div>
-                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
-                    </div>
-                </div>
-                <p class="text-xs text-gray-500 mt-3">
-                    <i class="fas fa-percentage mr-1"></i>
-                    {% if summary.total > 0 %}
-                    {{ ((summary.delivered / summary.total) * 100)|round|int }}% completion rate
-                    {% else %}
-                    0% completion rate
-                    {% endif %}
-                </p>
-            </div>
-            
-            <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-orange-500 animate-fade-in" style="animation-delay: 0.3s">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-orange-600 uppercase tracking-wider">In Progress</p>
-                        <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ summary.in_progress }}</h2>
-                    </div>
-                    <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-truck text-orange-600 text-xl"></i>
-                    </div>
-                </div>
-                <p class="text-xs text-gray-500 mt-3">
-                    <i class="fas fa-clock mr-1"></i>
-                    Currently being delivered
-                </p>
-            </div>
-            
-            <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-red-500 animate-fade-in" style="animation-delay: 0.4s">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold text-red-600 uppercase tracking-wider">Pending</p>
-                        <h2 class="text-3xl font-bold text-gray-800 mt-2">{{ summary.pending }}</h2>
-                    </div>
-                    <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-clock text-red-600 text-xl"></i>
-                    </div>
-                </div>
-                <p class="text-xs text-gray-500 mt-3">
-                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                    Awaiting assignment
-                </p>
-            </div>
-        </div>
+    /* Navbar Container */
+    .universal-navbar {
+        height: var(--header-h);
+        background: var(--nav-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--nav-border);
+        position: sticky;
+        top: 0;
+        z-index: 9999;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.3s ease;
+    }
 
-        <!-- Orders Table -->
-        <div class="bg-white rounded-xl shadow-lg overflow-hidden animate-fade-in">
-            <!-- Table Header -->
-            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 border-b">
-                <div class="flex flex-col md:flex-row justify-between items-center">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-800 flex items-center">
-                            <i class="fas fa-list-alt text-indigo-500 mr-2"></i>
-                            Order Activity Details
-                        </h3>
-                        <p class="text-sm text-gray-500 mt-1">Showing {{ orders|length }} order(s) in selected period</p>
-                    </div>
-                    <div class="flex items-center gap-2 mt-3 md:mt-0">
-                        <span class="text-xs text-gray-500">
-                            <i class="fas fa-circle text-green-500 mr-1"></i> Delivered
-                        </span>
-                        <span class="text-xs text-gray-500">
-                            <i class="fas fa-circle text-blue-500 mr-1"></i> In Progress
-                        </span>
-                        <span class="text-xs text-gray-500">
-                            <i class="fas fa-circle text-orange-500 mr-1"></i> Pending
-                        </span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Table Content -->
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                <div class="flex items-center">
-                                    <i class="fas fa-user mr-2"></i>
-                                    Customer
-                                </div>
-                            </th>
-                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                <div class="flex items-center">
-                                    <i class="fas fa-city mr-2"></i>
-                                    City
-                                </div>
-                            </th>
-                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                <div class="flex items-center">
-                                    <i class="fas fa-truck mr-2"></i>
-                                    Assigned Driver
-                                </div>
-                            </th>
-                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                <div class="flex items-center">
-                                    <i class="fas fa-tag mr-2"></i>
-                                    Status
-                                </div>
-                            </th>
-                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                <div class="flex items-center">
-                                    <i class="fas fa-shipping-fast mr-2"></i>
-                                    Delivered Time
-                                </div>
-                            </th>
-                            <th class="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                <div class="flex items-center">
-                                    <i class="fas fa-calendar-alt mr-2"></i>
-                                    Created Date
-                                </div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        {% for order in orders %}
-                        <tr class="table-row-hover {% if loop.index % 2 == 0 %}bg-gray-50{% endif %}">
-                            <td class="p-4">
-                                <div class="flex items-center">
-                                    <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                                        <i class="fas fa-user text-indigo-600 text-sm"></i>
-                                    </div>
-                                    <div>
-                                        <p class="font-medium text-gray-800">{{ order.customer_name }}</p>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="p-4">
-                                <div class="flex items-center">
-                                    <i class="fas fa-map-marker-alt text-gray-400 mr-2 text-sm"></i>
-                                    <span class="font-medium text-gray-700">{{ order.city }}</span>
-                                </div>
-                            </td>
-                            <td class="p-4">
-                                {% if order.assigned_driver_name %}
-                                <div class="flex items-center">
-                                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                        <i class="fas fa-id-card text-blue-600 text-sm"></i>
-                                    </div>
-                                    <div>
-                                        <p class="font-medium text-blue-600">{{ order.assigned_driver_name }}</p>
-                                    </div>
-                                </div>
-                                {% else %}
-                                <div class="flex items-center">
-                                    <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                                        <i class="fas fa-user-slash text-gray-400 text-sm"></i>
-                                    </div>
-                                    <span class="text-gray-400 font-medium">Not Assigned</span>
-                                </div>
-                                {% endif %}
-                            </td>
-                            <td class="p-4">
-                                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold
-                                    {% if order.status == 'DELIVERED' %} bg-green-100 text-green-700
-                                    {% elif order.status == 'IN_PROGRESS' %} bg-blue-100 text-blue-700
-                                    {% else %} bg-orange-100 text-orange-700 {% endif %}">
-                                    {{ order.status }}
-                                </span>
-                            </td>
-                            <td class="p-4">
-                                <div class="flex items-center">
-                                    {% if order.status == 'DELIVERED' and order.delivered_at %}
-                                        <i class="far fa-check-circle text-green-500 mr-2 text-sm"></i>
-                                        <div class="text-xs">
-                                            <span class="text-gray-800 font-bold block">{{ to_ist(order.delivered_at).strftime('%d %b %Y') }}</span>
-                                            <span class="text-gray-400 block">{{ to_ist(order.delivered_at).strftime('%I:%M %p') }}</span>
-                                        </div>
-                                    {% else %}
-                                        <span class="text-gray-300">—</span>
-                                    {% endif %}
-                                </div>
-                            </td>
-                            <td class="p-4">
-                                <div class="flex items-center text-xs">
-                                    <i class="far fa-clock text-gray-400 mr-2 text-sm"></i>
-                                    <span class="text-gray-600 font-medium">{{ to_ist(order.created_at).strftime('%d %b %Y') }}</span>
-                                    <span class="text-gray-400 ml-2">{{ to_ist(order.created_at).strftime('%I:%M %p') }}</span>
-                                </div>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="6" class="p-8 text-center">
-                                <div class="flex flex-col items-center">
-                                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                        <i class="fas fa-chart-bar text-gray-400 text-2xl"></i>
-                                    </div>
-                                    <h4 class="text-lg font-medium text-gray-600 mb-2">No Data Available</h4>
-                                    <p class="text-gray-500">No orders found for the selected period.</p>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Table Footer -->
-            {% if orders %}
-            <div class="bg-gray-50 p-4 border-t">
-                <div class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
-                    <div class="mb-2 md:mb-0">
-                        Showing {{ orders|length }} of {{ summary.total }} order(s)
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <span class="text-xs">
-                            <span class="inline-block w-3 h-3 bg-green-500 rounded-full mr-1"></span>
-                            Delivered: {{ summary.delivered }}
-                        </span>
-                        <span class="text-xs">
-                            <span class="inline-block w-3 h-3 bg-blue-500 rounded-full mr-1"></span>
-                            In Progress: {{ summary.in_progress }}
-                        </span>
-                        <span class="text-xs">
-                            <span class="inline-block w-3 h-3 bg-orange-500 rounded-full mr-1"></span>
-                            Pending: {{ summary.pending }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
+    .nav-inner {
+        max-width: 1400px;
+        margin: 0 auto;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+    }
 
-    <!-- Footer -->
-    <div class="container mx-auto px-4 lg:px-6 py-6 mt-8">
-        <div class="text-center text-gray-500 text-sm">
-            <p>GasFlow Performance Analytics • Period: {{ period|upper }} • Generated on {{ now.strftime('%Y-%m-%d %H:%M') if now else 'N/A' }}</p>
-            <p class="mt-1">© 2023 GasFlow Delivery Services. All rights reserved.</p>
-        </div>
-    </div>
+    /* Brand / Logo */
+    .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 22px;
+        text-decoration: none;
+        color: var(--nav-text-active);
+    }
+    .nav-brand i { 
+        color: var(--primary); 
+        font-size: 28px;
+        filter: drop-shadow(0 0 8px var(--primary-light));
+    }
 
-   <script>
-    // Add animation delays for cards
-    document.addEventListener('DOMContentLoaded', function() {
-        const cards = document.querySelectorAll('.animate-fade-in');
-        cards.forEach((card, index) => {
-            card.style.animationDelay = `${index * 0.1}s`;
-        });
-        
-        // Add row hover effects
-        const rows = document.querySelectorAll('.table-row-hover');
-        rows.forEach(row => {
-            row.addEventListener('mouseenter', function() {
-                this.style.transform = 'scale(1.001)';
-                this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
-            });
-            
-            row.addEventListener('mouseleave', function() {
-                this.style.transform = 'scale(1)';
-                this.style.boxShadow = 'none';
-            });
-        });
-        
-        // Add click effect to download button
-        const downloadBtn = document.querySelector('a[href*="export-report"]');
-        if (downloadBtn) {
-            downloadBtn.addEventListener('click', function(e) {
-                // Get the number of orders from a data attribute or check table rows
-                const orderRows = document.querySelectorAll('tbody tr.table-row-hover');
-                const emptyTable = document.querySelector('td[colspan="6"]');
-                
-                // Check if there are no order rows or if the empty table message is displayed
-                if (orderRows.length === 0 || emptyTable) {
-                    e.preventDefault();
-                    alert('No data available to export for this period.');
-                }
-            });
+    /* Nav Links */
+    .nav-menu {
+        display: flex;
+        gap: 6px;
+        background: var(--nav-surface);
+        padding: 5px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--nav-border);
+    }
+
+    .nav-link {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--nav-text);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+        color: var(--nav-text-active);
+        background: rgba(99, 102, 241, 0.05);
+    }
+
+    .nav-link.active {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* Badges */
+    .nav-badge {
+        background: var(--danger);
+        color: white;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 1px 6px;
+        border-radius: 10px;
+        margin-left: 4px;
+    }
+
+    /* Actions */
+    .nav-actions { display: flex; align-items: center; gap: 16px; }
+
+    .nav-btn {
+        width: 40px; height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--nav-border);
+        display: grid; place-items: center;
+        color: var(--nav-text);
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--nav-surface);
+    }
+    .nav-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+    .nav-user {
+        display: flex; align-items: center; gap: 12px;
+        padding-left: 16px; border-left: 1px solid var(--nav-border);
+        text-decoration: none;
+    }
+
+    .nav-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #818cf8);
+        color: white; display: grid; place-items: center; font-weight: 700;
+        box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+    }
+
+    .nav-mobile-toggle { display: none; font-size: 24px; color: var(--nav-text); cursor: pointer; }
+
+    /* Responsive Logic */
+    @media (max-width: 1024px) {
+        .nav-menu { display: none; }
+        .nav-menu.is-open {
+            display: flex; flex-direction: column;
+            position: absolute; top: var(--header-h); left: 0; right: 0;
+            background: var(--nav-bg); padding: 16px; border-bottom: 1px solid var(--nav-border);
         }
-    });
-    
-    // Mobile back button functionality
-    window.addEventListener('popstate', function() {
-        // Handle navigation if needed
-    });
-    
-    // Auto-highlight current period
-    const currentPeriod = "{{ period }}";
-    console.log(`Current reporting period: ${currentPeriod}`);
-    
-    // Add subtle animation to stats on page load
-    setTimeout(() => {
-        const stats = document.querySelectorAll('.stat-card');
-        stats.forEach(stat => {
-            stat.classList.add('animate-pulse');
-            setTimeout(() => {
-                stat.classList.remove('animate-pulse');
-            }, 1000);
+        .nav-mobile-toggle { display: block; }
+        .desktop-only { display: none !important; }
+    }
+</style>
+
+<nav class="universal-navbar">
+    <div class="nav-inner">
+        <a href="/dashboard" class="nav-brand">
+            <i class="material-symbols-rounded">local_fire_department</i>
+            <span>GasFlow</span>
+        </a>
+
+        <div class="nav-menu" id="universalNavMenu">
+            <a href="/customers" class="nav-link">
+                <i class="material-symbols-rounded">group</i> Customers
+            </a>
+            <a href="/drivers" class="nav-link">
+                <i class="material-symbols-rounded">local_shipping</i> Drivers
+            </a>
+            <a href="/assignments" class="nav-link">
+                <i class="material-symbols-rounded">assignment</i> Assignments
+                {% if stats and stats.pending > 0 %}
+                <span class="nav-badge">{{ stats.pending }}</span>
+                {% endif %}
+            </a>
+            <a href="/reports" class="nav-link">
+                <i class="material-symbols-rounded">bar_chart</i> Reports
+            </a>
+            <a href="/driver-audit" class="nav-link">
+                <i class="material-symbols-rounded">fact_check</i> Audit
+            </a>
+        </div>
+
+        <div class="nav-actions">
+            <button class="nav-btn" id="navThemeToggle" title="Toggle Theme">
+                <i class="material-symbols-rounded">light_mode</i>
+            </button>
+            
+            <div class="nav-mobile-toggle" id="navMobileBtn">
+                <i class="material-symbols-rounded">menu</i>
+            </div>
+
+            <a href="/profile" class="nav-user desktop-only">
+                <div style="text-align: right;">
+                    <p style="font-size: 13px; font-weight: 700; color: var(--nav-text-active); margin:0;">Admin User</p>
+                    <p style="font-size: 11px; color: var(--nav-text); margin:0;">Fleet Manager</p>
+                </div>
+                <div class="nav-avatar">AD</div>
+            </a>
+
+            <a href="/logout" class="nav-btn desktop-only" title="Logout">
+                <i class="material-symbols-rounded">logout</i>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<script>
+    (function() {
+        /* 1. Theme Engine Integration */
+        const themeBtn = document.getElementById('navThemeToggle');
+        const htmlEl = document.documentElement;
+        
+        const applyTheme = (theme) => {
+            htmlEl.setAttribute('data-theme', theme);
+            localStorage.setItem('gasflow_theme', theme);
+            const icon = themeBtn.querySelector('i');
+            icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+        };
+
+        themeBtn.addEventListener('click', () => {
+            const current = htmlEl.getAttribute('data-theme') || 'dark';
+            applyTheme(current === 'dark' ? 'light' : 'dark');
         });
-    }, 1000);
+
+        // Initialize from storage
+        applyTheme(localStorage.getItem('gasflow_theme') || 'dark');
+
+        /* 2. Intelligent Active Link Detection */
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll('.nav-link');
+        
+        navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (currentPath === href || (href !== '/dashboard' && currentPath.startsWith(href))) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+
+        /* 3. Mobile Menu Toggle */
+        const mobileBtn = document.getElementById('navMobileBtn');
+        const navMenu = document.getElementById('universalNavMenu');
+        
+        mobileBtn.addEventListener('click', () => {
+            navMenu.classList.toggle('is-open');
+            const icon = mobileBtn.querySelector('i');
+            icon.textContent = navMenu.classList.contains('is-open') ? 'close' : 'menu';
+        });
+    })();
+</script>
+
+<main class="container">
+    <header class="page-header">
+        <h1>Performance Analytics</h1>
+        <p style="color: var(--text-muted); margin-top: 4px;">Monitor fleet activity and delivery efficiency metrics.</p>
+    </header>
+
+    <div class="period-card">
+        <div>
+            <p class="stat-label" style="margin-bottom: 12px;">Reporting Window</p>
+            <div class="filter-group">
+                <a href="/reports?period=24h" class="filter-btn {% if period == '24h' %}active{% endif %}">24 Hours</a>
+                <a href="/reports?period=1w" class="filter-btn {% if period == '1w' %}active{% endif %}">7 Days</a>
+                <a href="/reports?period=1m" class="filter-btn {% if period == '1m' %}active{% endif %}">30 Days</a>
+            </div>
+        </div>
+        <a href="/export-report?period={{ period }}" class="btn-export">
+            <i class="material-symbols-rounded">file_download</i>
+            Generate Spreadsheet
+        </a>
+    </div>
+
+    <section class="stats-grid">
+        <div class="stat-card">
+            <i class="material-symbols-rounded" style="color: var(--primary)">analytics</i>
+            <div>
+                <p class="stat-label">Total Requests</p>
+                <h3 class="stat-value">{{ summary.total }}</h3>
+            </div>
+        </div>
+        <div class="stat-card">
+            <i class="material-symbols-rounded" style="color: var(--success)">task_alt</i>
+            <div>
+                <p class="stat-label">Delivered</p>
+                <h3 class="stat-value" style="color: var(--success)">{{ summary.delivered }}</h3>
+            </div>
+        </div>
+        <div class="stat-card">
+            <i class="material-symbols-rounded" style="color: var(--info)">near_me</i>
+            <div>
+                <p class="stat-label">In Transit</p>
+                <h3 class="stat-value" style="color: var(--info)">{{ summary.in_progress }}</h3>
+            </div>
+        </div>
+        <div class="stat-card">
+            <i class="material-symbols-rounded" style="color: var(--warning)">pending_actions</i>
+            <div>
+                <p class="stat-label">Pending</p>
+                <h3 class="stat-value" style="color: var(--warning)">{{ summary.pending }}</h3>
+            </div>
+        </div>
+    </section>
+
+    <section class="table-card">
+        <div class="table-header">
+            <h2 style="font-size: 16px; font-weight: 700;">Order Log Details</h2>
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Showing {{ orders|length }} entries</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Territory</th>
+                        <th>Assigned Personnel</th>
+                        <th>Current State</th>
+                        <th>Completion Time</th>
+                        <th>Logged On</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td style="font-weight: 700;">{{ order.customer_name }}</td>
+                        <td><i class="fa-solid fa-location-dot" style="font-size: 10px; margin-right: 5px; color: var(--text-muted);"></i>{{ order.city }}</td>
+                        <td>
+                            {% if order.assigned_driver_name %}
+                            <div style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 600;">
+                                <i class="fa-solid fa-id-badge"></i> {{ order.assigned_driver_name }}
+                            </div>
+                            {% else %}<span style="color: var(--text-muted); font-style: italic;">Unassigned</span>{% endif %}
+                        </td>
+                        <td>
+                            <span class="status-pill {% if order.status == 'DELIVERED' %}delivered{% elif order.status == 'IN_PROGRESS' %}progress{% else %}pending{% endif %}">
+                                {{ order.status }}
+                            </span>
+                        </td>
+                        <td style="font-family: 'Inter'; font-size: 13px;">
+                            {% if order.status == 'DELIVERED' and order.delivered_at %}
+                            {{ to_ist(order.delivered_at).strftime('%d %b, %I:%M %p') }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td style="color: var(--text-muted); font-size: 13px;">
+                            {{ to_ist(order.created_at).strftime('%d %b, %I:%M %p') }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" style="text-align: center; padding: 60px; color: var(--text-muted);">No operational data found for this period.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+    const themeBtn = document.getElementById('themeBtn');
+    const html = document.documentElement;
+    
+    const setTheme = (theme) => {
+        html.setAttribute('data-theme', theme);
+        localStorage.setItem('gasflow_theme', theme);
+        themeBtn.querySelector('i').textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+    };
+
+    setTheme(localStorage.getItem('gasflow_theme') || 'dark');
+
+    themeBtn.addEventListener('click', () => {
+        setTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
 </script>
 </body>
 </html>

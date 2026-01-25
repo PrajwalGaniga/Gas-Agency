@@ -82,6 +82,12 @@ async def customer_management(
         ]
     
     all_matching_customers = list(customer_collection.find(query).sort("created_at", -1))
+    stats = {
+        "pending": order_collection.count_documents({
+            "admin_id": admin_id, 
+            "status": "PENDING"
+        })
+    }
 
     # 2. Optimization: Fetch ALL active orders for this admin once
     active_orders = list(order_collection.find({
@@ -156,9 +162,10 @@ async def customer_management(
         "request": request, 
         "customers": processed_customers,
         "cities": cities,
-        "drivers": drivers, # Now fully JSON serializable
+        "drivers": drivers,
         "active_filter": filter_type,
-        "search_query": search or ""
+        "search_query": search or "",
+        "stats": stats  # 👈 This line fixes the UndefinedError
     })
 
 @customer_router.post("/add-city")

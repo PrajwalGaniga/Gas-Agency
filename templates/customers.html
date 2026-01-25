@@ -1,377 +1,284 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Management | GasFlow</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * { 
-            font-family: 'Inter', sans-serif; 
-            -webkit-tap-highlight-color: transparent;
+    <script>
+        tailwind.config = {
+            darkMode: ['class', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151F32',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        indigo: {
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                        }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
         }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass {
+                @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800;
+            }
+            .card-hover {
+                @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-indigo-500/30;
+            }
+            .form-input {
+                @apply w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600;
+            }
+            .btn-primary {
+                @apply bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-lg shadow-indigo-500/20 border border-transparent;
+            }
+            .btn-secondary {
+                @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700;
+            }
         }
-        
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        @keyframes modalFadeIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        
-        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-        .animate-slide-in { animation: slideIn 0.4s ease-out forwards; }
-        .animate-pulse { animation: pulse 2s infinite; }
-        .animate-modal-in { animation: modalFadeIn 0.3s ease-out forwards; }
-        
-        .card-hover {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-        }
-        
-        .gradient-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        
-        .gradient-success {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-        
-        .gradient-warning {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        }
-        
-        .gradient-info {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        }
-        
-        .gradient-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        }
-        
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .status-badge {
-            font-size: 0.7rem;
-            letter-spacing: 0.5px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-        
-        .mobile-only { display: block; }
-        .desktop-only { display: none; }
-        
-        @media (min-width: 768px) {
-            .mobile-only { display: none; }
-            .desktop-only { display: block; }
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-        }
-        
-        /* Table hover effect */
-        .table-row-hover:hover { 
-            background-color: #f9fafb; 
-            transition: background-color 0.2s ease;
-        }
-        
-        /* Modal styles */
+
+        /* Modal Transitions */
         .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
+            @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm opacity-0 invisible transition-all duration-300;
         }
-        
         .modal-overlay.active {
-            opacity: 1;
-            visibility: visible;
+            @apply opacity-100 visible;
         }
-        
         .modal-content {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            transform: scale(0.9);
-            opacity: 0;
-            transition: transform 0.3s, opacity 0.3s;
+            @apply bg-white dark:bg-slate-900 w-[90%] max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 transform scale-95 opacity-0 transition-all duration-300;
         }
-        
         .modal-overlay.active .modal-content {
-            transform: scale(1);
-            opacity: 1;
+            @apply scale-100 opacity-100;
         }
-        
-        /* Notification styles */
+
+        /* Notification Toast */
         .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            transform: translateX(100%);
-            opacity: 0;
-            transition: transform 0.3s, opacity 0.3s;
+            @apply fixed top-5 right-5 px-6 py-4 rounded-xl text-white font-medium z-[60] flex items-center gap-3 shadow-xl transform translate-x-[120%] transition-transform duration-300;
         }
-        
         .notification.show {
-            transform: translateX(0);
-            opacity: 1;
+            @apply translate-x-0;
         }
+        .notification.success { @apply bg-emerald-500; }
+        .notification.error { @apply bg-red-500; }
+        .notification.info { @apply bg-blue-500; }
         
-        .notification.success { background: #10b981; }
-        .notification.error { background: #ef4444; }
-        .notification.info { background: #3b82f6; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-700 rounded-full; }
+        ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-600; }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-    
-    <!-- Mobile Navigation -->
-    <div class="mobile-only fixed top-4 left-4 z-40">
-        <button onclick="window.history.back()" class="gradient-primary text-white p-3 rounded-xl shadow-lg">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-    </div>
-    
-    <!-- Navigation -->
-    <nav class="gradient-primary text-white shadow-xl sticky top-0 z-30">
-        <div class="container mx-auto px-4 lg:px-6 py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-users"></i>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 font-sans min-h-screen flex flex-col selection:bg-indigo-500/30">
+
+    <nav class="glass sticky top-0 z-40 h-[72px]">
+        <div class="max-w-[1400px] mx-auto px-4 lg:px-6 h-full flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <button onclick="window.history.back()" class="lg:hidden w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
+                    <i class="material-symbols-rounded">arrow_back</i>
+                </button>
+
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                        <i class="material-symbols-rounded text-2xl">group</i>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold">Customer Management</h1>
-                        <p class="text-xs opacity-80">{{ customers|length }} customers registered</p>
+                        <h1 class="font-display font-bold text-lg leading-tight text-slate-900 dark:text-white">Customer Management</h1>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ customers|length }} customers registered</p>
                     </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Live</span>
                 </div>
                 
-                <div class="flex items-center space-x-3">
-                    <div class="desktop-only flex items-center space-x-2 bg-white bg-opacity-10 px-3 py-1.5 rounded-lg">
-                        <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        <span class="text-xs font-medium">Live</span>
-                    </div>
-                    
-                    <button onclick="openModal('addCityModal')" class="px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition flex items-center gap-2">
-                        <i class="fas fa-city"></i>
-                        <span class="desktop-only text-sm font-medium">Add City</span>
-                    </button>
-                    
-                    <button onclick="openModal('addCustModal')" class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition flex items-center gap-2 shadow-md">
-                        <i class="fas fa-user-plus"></i>
-                        <span class="desktop-only text-sm font-medium">Add Customer</span>
-                    </button>
-                    
-                    <a href="/dashboard" class="px-4 py-2 bg-white bg-opacity-10 hover:bg-opacity-20 rounded-lg transition flex items-center gap-2">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span class="desktop-only text-sm font-medium">Dashboard</span>
-                    </a>
-                </div>
+                <button onclick="openModal('addCityModal')" class="btn-secondary px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all">
+                    <i class="material-symbols-rounded text-lg">location_city</i>
+                    <span class="hidden md:inline">Add City</span>
+                </button>
+                
+                <button onclick="openModal('addCustModal')" class="btn-primary px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all">
+                    <i class="material-symbols-rounded text-lg">person_add</i>
+                    <span class="hidden md:inline">Add Customer</span>
+                </button>
+                
+                <a href="/dashboard" class="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all" title="Dashboard">
+                    <i class="material-symbols-rounded">dashboard</i>
+                </a>
             </div>
         </div>
     </nav>
 
-    <div class="container mx-auto px-4 lg:px-6 py-6">
+    <main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-8 w-full flex-grow">
         
-        <!-- Stats Summary -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 animate-fade-in">
-            <div class="bg-white p-4 rounded-xl shadow">
-                <div class="flex items-center justify-between">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-fade-in-up">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
+                <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs text-gray-500 font-medium">Total Customers</p>
-                        <p class="text-2xl font-bold text-gray-800">{{ customers|length }}</p>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Customers</p>
+                        <p class="font-display text-3xl font-bold text-slate-900 dark:text-white">{{ customers|length }}</p>
                     </div>
-                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-users text-blue-600"></i>
+                    <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                        <i class="material-symbols-rounded text-2xl">group</i>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-white p-4 rounded-xl shadow">
-                <div class="flex items-center justify-between">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
+                <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs text-gray-500 font-medium">Pending Orders</p>
-                        <p class="text-2xl font-bold text-yellow-600">
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Pending Orders</p>
+                        <p class="font-display text-3xl font-bold text-amber-500">
                             {{ customers|selectattr('current_status', 'equalto', 'PENDING')|list|length }}
                         </p>
                     </div>
-                    <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-clock text-yellow-600"></i>
+                    <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                        <i class="material-symbols-rounded text-2xl">schedule</i>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-white p-4 rounded-xl shadow">
-                <div class="flex items-center justify-between">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
+                <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs text-gray-500 font-medium">In Progress</p>
-                        <p class="text-2xl font-bold text-blue-600">
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">In Progress</p>
+                        <p class="font-display text-3xl font-bold text-blue-500">
                             {{ customers|selectattr('current_status', 'equalto', 'IN_PROGRESS')|list|length }}
                         </p>
                     </div>
-                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-truck text-blue-600"></i>
+                    <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                        <i class="material-symbols-rounded text-2xl">local_shipping</i>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-white p-4 rounded-xl shadow">
-                <div class="flex items-center justify-between">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
+                <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs text-gray-500 font-medium">Delivered</p>
-                        <p class="text-2xl font-bold text-green-600">
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Delivered</p>
+                        <p class="font-display text-3xl font-bold text-emerald-500">
                             {{ customers|selectattr('current_status', 'equalto', 'DELIVERED')|list|length }}
                         </p>
                     </div>
-                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-check-circle text-green-600"></i>
+                    <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                        <i class="material-symbols-rounded text-2xl">check_circle</i>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Search and Bulk Actions Section -->
-        <div class="mb-6 animate-fade-in">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <!-- Search Form -->
-                <form action="/customers" method="GET" class="w-full md:w-1/3 relative">
-                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" 
-                           name="search" 
-                           value="{{ search_query }}" 
-                           placeholder="Search by name, phone, city..." 
-                           class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none shadow-sm">
-                </form>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 animate-fade-in-up" style="animation-delay: 0.1s;">
+            <form action="/customers" method="GET" class="w-full md:w-96 relative group">
+                <i class="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">search</i>
+                <input type="text" 
+                       name="search" 
+                       value="{{ search_query }}" 
+                       placeholder="Search customers..." 
+                       class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-400 shadow-sm">
+            </form>
 
-                <!-- Bulk Order Button (Hidden initially) -->
-                <button id="bulkOrderBtn" 
-                        onclick="submitBulkOrder()" 
-                        class="hidden gradient-primary text-white px-6 py-3 rounded-xl shadow-md font-medium hover:opacity-90 transition flex items-center gap-2">
-                    <i class="fas fa-box-open"></i>
-                    <span class="desktop-only">Place Order for Selected</span>
-                    <span class="mobile-only">Bulk Order</span>
-                </button>
-            </div>
+            <button id="bulkOrderBtn" 
+                    onclick="submitBulkOrder()" 
+                    class="hidden w-full md:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/25 font-medium transition-all flex items-center justify-center gap-2 animate-bounce">
+                <i class="material-symbols-rounded">inventory_2</i>
+                <span>Place Order for Selected</span>
+            </button>
         </div>
 
-        <!-- Filter Buttons -->
-        <div class="flex flex-wrap gap-2 mb-6">
-            <span class="text-sm text-gray-600 font-medium w-full md:w-auto mb-2 md:mb-0">Filter by Status:</span>
-            <div class="flex flex-wrap gap-2">
-                <a href="/customers?filter_type=all" 
-                   class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'all' %} gradient-primary text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
-                    <i class="fas fa-layer-group mr-2"></i>
-                    <span>All</span>
-                </a>
-                <a href="/customers?filter_type=delivered" 
-                   class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'delivered' %} gradient-success text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    <span>Delivered</span>
-                </a>
-                <a href="/customers?filter_type=in_progress" 
-                   class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'in_progress' %} gradient-info text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
-                    <i class="fas fa-truck mr-2"></i>
-                    <span>In Progress</span>
-                </a>
-                <a href="/customers?filter_type=pending" 
-                   class="px-4 py-2.5 rounded-lg transition flex-1 text-center {% if active_filter == 'pending' %} gradient-warning text-white shadow-lg {% else %} bg-white text-gray-700 shadow {% endif %}">
-                    <i class="fas fa-clock mr-2"></i>
-                    <span>Pending</span>
-                </a>
-            </div>
+        <div class="flex flex-wrap gap-2 mb-6 animate-fade-in-up" style="animation-delay: 0.2s;">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider self-center mr-2">Filter Status:</span>
+            
+            <a href="/customers?filter_type=all" 
+               class="px-4 py-2 rounded-lg text-xs font-medium border transition-all flex items-center gap-2
+               {% if active_filter == 'all' %} bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20 {% else %} bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 {% endif %}">
+                <i class="material-symbols-rounded text-sm">layers</i> All
+            </a>
+            
+            <a href="/customers?filter_type=delivered" 
+               class="px-4 py-2 rounded-lg text-xs font-medium border transition-all flex items-center gap-2
+               {% if active_filter == 'delivered' %} bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20 {% else %} bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 {% endif %}">
+                <i class="material-symbols-rounded text-sm">check_circle</i> Delivered
+            </a>
+            
+            <a href="/customers?filter_type=in_progress" 
+               class="px-4 py-2 rounded-lg text-xs font-medium border transition-all flex items-center gap-2
+               {% if active_filter == 'in_progress' %} bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/20 {% else %} bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 {% endif %}">
+                <i class="material-symbols-rounded text-sm">local_shipping</i> In Progress
+            </a>
+            
+            <a href="/customers?filter_type=pending" 
+               class="px-4 py-2 rounded-lg text-xs font-medium border transition-all flex items-center gap-2
+               {% if active_filter == 'pending' %} bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20 {% else %} bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 {% endif %}">
+                <i class="material-symbols-rounded text-sm">schedule</i> Pending
+            </a>
         </div>
         
-        <!-- Customer Table -->
-        <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 animate-fade-in">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden animate-fade-in-up" style="animation-delay: 0.3s;">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
-                    <thead class="bg-gray-50 text-gray-600 text-xs uppercase font-semibold">
+                    <thead class="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
                         <tr>
-                            <th class="p-4 border-b text-center w-12">
+                            <th class="p-4 w-12 text-center">
                                 <input type="checkbox" 
                                        id="selectAll" 
                                        onclick="toggleAll(this)" 
-                                       class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer">
+                                       class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-100 dark:bg-slate-800 dark:border-slate-600 cursor-pointer transition-colors">
                             </th>
-                            <th class="p-4 border-b">Customer Info</th>
-                            <th class="p-4 border-b">Location</th>
-                            <th class="p-4 border-b">GPS Status</th>
-                            <th class="p-4 border-b">Order Status</th>
-                            <th class="p-4 border-b w-48">Assigned Driver</th>
-                            <th class="p-4 border-b text-center">Actions</th>
+                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Customer Info</th>
+                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Location</th>
+                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">GPS Status</th>
+                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order Status</th>
+                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-56">Assigned Driver</th>
+                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 text-sm">
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         {% for c in customers %}
-                        <tr class="table-row-hover transition">
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                             <td class="p-4 text-center">
                                 <input type="checkbox" 
                                        name="customer_select" 
                                        value="{{ c._id }}" 
                                        onclick="updateBulkBtn()" 
-                                       class="w-4 h-4 rounded text-purple-600 cursor-pointer">
+                                       class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-100 dark:bg-slate-800 dark:border-slate-600 cursor-pointer transition-colors">
                             </td>
                             <td class="p-4">
-                                <div class="font-bold text-gray-800">{{ c.name }}</div>
-                                <div class="text-xs text-blue-600 font-medium">{{ c.phone_number }}</div>
-                                <div class="text-[10px] text-gray-400 mt-1">
-                                    <i class="far fa-clock mr-1"></i>
+                                <div class="font-semibold text-slate-900 dark:text-slate-200">{{ c.name }}</div>
+                                <div class="text-xs text-indigo-500 font-medium font-mono mt-0.5">{{ c.phone_number }}</div>
+                                <div class="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                                    <i class="material-symbols-rounded text-[12px]">calendar_today</i>
                                     {% if c.created_at %}
                                         {{ c.created_at.strftime('%d %b %Y') }}
                                     {% else %}
@@ -380,73 +287,77 @@
                                 </div>
                             </td>
                             <td class="p-4">
-                                <div class="text-gray-700 font-medium">{{ c.city }}</div>
-                                <div class="text-xs text-gray-500 truncate w-32" title="{{ c.landmark }}">{{ c.landmark }}</div>
+                                <div class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ c.city }}</div>
+                                <div class="text-xs text-slate-500 truncate w-36" title="{{ c.landmark }}">{{ c.landmark }}</div>
                                 {% if c.pincode %}
-                                <div class="text-[10px] text-gray-400">Pin: {{ c.pincode }}</div>
+                                <div class="text-[10px] text-slate-400 font-mono mt-0.5">PIN: {{ c.pincode }}</div>
                                 {% endif %}
                             </td>
                             <td class="p-4">
                                 {% if c.is_verified %}
-                                <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold flex items-center w-max gap-1">
-                                    <i class="fas fa-map-marker-alt"></i> Verified
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                    <i class="material-symbols-rounded text-[12px]">location_on</i> Verified
                                 </span>
-                                <div class="text-[10px] text-gray-400 mt-1 font-mono">
+                                <div class="text-[10px] text-slate-400 mt-1 font-mono">
                                     {{ "%.4f"|format(c.verified_lat) if c.verified_lat else '' }}, {{ "%.4f"|format(c.verified_lng) if c.verified_lng else '' }}
                                 </div>
                                 {% else %}
-                                <span class="bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-bold flex items-center w-max gap-1">
-                                    <i class="fas fa-times-circle"></i> Not Verified
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                                    <i class="material-symbols-rounded text-[12px]">wrong_location</i> Not Verified
                                 </span>
                                 {% endif %}
                             </td>
                             <td class="p-4">
                                 {% if c.current_status == 'PENDING' %}
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 font-bold text-[10px]">
-                                        <i class="fas fa-clock mr-1"></i> PENDING
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> PENDING
                                     </span>
                                 {% elif c.current_status == 'IN_PROGRESS' %}
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-bold text-[10px]">
-                                        <i class="fas fa-truck mr-1"></i> IN PROGRESS
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-500 border border-blue-500/20">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> IN PROGRESS
                                     </span>
                                 {% elif c.current_status == 'DELIVERED' %}
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 font-bold text-[10px]">
-                                        <i class="fas fa-check-circle mr-1"></i> DELIVERED
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> DELIVERED
                                     </span>
                                 {% else %}
-                                    <span class="text-gray-400 text-[10px]">No Active Order</span>
+                                    <span class="text-slate-400 text-[10px] font-medium">--</span>
                                 {% endif %}
                             </td>
                             <td class="p-4">
                                 {% if c.active_order_id and c.current_status in ['PENDING', 'IN_PROGRESS'] %}
-                                    <select onchange="reassignDriver('{{ c.active_order_id }}', this.value)" 
-                                            class="w-full text-[10px] border-gray-300 rounded focus:ring-purple-500 p-1 border bg-white shadow-sm">
-                                        <option value="" disabled>Reassign Driver</option>
-                                        {% for d in drivers %}
-                                            <option value="{{ d._id }}" {% if d._id|string == c.assigned_driver_id %}selected{% endif %}>
-                                                {{ d.name }} ({{ d.assigned_cities[0] if d.assigned_cities else 'N/A' }})
-                                            </option>
-                                        {% endfor %}
-                                    </select>
+                                    <div class="relative">
+                                        <select onchange="reassignDriver('{{ c.active_order_id }}', this.value)" 
+                                                class="w-full text-xs py-1.5 pl-2 pr-6 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-indigo-400 transition-colors">
+                                            <option value="" disabled>Reassign Driver</option>
+                                            {% for d in drivers %}
+                                                <option value="{{ d._id }}" {% if d._id|string == c.assigned_driver_id %}selected{% endif %}>
+                                                    {{ d.name }} ({{ d.assigned_cities[0] if d.assigned_cities else 'N/A' }})
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                        <i class="material-symbols-rounded absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">expand_more</i>
+                                    </div>
                                 {% else %}
-                                    <span class="text-xs text-gray-400 italic">--</span>
+                                    <span class="text-xs text-slate-400 italic">No Active Order</span>
                                 {% endif %}
                             </td>
-                            <td class="p-4">
-                                <div class="flex items-center justify-center gap-3">
+                            <td class="p-4 text-right">
+                                <div class="flex items-center justify-end gap-2">
                                     {% if c.current_status in ['PENDING', 'IN_PROGRESS'] %}
-                                        <button disabled class="text-gray-300 cursor-not-allowed">
-                                            <i class="fas fa-plus-circle text-xl"></i>
+                                        <button disabled class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 dark:text-slate-700 cursor-not-allowed">
+                                            <i class="material-symbols-rounded">add_circle</i>
                                         </button>
                                     {% else %}
                                         <button onclick="openQuickAssignModal('{{ c._id }}', '{{ c.name }}', '{{ c.city }}')" 
-                                                class="text-green-500 hover:text-green-700 transition transform hover:scale-110">
-                                            <i class="fas fa-plus-circle text-xl"></i>
+                                                class="w-8 h-8 flex items-center justify-center rounded-lg text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all" title="Create Order">
+                                            <i class="material-symbols-rounded">add_circle</i>
                                         </button>
                                     {% endif %}
+                                    
                                     <button onclick="openEditModal('{{ c._id }}', '{{ c.name }}', '{{ c.phone_number }}', '{{ c.city }}', '{{ c.landmark }}', '{{ c.pincode or "" }}')" 
-                                            class="text-gray-400 hover:text-blue-600 transition transform hover:scale-110">
-                                        <i class="fas fa-edit text-lg"></i>
+                                            class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all" title="Edit Customer">
+                                        <i class="material-symbols-rounded">edit</i>
                                     </button>
                                 </div>
                             </td>
@@ -456,151 +367,153 @@
                 </table>
             </div>
         </div>
-    </div>
+    </main>
 
-    <!-- Assign Order Modal -->
+    <footer class="mt-auto py-8 text-center border-t border-slate-200 dark:border-slate-800">
+        <div class="max-w-[1400px] mx-auto px-6">
+            <p class="font-bold text-sm text-slate-900 dark:text-white tracking-wide">GasFlow Customer Management</p>
+            <p class="mt-2 text-xs text-slate-500 dark:text-slate-500">© 2026 GasFlow Delivery Services. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <div id="notificationContainer"></div>
+
     <div id="assignModal" class="modal-overlay">
         <div class="modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-800">Assign Delivery</h2>
-                <button onclick="closeModal('assignModal')" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
+            <div class="flex justify-between items-center mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="material-symbols-rounded text-indigo-500">local_shipping</i> Assign Delivery
+                </h2>
+                <button onclick="closeModal('assignModal')" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="material-symbols-rounded text-xl">close</i>
                 </button>
             </div>
-            <p class="text-sm text-gray-600 mb-6">Order for <span id="assignCustName" class="font-bold text-gray-800"></span> in <span id="assignCity" class="font-bold text-indigo-600"></span></p>
+            
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Create order for <span id="assignCustName" class="font-bold text-slate-900 dark:text-white"></span> in <span id="assignCity" class="font-bold text-indigo-500"></span></p>
             
             <form action="/create-order" method="POST" class="space-y-4">
                 <input type="hidden" id="assignCustId" name="customer_id">
                 
                 <div class="space-y-3">
-                    <label class="flex items-center p-4 border-2 border-indigo-100 rounded-xl cursor-pointer hover:bg-indigo-50 transition bg-indigo-50/50">
-                        <input type="radio" name="driver_id" value="auto" checked class="w-5 h-5 text-indigo-600 focus:ring-indigo-500">
-                        <div class="ml-4">
-                            <p class="font-bold text-indigo-700">🚀 Smart Auto-Assign</p>
-                            <p class="text-[10px] text-indigo-500">Assigns to the least busy active driver in this city</p>
+                    <label class="flex items-start p-4 border border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-500/10 rounded-xl cursor-pointer hover:border-indigo-500 transition-all relative overflow-hidden group">
+                        <input type="radio" name="driver_id" value="auto" checked class="mt-1 w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                        <div class="ml-3 z-10">
+                            <p class="font-bold text-indigo-600 dark:text-indigo-400 text-sm">🚀 Smart Auto-Assign</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Automatically assigns to the nearest available driver.</p>
                         </div>
                     </label>
 
-                    <div id="driverList" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        <!-- Drivers will be populated here -->
-                    </div>
+                    <div id="driverList" class="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                        </div>
 
-                    <label class="flex items-center p-4 border-2 border-gray-100 rounded-xl cursor-pointer hover:bg-gray-50 transition">
-                        <input type="radio" name="driver_id" value="later" class="w-5 h-5 text-gray-400">
-                        <div class="ml-4">
-                            <p class="font-bold text-gray-700">🕒 Assign Later</p>
-                            <p class="text-[10px] text-gray-500">Keep order unassigned for manual review</p>
+                    <label class="flex items-center p-4 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                        <input type="radio" name="driver_id" value="later" class="w-4 h-4 text-slate-400 border-slate-300 focus:ring-indigo-500">
+                        <div class="ml-3">
+                            <p class="font-bold text-slate-700 dark:text-slate-200 text-sm">🕒 Assign Later</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Keep in queue for manual assignment.</p>
                         </div>
                     </label>
                 </div>
 
-                <button type="submit" class="w-full gradient-primary text-white py-4 rounded-xl font-bold shadow-lg hover:opacity-90 transition mt-4 flex items-center justify-center gap-2">
-                    <i class="fas fa-check-circle"></i> Confirm Order Creation
+                <button type="submit" class="btn-primary w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 mt-6">
+                    <i class="material-symbols-rounded">check_circle</i> Confirm Order
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- Add Customer Modal -->
     <div id="addCustModal" class="modal-overlay">
         <div class="modal-content">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-gray-800">Register New Customer</h2>
-                <button onclick="closeModal('addCustModal')" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
+            <div class="flex justify-between items-center mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="material-symbols-rounded text-indigo-500">person_add</i> New Customer
+                </h2>
+                <button onclick="closeModal('addCustModal')" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="material-symbols-rounded text-xl">close</i>
                 </button>
             </div>
             <form action="/add-customer" method="POST" class="space-y-4">
-                <input type="text" name="name" placeholder="Full Name *" 
-                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required>
-                <input type="text" name="phone" placeholder="Phone Number *" 
-                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required>
-                <select name="city" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none appearance-none" required>
-                    {% for city in cities %}
-                    <option value="{{ city.name }}">{{ city.name }}</option>
-                    {% endfor %}
-                </select>
-                <input type="text" name="pincode" placeholder="Pincode" 
-                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none">
-                <textarea name="landmark" placeholder="Complete Address & Landmark *" rows="3" 
-                          class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required></textarea>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" name="name" placeholder="Full Name *" class="form-input" required>
+                    <input type="text" name="phone" placeholder="Phone Number *" class="form-input" required>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="relative">
+                        <select name="city" class="form-input appearance-none" required>
+                            <option value="" disabled selected>Select City</option>
+                            {% for city in cities %}
+                            <option value="{{ city.name }}">{{ city.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <i class="material-symbols-rounded absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</i>
+                    </div>
+                    <input type="text" name="pincode" placeholder="Pincode" class="form-input">
+                </div>
+                
+                <textarea name="landmark" placeholder="Complete Address & Landmark *" rows="3" class="form-input resize-none" required></textarea>
+                
                 <div class="flex gap-3 pt-2">
-                    <button type="button" onclick="closeModal('addCustModal')" 
-                            class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium">
-                        Cancel
-                    </button>
-                    <button type="submit" 
-                            class="flex-1 gradient-success text-white py-3 rounded-lg font-medium shadow-md">
-                        Register
-                    </button>
+                    <button type="button" onclick="closeModal('addCustModal')" class="btn-secondary flex-1 py-3 rounded-xl font-medium">Cancel</button>
+                    <button type="submit" class="btn-primary flex-1 py-3 rounded-xl font-bold shadow-md">Register Customer</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Add City Modal -->
     <div id="addCityModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-800">Add Service City</h2>
-                <button onclick="closeModal('addCityModal')" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
+        <div class="modal-content !max-w-md">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="material-symbols-rounded text-indigo-500">location_city</i> Add City
+                </h2>
+                <button onclick="closeModal('addCityModal')" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="material-symbols-rounded text-xl">close</i>
                 </button>
             </div>
             <form action="/add-city" method="POST" class="space-y-4">
-                <input type="text" name="city_name" placeholder="Enter city name *" 
-                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required>
-                <button type="submit" 
-                        class="w-full gradient-primary text-white py-3 rounded-lg font-bold shadow-md hover:opacity-90 transition">
-                    Add City
-                </button>
+                <input type="text" name="city_name" placeholder="Enter city name *" class="form-input" required>
+                <button type="submit" class="btn-primary w-full py-3 rounded-xl font-bold">Add Service City</button>
             </form>
         </div>
     </div>
 
-    <!-- Edit Customer Modal -->
     <div id="editCustModal" class="modal-overlay">
         <div class="modal-content">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-gray-800">Edit Customer</h2>
-                <button onclick="closeModal('editCustModal')" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
+            <div class="flex justify-between items-center mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="material-symbols-rounded text-indigo-500">edit</i> Edit Customer
+                </h2>
+                <button onclick="closeModal('editCustModal')" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="material-symbols-rounded text-xl">close</i>
                 </button>
             </div>
             <form action="/update-customer" method="POST" class="space-y-4">
                 <input type="hidden" id="edit_customer_id" name="customer_id">
-                <input type="text" id="edit_name" name="name" placeholder="Full Name *" 
-                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required>
-                <input type="text" id="edit_phone" name="phone_number" placeholder="Phone Number *" 
-                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required>
-                <select id="edit_city" name="city" 
-                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none appearance-none" required>
-                    {% for city in cities %}
-                    <option value="{{ city.name }}">{{ city.name }}</option>
-                    {% endfor %}
-                </select>
-                <input type="text" id="edit_pincode" name="pincode" placeholder="Pincode" 
-                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none">
-                <textarea id="edit_landmark" name="landmark" placeholder="Address & Landmark *" rows="3" 
-                          class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required></textarea>
-                <button type="submit" 
-                        class="w-full gradient-primary text-white py-3 rounded-lg font-bold shadow-md">
-                    Save Changes
-                </button>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="edit_name" name="name" placeholder="Full Name *" class="form-input" required>
+                    <input type="text" id="edit_phone" name="phone_number" placeholder="Phone Number *" class="form-input" required>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="relative">
+                        <select id="edit_city" name="city" class="form-input appearance-none" required>
+                            {% for city in cities %}
+                            <option value="{{ city.name }}">{{ city.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <i class="material-symbols-rounded absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</i>
+                    </div>
+                    <input type="text" id="edit_pincode" name="pincode" placeholder="Pincode" class="form-input">
+                </div>
+                
+                <textarea id="edit_landmark" name="landmark" placeholder="Address & Landmark *" rows="3" class="form-input resize-none" required></textarea>
+                
+                <button type="submit" class="btn-primary w-full py-3 rounded-xl font-bold shadow-md">Save Changes</button>
             </form>
         </div>
     </div>
-
-    <!-- Footer -->
-    <div class="container mx-auto px-4 lg:px-6 py-6 mt-8">
-        <div class="text-center text-gray-500 text-sm">
-            <p>GasFlow Customer Management • {{ customers|length }} customers registered</p>
-            <p class="mt-1">© 2023 GasFlow Delivery Services. All rights reserved.</p>
-        </div>
-    </div>
-
-    <!-- Notification Container -->
-    <div id="notificationContainer"></div>
 
     <script>
         // Driver data passed from backend
@@ -645,20 +558,20 @@
             if(cityDrivers.length > 0) {
                 cityDrivers.forEach(d => {
                     list.innerHTML += `
-                        <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-blue-50 transition">
-                            <input type="radio" name="driver_id" value="${d._id.$oid || d._id}" class="w-4 h-4 text-blue-600">
+                        <label class="flex items-center p-3 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                            <input type="radio" name="driver_id" value="${d._id.$oid || d._id}" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300">
                             <div class="ml-3">
-                                <p class="text-sm font-semibold text-gray-800">${d.name}</p>
-                                <p class="text-[10px] text-gray-400">Direct Assign (Manual Override)</p>
+                                <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">${d.name}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Direct Assign (Manual Override)</p>
                             </div>
                         </label>
                     `;
                 });
             } else {
                 list.innerHTML = `
-                    <div class="p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-2">
-                        <i class="fas fa-exclamation-triangle text-orange-500 mt-0.5"></i>
-                        <p class="text-[10px] text-orange-700 font-medium">
+                    <div class="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg flex items-start gap-2">
+                        <i class="material-symbols-rounded text-amber-500 text-lg">warning</i>
+                        <p class="text-xs text-amber-700 dark:text-amber-400 font-medium">
                             No active drivers found for "${city}". Orders can still be created and assigned later.
                         </p>
                     </div>
@@ -692,7 +605,7 @@
             const btn = document.getElementById('bulkOrderBtn');
             if (checked > 0) {
                 btn.classList.remove('hidden');
-                btn.innerHTML = `<i class="fas fa-box-open"></i><span class="desktop-only">Place Order for ${checked} Selected</span><span class="mobile-only">Order (${checked})</span>`;
+                btn.innerHTML = `<i class="material-symbols-rounded">inventory_2</i><span class="hidden md:inline">Place Order for ${checked} Selected</span><span class="md:hidden">Order (${checked})</span>`;
             } else {
                 btn.classList.add('hidden');
             }
@@ -749,7 +662,8 @@
             const container = document.getElementById('notificationContainer');
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
-            notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i><span>${message}</span>`;
+            const iconName = type === 'success' ? 'check_circle' : (type === 'error' ? 'error' : 'info');
+            notification.innerHTML = `<i class="material-symbols-rounded">${iconName}</i><span>${message}</span>`;
             container.appendChild(notification);
             setTimeout(() => notification.classList.add('show'), 10);
             setTimeout(() => {
@@ -774,14 +688,7 @@
             }
         };
 
-        // Initialize animations on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Add animation delays for table rows
-            const rows = document.querySelectorAll('tbody tr');
-            rows.forEach((row, index) => {
-                row.style.animationDelay = `${index * 0.05}s`;
-            });
-            
             // Focus search input on desktop
             const searchInput = document.querySelector('input[name="search"]');
             if (searchInput && window.innerWidth > 768) {
@@ -789,22 +696,19 @@
                     searchInput.focus();
                 }, 100);
             }
+
+            // Auto-open edit modal if query param exists
+            const urlParams = new URLSearchParams(window.location.search);
+            const editId = urlParams.get('edit_id');
+
+            if (editId) {
+                const editBtn = document.querySelector(`button[onclick*='${editId}']`);
+                if (editBtn) {
+                    console.log("🚀 Auto-opening edit modal for requested customer...");
+                    editBtn.click();
+                }
+            }
         });
-
-        // Add to the bottom of script section in customers.html
-document.addEventListener('DOMContentLoaded', function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const editId = urlParams.get('edit_id');
-
-    if (editId) {
-        // Find the "Edit" button for this customer in the table and click it
-        const editBtn = document.querySelector(`button[onclick*='${editId}']`);
-        if (editBtn) {
-            console.log("🚀 Auto-opening edit modal for requested customer...");
-            editBtn.click();
-        }
-    }
-});
     </script>
 </body>
 </html>
