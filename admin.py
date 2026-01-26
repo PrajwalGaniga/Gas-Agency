@@ -159,22 +159,7 @@ def get_detailed_driver_metrics(driver_id, start_date_utc, end_date_utc):
 async def signup_page(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
-@admin_router.post("/signup-request")
-async def signup_request(request: Request, email: str = Form(...), password: str = Form(...), passcode: str = Form(...)):
-    if passcode != DEVELOPER_PASSCODE:
-        return {"success": False, "message": "Invalid Developer Passcode."}
-    if admin_collection.find_one({"email": email}):
-        return {"success": False, "message": "Email already registered."}
 
-    otp = generate_otp()
-    hashed_pw = get_password_hash(password)
-    db["temp_signups"].update_one(
-        {"email": email}, 
-        {"$set": {"otp": otp, "password_hash": hashed_pw, "created_at": datetime.now(timezone.utc)}}, 
-        upsert=True
-    )
-    send_otp_email(MASTER_EMAIL, otp)
-    return {"success": True, "message": "Approval OTP sent to Master Admin."}
 
 @admin_router.post("/complete-signup")
 async def complete_signup(email: str = Form(...), otp: str = Form(...)):
@@ -244,22 +229,40 @@ async def reset_finalize(email: str = Form(...), otp: str = Form(...), new_passw
     return {"success": True, "message": "Password updated successfully."}
 
 @admin_router.post("/signup-request")
-async def signup_request(passcode: str = Form(...), email: str = Form(...), password: str = Form(...)):
+async def signup_request(
+    passcode: str = Form(...), 
+    email: str = Form(...), 
+    password: str = Form(...)
+):
+    # 1. Validate Passcode
     if passcode != DEVELOPER_PASSCODE:
         return {"success": False, "message": "Invalid Developer Passcode."}
     
+    # 2. Check if email exists
+    if admin_collection.find_one({"email": email}):
+        return {"success": False, "message": "Email already registered."}
+
     otp = generate_otp()
     hashed_pw = get_password_hash(password)
     
-    # Store pending signup data
+    # 3. Store pending signup data
     db["temp_signups"].update_one(
         {"email": email},
-        {"$set": {"otp": otp, "password_hash": hashed_pw, "created_at": datetime.now(timezone.utc)}},
+        {"$set": {
+            "otp": otp, 
+            "password_hash": hashed_pw, 
+            "created_at": datetime.now(timezone.utc)
+        }},
         upsert=True
     )
-    # 🚀 LOGIC: Send OTP to DEVELOPER (MASTER_EMAIL) for approval
-    send_otp_email(MASTER_EMAIL, otp) 
-    return {"success": True, "message": "Approval request sent to Developer."}
+    
+    # 4. Send OTP to DEVELOPER for approval
+    success = send_otp_email(MASTER_EMAIL, otp)
+    
+    if success:
+        return {"success": True, "message": "Approval request sent to Developer."}
+    else:
+        return {"success": False, "message": "Failed to send email. Check SMTP settings."}
 
 # --- DASHBOARD & DRIVERS ---
 

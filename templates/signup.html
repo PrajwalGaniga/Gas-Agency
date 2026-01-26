@@ -241,49 +241,63 @@
     </div>
 
 </div>
-
 <script>
     const requestForm = document.getElementById('requestForm');
     const verifyForm = document.getElementById('verifyForm');
 
     requestForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = btn1;
-        btn1-spinner.classList.remove('hidden');
-        btn1-text.innerText = "Sending...";
+        
+        // 🚀 FIX: Correctly select elements by ID
+        const btnText = document.getElementById('btn1-text');
+        const spinner = document.getElementById('btn1-spinner');
+        
+        spinner.classList.remove('hidden');
+        btnText.innerText = "Sending...";
 
-        const formData = new FormData(requestForm);
-        const res = await fetch('/signup-request', { method: 'POST', body: formData });
-        const data = await res.json();
+        try {
+            const formData = new FormData(requestForm);
+            const res = await fetch('/signup-request', { method: 'POST', body: formData });
+            const data = await res.json();
 
-        btn1-spinner.classList.add('hidden');
-        btn1-text.innerText = "Request Approval OTP";
-
-        if (data.success) {
-            confirm_email.value = formData.get('email');
-            step1.classList.add('hidden');
-            step2.classList.remove('hidden');
-        } else {
-            alert(data.message || "Invalid passcode");
+            if (data.success) {
+                document.getElementById('confirm_email').value = formData.get('email');
+                document.getElementById('step1').classList.add('hidden');
+                document.getElementById('step2').classList.remove('hidden');
+            } else {
+                alert(data.message || "Invalid passcode");
+            }
+        } catch (err) {
+            alert("Network error. Please check if the server is running.");
+        } finally {
+            spinner.classList.add('hidden');
+            btnText.innerText = "Request Approval OTP";
         }
     });
 
     verifyForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        btn2-spinner.classList.remove('hidden');
-        btn2-text.innerText = "Verifying...";
+        const btnText = document.getElementById('btn2-text');
+        const spinner = document.getElementById('btn2-spinner');
 
-        const formData = new FormData(verifyForm);
-        const res = await fetch('/complete-signup', { method: 'POST', body: formData });
-        const data = await res.json();
+        spinner.classList.remove('hidden');
+        btnText.innerText = "Verifying...";
 
-        btn2-spinner.classList.add('hidden');
-        btn2-text.innerText = "Verify & Create Account";
+        try {
+            const formData = new FormData(verifyForm);
+            const res = await fetch('/complete-signup', { method: 'POST', body: formData });
+            const data = await res.json();
 
-        if (data.success) {
-            window.location.href = "/";
-        } else {
-            alert(data.message || "Invalid OTP");
+            if (data.success) {
+                window.location.href = "/";
+            } else {
+                alert(data.message || "Invalid OTP");
+            }
+        } catch (err) {
+            alert("Verification failed. Try again.");
+        } finally {
+            spinner.classList.add('hidden');
+            btnText.innerText = "Verify & Create Account";
         }
     });
 </script>
