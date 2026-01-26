@@ -228,22 +228,24 @@ async def reset_finalize(email: str = Form(...), otp: str = Form(...), new_passw
     db["temp_resets"].delete_one({"email": email})
     return {"success": True, "message": "Password updated successfully."}
 
+# admin.py
+
 @admin_router.post("/signup-request")
 async def signup_request(
     passcode: str = Form(...), 
     email: str = Form(...), 
     password: str = Form(...)
 ):
-    # 1. Validate Passcode
+    # 1. Validate Developer Passcode
     if passcode != DEVELOPER_PASSCODE:
         return {"success": False, "message": "Invalid Developer Passcode."}
     
-    # 2. Check if email exists
+    # 2. Prevent duplicate registrations
     if admin_collection.find_one({"email": email}):
-        return {"success": False, "message": "Email already registered."}
+        return {"success": False, "message": "This email is already registered."}
 
-    otp = generate_otp()
-    hashed_pw = get_password_hash(password)
+    otp = generate_otp() #
+    hashed_pw = get_password_hash(password) #
     
     # 3. Store pending signup data
     db["temp_signups"].update_one(
@@ -256,13 +258,14 @@ async def signup_request(
         upsert=True
     )
     
-    # 4. Send OTP to DEVELOPER for approval
+    # 4. Send OTP (Directly to MASTER_EMAIL for Developer Approval)
     success = send_otp_email(MASTER_EMAIL, otp)
     
     if success:
         return {"success": True, "message": "Approval request sent to Developer."}
     else:
-        return {"success": False, "message": "Failed to send email. Check SMTP settings."}
+        # 📱 This is the message you saw in your phone screenshot
+        return {"success": False, "message": "Failed to send email. Please check server logs."}
 
 # --- DASHBOARD & DRIVERS ---
 

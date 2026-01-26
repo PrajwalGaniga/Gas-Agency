@@ -20,9 +20,15 @@ def generate_otp():
 SENDER_EMAIL = "prajwalganiga06@gmail.com"
 APP_PASSWORD = "cpkb hwsv pawn ihtj" # Your specific Gmail App Password
 
+# app/utils.py
+
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 def send_otp_email(receiver_email, otp):
     """
-    Sends a real OTP email using Gmail SMTP and an App Password.
+    Sends a real OTP email using Gmail SMTP_SSL on Port 465 for production reliability.
     """
     subject = "GasFlow Admin Approval OTP"
     body = f"""
@@ -36,7 +42,6 @@ def send_otp_email(receiver_email, otp):
     If you did not expect this request, please ignore this email.
     """
 
-    # Setup the MIME message
     msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
     msg['To'] = receiver_email
@@ -44,12 +49,10 @@ def send_otp_email(receiver_email, otp):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        # Connect to Gmail SMTP server
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls() # Secure the connection
+        # 🚀 PRODUCTION FIX: Use Direct SSL on Port 465 (Best for Render/Cloud)
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10)
         server.login(SENDER_EMAIL, APP_PASSWORD)
         
-        # Send the email
         text = msg.as_string()
         server.sendmail(SENDER_EMAIL, receiver_email, text)
         server.quit()
@@ -57,7 +60,8 @@ def send_otp_email(receiver_email, otp):
         print(f"✅ OTP email successfully sent to {receiver_email}")
         return True
     except Exception as e:
-        print(f"❌ Failed to send email: {e}")
+        # 📂 Check Render Logs for this specific error message
+        print(f"❌ SMTP Error on Render: {e}")
         return False
     
 from datetime import datetime, timedelta, timezone
