@@ -578,26 +578,128 @@ async def export_report(period: str = "24h", admin_id: ObjectId = Depends(get_cu
     output.seek(0)
     return StreamingResponse(output, headers={"Content-Disposition": f"attachment; filename=GasDelivery_Report_{period}.xlsx"}, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+# admin.py
+
 @admin_router.get("/profile")
 async def profile_view(request: Request, admin_id: ObjectId = Depends(get_current_admin)):
-    if not admin_id: return RedirectResponse(url="/", status_code=303)
+    if not admin_id: 
+        return RedirectResponse(url="/", status_code=303)
+        
     admin = admin_collection.find_one({"_id": admin_id})
     my_drivers = list(driver_collection.find({"admin_id": admin_id}))
-    delivered_orders = order_collection.count_documents({"admin_id": admin_id, "status": "DELIVERED"})
+    
+    # 📊 Metrics Calculation
     total_orders = order_collection.count_documents({"admin_id": admin_id})
+    delivered_orders = order_collection.count_documents({"admin_id": admin_id, "status": "DELIVERED"})
+    
+    # 🚀 FIX: Calculate pending orders for the navbar notification badge
+    pending_orders = order_collection.count_documents({"admin_id": admin_id, "status": "PENDING"})
+    
+    success_rate = round((delivered_orders / total_orders * 100), 1) if total_orders > 0 else 0
+    account_age = (datetime.now(timezone.utc) - admin["created_at"].replace(tzinfo=timezone.utc)).days if admin.get("created_at") else 0
+    driver_efficiency = round(delivered_orders / len(my_drivers), 1) if my_drivers else 0
+
     stats = {
-        "total_orders": total_orders, "success_rate": round((delivered_orders / total_orders * 100), 1) if total_orders > 0 else 0,
-        "account_age": (datetime.now(timezone.utc) - admin["created_at"].replace(tzinfo=timezone.utc)).days if admin.get("created_at") else 0,
-        "efficiency": round(delivered_orders / len(my_drivers), 1) if my_drivers else 0, "active_drivers": len([d for d in my_drivers if d.get("is_active")])
+        "total_orders": total_orders,
+        "success_rate": success_rate,
+        "account_age": account_age,
+        "efficiency": driver_efficiency,
+        "active_drivers": len([d for d in my_drivers if d.get("is_active")]),
+        "pending": pending_orders, # 👈 THIS PREVENTS THE 500 ERROR
+        "level": "Gold" if delivered_orders > 100 else "Silver" # Example logic
     }
+
+    # Process Driver List
     for d in my_drivers:
         d["_id"] = str(d["_id"])
-        reg_ist = to_ist(d.get("created_at"))
-        d["date_str"] = reg_ist.strftime("%d %b %Y") if reg_ist else "N/A"
-    return templates.TemplateResponse("profile.html", {"request": request, "admin": admin, "drivers": my_drivers, "stats": stats})
+        reg_date_ist = to_ist(d.get("created_at"))
+        d["date_str"] = reg_date_ist.strftime("%d %b %Y") if reg_date_ist else "N/A"
+
+    return templates.TemplateResponse("profile.html", {
+        "request": request,
+        "admin": admin,
+        "drivers": my_drivers,
+        "stats": stats
+    })
 
 @admin_router.post("/update-profile")
 async def update_profile(phone: str = Form(None), age: str = Form(None), agency_name: str = Form(None), admin_id: ObjectId = Depends(get_current_admin)):
     if not admin_id: return RedirectResponse(url="/", status_code=303)
     admin_collection.update_one({"_id": admin_id}, {"$set": {"phone": phone, "age": age, "agency_name": agency_name, "updated_at": datetime.now(timezone.utc)}})
     return RedirectResponse(url="/profile", status_code=303)
+
+# admin.py
+
+@admin_router.get("/download-template")
+async def download_template(admin_id: ObjectId = Depends(get_current_admin)):
+    """Serves a professional Excel template with placeholders."""
+    if not admin_id: raise HTTPException(status_code=401)
+    
+    # Create template structure
+    df = pd.DataFrame({
+        "name": ["John Doe", "Jane Smith"],
+        "phone_number": ["9876543210", "7001122334"],
+        "city": ["Udupi", "Mangalore"],
+        "landmark": ["Near City Bus Stand", "Opposite Mall"],
+        "pincode": ["576101", "575001"]
+    })
+    
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Customer_Import')
+    output.seek(0)
+    
+    return StreamingResponse(
+        output, 
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=GasFlow_Import_Template.xlsx"}
+    )
+
+@admin_router.post("/upload-customers")
+async def upload_customers(
+    request: Request, 
+    file: UploadFile = File(...), 
+    admin_id: ObjectId = Depends(get_current_admin)
+):
+    if not admin_id: return RedirectResponse("/", status_code=303)
+    
+    try:
+        content = await file.read()
+        df = pd.read_excel(io.BytesIO(content)) if file.filename.endswith('.xlsx') else pd.read_csv(io.BytesIO(content))
+        
+        # 🛡️ VALIDATION: Check for required columns
+        required = ["name", "phone_number", "city", "landmark", "pincode"]
+        missing = [col for col in required if col not in df.columns]
+        if missing:
+            return templates.TemplateResponse("dashboard.html", {
+                "request": request, "stats": {}, # Fetch real stats here
+                "error": f"❌ Missing columns: {', '.join(missing)}"
+            })
+
+        success_count = 0
+        error_logs = []
+
+        for index, row in df.iterrows():
+            # Basic validation for empty fields
+            if pd.isna(row['name']) or pd.isna(row['phone_number']) or pd.isna(row['city']):
+                error_logs.append(f"Row {index+2}: Missing mandatory name/phone/city")
+                continue
+
+            customer_collection.insert_one({
+                "admin_id": admin_id,
+                "name": str(row['name']),
+                "phone_number": str(row['phone_number']),
+                "city": str(row['city']),
+                "landmark": str(row['landmark']) if not pd.isna(row['landmark']) else "",
+                "pincode": str(row['pincode']) if not pd.isna(row['pincode']) else "",
+                "verified_lat": None, "verified_lng": None, "records": [],
+                "created_at": datetime.utcnow()
+            })
+            success_count += 1
+
+        msg = f"✅ Imported {success_count} customers successfully."
+        if error_logs: msg += f" ({len(error_logs)} errors skipped)"
+        
+        return RedirectResponse(url=f"/dashboard?message={msg}", status_code=303)
+    except Exception as e:
+        return RedirectResponse(url=f"/dashboard?error=Upload failed: {str(e)}", status_code=303)

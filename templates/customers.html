@@ -13,7 +13,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: ['class', '[data-theme="dark"]'],
+            darkMode: ['selector', '[data-theme="dark"]'],
             theme: {
                 extend: {
                     fontFamily: {
@@ -35,11 +35,17 @@
                     animation: {
                         'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
                         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'pulse-red': 'pulseRed 2s infinite',
                     },
                     keyframes: {
                         fadeInUp: {
                             '0%': { opacity: '0', transform: 'translateY(10px)' },
                             '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        pulseRed: {
+                            '0%': { boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.7)' },
+                            '70%': { boxShadow: '0 0 0 6px rgba(239, 68, 68, 0)' },
+                            '100%': { boxShadow: '0 0 0 0 rgba(239, 68, 68, 0)' }
                         }
                     }
                 }
@@ -56,13 +62,16 @@
                 @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-indigo-500/30;
             }
             .form-input {
-                @apply w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600;
+                @apply w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600;
             }
             .btn-primary {
                 @apply bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-lg shadow-indigo-500/20 border border-transparent;
             }
             .btn-secondary {
                 @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700;
+            }
+            .nav-link-active {
+                @apply bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold;
             }
         }
 
@@ -96,50 +105,288 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-700 rounded-full; }
         ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-600; }
+
+        /* Empty State */
+        .empty-state {
+            @apply py-16 text-center;
+        }
+        .empty-state-icon {
+            @apply w-20 h-20 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-4;
+        }
+
+        /* Loading Skeleton */
+        .skeleton {
+            @apply bg-slate-200 dark:bg-slate-800 animate-pulse rounded;
+        }
+
+        /* Tooltip */
+        [data-tooltip] {
+            @apply relative;
+        }
+        [data-tooltip]:before {
+            content: attr(data-tooltip);
+            @apply absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 invisible transition-all duration-200;
+        }
+        [data-tooltip]:hover:before {
+            @apply opacity-100 visible;
+        }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 font-sans min-h-screen flex flex-col selection:bg-indigo-500/30">
 
-    <nav class="glass sticky top-0 z-40 h-[72px]">
-        <div class="max-w-[1400px] mx-auto px-4 lg:px-6 h-full flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <button onclick="window.history.back()" class="lg:hidden w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
-                    <i class="material-symbols-rounded">arrow_back</i>
-                </button>
+    <style>
+    :root {
+        /* Design Tokens */
+        --primary: #6366f1;
+        --primary-hover: #4f46e5;
+        --primary-light: rgba(99, 102, 241, 0.15);
+        --danger: #ef4444;
+        --header-h: 72px;
+        --radius-md: 12px;
+        --font-display: 'Space Grotesk', sans-serif;
+    }
 
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                        <i class="material-symbols-rounded text-2xl">group</i>
-                    </div>
-                    <div>
-                        <h1 class="font-display font-bold text-lg leading-tight text-slate-900 dark:text-white">Customer Management</h1>
-                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ customers|length }} customers registered</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-3">
-                <div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                    <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Live</span>
-                </div>
-                
-                <button onclick="openModal('addCityModal')" class="btn-secondary px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all">
-                    <i class="material-symbols-rounded text-lg">location_city</i>
-                    <span class="hidden md:inline">Add City</span>
-                </button>
-                
-                <button onclick="openModal('addCustModal')" class="btn-primary px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all">
-                    <i class="material-symbols-rounded text-lg">person_add</i>
-                    <span class="hidden md:inline">Add Customer</span>
-                </button>
-                
-                <a href="/dashboard" class="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all" title="Dashboard">
-                    <i class="material-symbols-rounded">dashboard</i>
-                </a>
-            </div>
+    /* Theme-Aware Variables */
+    [data-theme="dark"] {
+        --nav-bg: rgba(15, 23, 42, 0.8);
+        --nav-border: rgba(255, 255, 255, 0.08);
+        --nav-text: #94a3b8;
+        --nav-text-active: #f8fafc;
+        --nav-surface: #1e293b;
+    }
+    [data-theme="light"] {
+        --nav-bg: rgba(255, 255, 255, 0.8);
+        --nav-border: rgba(15, 23, 42, 0.08);
+        --nav-text: #64748b;
+        --nav-text-active: #1e293b;
+        --nav-surface: #f1f5f9;
+    }
+
+    /* Navbar Container */
+    .universal-navbar {
+        height: var(--header-h);
+        background: var(--nav-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--nav-border);
+        position: sticky;
+        top: 0;
+        z-index: 9999;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.3s ease;
+    }
+
+    .nav-inner {
+        max-width: 1400px;
+        margin: 0 auto;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+    }
+
+    /* Brand / Logo */
+    .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 22px;
+        text-decoration: none;
+        color: var(--nav-text-active);
+    }
+    .nav-brand i { 
+        color: var(--primary); 
+        font-size: 28px;
+        filter: drop-shadow(0 0 8px var(--primary-light));
+    }
+
+    /* Nav Links */
+    .nav-menu {
+        display: flex;
+        gap: 6px;
+        background: var(--nav-surface);
+        padding: 5px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--nav-border);
+    }
+
+    .nav-link {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--nav-text);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+        color: var(--nav-text-active);
+        background: rgba(99, 102, 241, 0.05);
+    }
+
+    .nav-link.active {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* Badges */
+    .nav-badge {
+        background: var(--danger);
+        color: white;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 1px 6px;
+        border-radius: 10px;
+        margin-left: 4px;
+    }
+
+    /* Actions */
+    .nav-actions { display: flex; align-items: center; gap: 16px; }
+
+    .nav-btn {
+        width: 40px; height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--nav-border);
+        display: grid; place-items: center;
+        color: var(--nav-text);
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--nav-surface);
+    }
+    .nav-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+    .nav-user {
+        display: flex; align-items: center; gap: 12px;
+        padding-left: 16px; border-left: 1px solid var(--nav-border);
+        text-decoration: none;
+    }
+
+    .nav-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #818cf8);
+        color: white; display: grid; place-items: center; font-weight: 700;
+        box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+    }
+
+    .nav-mobile-toggle { display: none; font-size: 24px; color: var(--nav-text); cursor: pointer; }
+
+    /* Responsive Logic */
+    @media (max-width: 1024px) {
+        .nav-menu { display: none; }
+        .nav-menu.is-open {
+            display: flex; flex-direction: column;
+            position: absolute; top: var(--header-h); left: 0; right: 0;
+            background: var(--nav-bg); padding: 16px; border-bottom: 1px solid var(--nav-border);
+        }
+        .nav-mobile-toggle { display: block; }
+        .desktop-only { display: none !important; }
+    }
+</style>
+
+<nav class="universal-navbar">
+    <div class="nav-inner">
+        <a href="/dashboard" class="nav-brand">
+            <i class="material-symbols-rounded">local_fire_department</i>
+            <span>GasFlow</span>
+        </a>
+
+        <div class="nav-menu" id="universalNavMenu">
+            <a href="/customers" class="nav-link">
+                <i class="material-symbols-rounded">group</i> Customers
+            </a>
+            <a href="/drivers" class="nav-link">
+                <i class="material-symbols-rounded">local_shipping</i> Drivers
+            </a>
+            <a href="/assignments" class="nav-link">
+                <i class="material-symbols-rounded">assignment</i> Assignments
+                {% if stats and stats.pending > 0 %}
+                <span class="nav-badge">{{ stats.pending }}</span>
+                {% endif %}
+            </a>
+            <a href="/reports" class="nav-link">
+                <i class="material-symbols-rounded">bar_chart</i> Reports
+            </a>
+            <a href="/driver-audit" class="nav-link">
+                <i class="material-symbols-rounded">fact_check</i> Audit
+            </a>
         </div>
-    </nav>
+
+        <div class="nav-actions">
+            <button class="nav-btn" id="navThemeToggle" title="Toggle Theme">
+                <i class="material-symbols-rounded">light_mode</i>
+            </button>
+            
+            <div class="nav-mobile-toggle" id="navMobileBtn">
+                <i class="material-symbols-rounded">menu</i>
+            </div>
+
+            <a href="/profile" class="nav-user desktop-only">
+                <div style="text-align: right;">
+                    <p style="font-size: 13px; font-weight: 700; color: var(--nav-text-active); margin:0;">Admin User</p>
+                    <p style="font-size: 11px; color: var(--nav-text); margin:0;">Fleet Manager</p>
+                </div>
+                <div class="nav-avatar">AD</div>
+            </a>
+
+            <a href="/logout" class="nav-btn desktop-only" title="Logout">
+                <i class="material-symbols-rounded">logout</i>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<script>
+    (function() {
+        /* 1. Theme Engine Integration */
+        const themeBtn = document.getElementById('navThemeToggle');
+        const htmlEl = document.documentElement;
+        
+        const applyTheme = (theme) => {
+            htmlEl.setAttribute('data-theme', theme);
+            localStorage.setItem('gasflow_theme', theme);
+            const icon = themeBtn.querySelector('i');
+            icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+        };
+
+        themeBtn.addEventListener('click', () => {
+            const current = htmlEl.getAttribute('data-theme') || 'dark';
+            applyTheme(current === 'dark' ? 'light' : 'dark');
+        });
+
+        // Initialize from storage
+        applyTheme(localStorage.getItem('gasflow_theme') || 'dark');
+
+        /* 2. Intelligent Active Link Detection */
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll('.nav-link');
+        
+        navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (currentPath === href || (href !== '/dashboard' && currentPath.startsWith(href))) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+
+        /* 3. Mobile Menu Toggle */
+        const mobileBtn = document.getElementById('navMobileBtn');
+        const navMenu = document.getElementById('universalNavMenu');
+        
+        mobileBtn.addEventListener('click', () => {
+            navMenu.classList.toggle('is-open');
+            const icon = mobileBtn.querySelector('i');
+            icon.textContent = navMenu.classList.contains('is-open') ? 'close' : 'menu';
+        });
+    })();
+</script>
 
     <main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-8 w-full flex-grow">
         
@@ -199,165 +446,255 @@
             </div>
         </div>
 
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 animate-fade-in-up" style="animation-delay: 0.1s;">
-            <form action="/customers" method="GET" class="w-full md:w-96 relative group">
-                <i class="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">search</i>
-                <input type="text" 
-                       name="search" 
-                       value="{{ search_query }}" 
-                       placeholder="Search customers..." 
-                       class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-400 shadow-sm">
-            </form>
+        <section class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 mb-8 items-start animate-fade-in-up" style="animation-delay: 0.1s;">
+            
+            <div class="flex flex-col md:flex-row gap-4">
+                <form action="/customers" method="GET" class="relative group flex-grow max-w-md">
+                    <i class="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">search</i>
+                    <input type="text" 
+                           name="search" 
+                           value="{{ search_query }}" 
+                           placeholder="Search customers by name or phone..." 
+                           class="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-400 shadow-sm">
+                </form>
+                
+                <div class="flex p-1 bg-slate-200/50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <a href="/customers?filter_type=all" 
+                       class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'all' %} bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm {% else %} text-slate-500 {% endif %}">
+                        <i class="material-symbols-rounded text-sm">layers</i> ALL
+                    </a>
+                    <a href="/customers?filter_type=pending" 
+                       class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'pending' %} bg-amber-500 text-white shadow-md {% else %} text-slate-500 {% endif %}">
+                        <i class="material-symbols-rounded text-sm">schedule</i> PENDING
+                    </a>
+                    <a href="/customers?filter_type=in_progress" 
+                       class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'in_progress' %} bg-blue-500 text-white shadow-md {% else %} text-slate-500 {% endif %}">
+                        <i class="material-symbols-rounded text-sm">local_shipping</i> IN TRANSIT
+                    </a>
+                    <a href="/customers?filter_type=delivered" 
+                       class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'delivered' %} bg-emerald-500 text-white shadow-md {% else %} text-slate-500 {% endif %}">
+                        <i class="material-symbols-rounded text-sm">check_circle</i> DELIVERED
+                    </a>
+                </div>
+            </div>
 
-            <button id="bulkOrderBtn" 
-                    onclick="submitBulkOrder()" 
-                    class="hidden w-full md:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/25 font-medium transition-all flex items-center justify-center gap-2 animate-bounce">
-                <i class="material-symbols-rounded">inventory_2</i>
-                <span>Place Order for Selected</span>
-            </button>
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-1 group">
+                    <button onclick="toggleFormatView()" 
+                            class="px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all flex items-center gap-2"
+                            data-tooltip="Show/Hide import format">
+                        <i class="material-symbols-rounded text-sm">visibility</i> VIEW FORMAT
+                    </button>
+                    <a href="/download-template" 
+                       class="px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all flex items-center gap-2"
+                       data-tooltip="Download Excel template">
+                        <i class="material-symbols-rounded text-sm">download</i> TEMPLATE
+                    </a>
+                </div>
+
+                <button onclick="openModal('addCityModal')" 
+                        class="h-11 px-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+                        data-tooltip="Add new service city">
+                    <i class="material-symbols-rounded text-slate-400">location_city</i> Add City
+                </button>
+                <button onclick="openModal('addCustModal')" 
+                        class="h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition-all"
+                        data-tooltip="Add single customer">
+                    <i class="material-symbols-rounded">person_add</i> Add Customer
+                </button>
+                
+                <form action="/upload-customers" method="POST" enctype="multipart/form-data" class="flex items-center">
+                    <input type="file" name="file" id="bulkInput" class="hidden" onchange="this.form.submit()" accept=".xlsx,.csv">
+                    <button type="button" 
+                            onclick="document.getElementById('bulkInput').click()" 
+                            class="h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
+                            data-tooltip="Bulk import from Excel/CSV">
+                        <i class="material-symbols-rounded">database</i> Bulk Import
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <div id="formatPreview" class="hidden mb-8 p-4 bg-indigo-50 dark:bg-indigo-500/5 rounded-2xl border border-dashed border-indigo-200 dark:border-indigo-900/30 animate-fade-in-up">
+            <h4 class="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-3">Required Excel Structure (Headers)</h4>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+                    <p class="text-[11px] font-bold">name</p>
+                    <p class="text-[9px] text-slate-400 mt-1 uppercase">Required</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+                    <p class="text-[11px] font-bold">phone_number</p>
+                    <p class="text-[9px] text-slate-400 mt-1 uppercase">Required</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+                    <p class="text-[11px] font-bold">city</p>
+                    <p class="text-[9px] text-slate-400 mt-1 uppercase">Required</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+                    <p class="text-[11px] font-bold">landmark</p>
+                    <p class="text-[9px] text-slate-400 mt-1 uppercase">Optional</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+                    <p class="text-[11px] font-bold">pincode</p>
+                    <p class="text-[9px] text-slate-400 mt-1 uppercase">Optional</p>
+                </div>
+            </div>
         </div>
 
-        <div class="flex flex-wrap gap-2 mb-6 animate-fade-in-up" style="animation-delay: 0.2s;">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider self-center mr-2">Filter Status:</span>
-            
-            <a href="/customers?filter_type=all" 
-               class="px-4 py-2 rounded-lg text-xs font-medium border transition-all flex items-center gap-2
-               {% if active_filter == 'all' %} bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20 {% else %} bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 {% endif %}">
-                <i class="material-symbols-rounded text-sm">layers</i> All
-            </a>
-            
-            <a href="/customers?filter_type=delivered" 
-               class="px-4 py-2 rounded-lg text-xs font-medium border transition-all flex items-center gap-2
-               {% if active_filter == 'delivered' %} bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20 {% else %} bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 {% endif %}">
-                <i class="material-symbols-rounded text-sm">check_circle</i> Delivered
-            </a>
-            
-            <a href="/customers?filter_type=in_progress" 
-               class="px-4 py-2 rounded-lg text-xs font-medium border transition-all flex items-center gap-2
-               {% if active_filter == 'in_progress' %} bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/20 {% else %} bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 {% endif %}">
-                <i class="material-symbols-rounded text-sm">local_shipping</i> In Progress
-            </a>
-            
-            <a href="/customers?filter_type=pending" 
-               class="px-4 py-2 rounded-lg text-xs font-medium border transition-all flex items-center gap-2
-               {% if active_filter == 'pending' %} bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20 {% else %} bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 {% endif %}">
-                <i class="material-symbols-rounded text-sm">schedule</i> Pending
-            </a>
+        <div id="selectionBanner" class="hidden fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-6 animate-fade-in-up border border-slate-800 dark:border-slate-100">
+            <p class="text-sm font-bold"><span id="selectedCount">0</span> Customers selected for bulk order</p>
+            <div class="flex items-center gap-2">
+                <button onclick="submitBulkOrder()" 
+                        class="px-6 py-2 bg-indigo-500 text-white rounded-xl text-xs font-black hover:bg-indigo-600 transition-all">
+                    PROCESS ORDERS
+                </button>
+                <button onclick="document.getElementById('selectAll').click()" 
+                        class="text-xs font-bold opacity-50 hover:opacity-100">
+                    Cancel
+                </button>
+            </div>
         </div>
-        
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden animate-fade-in-up" style="animation-delay: 0.3s;">
+
+        {% if customers|length == 0 %}
+        <div class="empty-state animate-fade-in-up" style="animation-delay: 0.2s;">
+            <div class="empty-state-icon">
+                <i class="material-symbols-rounded text-4xl">group_off</i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-700 dark:text-slate-300 mb-2">No customers found</h3>
+            <p class="text-slate-500 dark:text-slate-400 mb-6 max-w-md mx-auto">
+                {% if search_query %}
+                No customers match your search "{{ search_query }}". Try a different term.
+                {% else %}
+                Get started by adding your first customer or importing from a spreadsheet.
+                {% endif %}
+            </p>
+            <div class="flex flex-wrap gap-3 justify-center">
+                <button onclick="openModal('addCustModal')" 
+                        class="btn-primary px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium">
+                    <i class="material-symbols-rounded">person_add</i> Add Customer
+                </button>
+                <a href="/download-template" 
+                   class="btn-secondary px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium">
+                    <i class="material-symbols-rounded">download</i> Download Template
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden animate-fade-in-up" style="animation-delay: 0.2s;">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
-                    <thead class="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
+                    <thead class="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
                         <tr>
-                            <th class="p-4 w-12 text-center">
+                            <th class="p-6 w-12">
                                 <input type="checkbox" 
                                        id="selectAll" 
                                        onclick="toggleAll(this)" 
-                                       class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-100 dark:bg-slate-800 dark:border-slate-600 cursor-pointer transition-colors">
+                                       class="w-5 h-5 rounded-lg border-slate-300 accent-indigo-600 cursor-pointer"
+                                       data-tooltip="Select all customers">
                             </th>
-                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Customer Info</th>
-                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Location</th>
-                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">GPS Status</th>
-                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order Status</th>
-                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-56">Assigned Driver</th>
-                            <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Customer Profile</th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Delivery Address</th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">GPS Status</th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Order Pipeline</th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Personnel</th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         {% for c in customers %}
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                            <td class="p-4 text-center">
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group even:bg-slate-50/50 dark:even:bg-slate-900/20">
+                            <td class="p-6">
                                 <input type="checkbox" 
                                        name="customer_select" 
                                        value="{{ c._id }}" 
                                        onclick="updateBulkBtn()" 
-                                       class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-100 dark:bg-slate-800 dark:border-slate-600 cursor-pointer transition-colors">
+                                       class="w-5 h-5 rounded-lg border-slate-300 accent-indigo-600 cursor-pointer">
                             </td>
-                            <td class="p-4">
-                                <div class="font-semibold text-slate-900 dark:text-slate-200">{{ c.name }}</div>
-                                <div class="text-xs text-indigo-500 font-medium font-mono mt-0.5">{{ c.phone_number }}</div>
-                                <div class="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                                    <i class="material-symbols-rounded text-[12px]">calendar_today</i>
-                                    {% if c.created_at %}
-                                        {{ c.created_at.strftime('%d %b %Y') }}
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
+                            <td class="p-6">
+                                <div class="font-bold text-slate-900 dark:text-slate-200">{{ c.name }}</div>
+                                <div class="text-xs text-indigo-500 font-mono mt-1">{{ c.phone_number }}</div>
+                                {% if c.created_at %}
+                                <div class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                    <i class="material-symbols-rounded text-[10px]">calendar_today</i>
+                                    {{ c.created_at.strftime('%d %b %Y') }}
                                 </div>
+                                {% endif %}
                             </td>
-                            <td class="p-4">
-                                <div class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ c.city }}</div>
-                                <div class="text-xs text-slate-500 truncate w-36" title="{{ c.landmark }}">{{ c.landmark }}</div>
+                            <td class="p-6">
+                                <div class="text-sm font-semibold">{{ c.city }}</div>
+                                <div class="text-xs text-slate-500 truncate w-48 mt-1">{{ c.landmark }}</div>
                                 {% if c.pincode %}
                                 <div class="text-[10px] text-slate-400 font-mono mt-0.5">PIN: {{ c.pincode }}</div>
                                 {% endif %}
                             </td>
-                            <td class="p-4">
+                            <td class="p-6">
                                 {% if c.is_verified %}
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                    <i class="material-symbols-rounded text-[12px]">location_on</i> Verified
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-black tracking-tighter border border-emerald-500/20">
+                                    <i class="material-symbols-rounded text-sm">location_on</i> VERIFIED
                                 </span>
                                 <div class="text-[10px] text-slate-400 mt-1 font-mono">
                                     {{ "%.4f"|format(c.verified_lat) if c.verified_lat else '' }}, {{ "%.4f"|format(c.verified_lng) if c.verified_lng else '' }}
                                 </div>
                                 {% else %}
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
-                                    <i class="material-symbols-rounded text-[12px]">wrong_location</i> Not Verified
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 text-[10px] font-black tracking-tighter border border-red-500/20">
+                                    <i class="material-symbols-rounded text-sm">wrong_location</i> NOT SYNCED
                                 </span>
                                 {% endif %}
                             </td>
-                            <td class="p-4">
+                            <td class="p-6">
                                 {% if c.current_status == 'PENDING' %}
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border bg-amber-500/10 text-amber-600 border-amber-500/20">
                                         <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> PENDING
                                     </span>
                                 {% elif c.current_status == 'IN_PROGRESS' %}
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-500 border border-blue-500/20">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> IN PROGRESS
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border bg-blue-500/10 text-blue-600 border-blue-500/20 animate-pulse">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> IN PROGRESS
                                     </span>
                                 {% elif c.current_status == 'DELIVERED' %}
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
                                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> DELIVERED
                                     </span>
                                 {% else %}
                                     <span class="text-slate-400 text-[10px] font-medium">--</span>
                                 {% endif %}
                             </td>
-                            <td class="p-4">
+                            <td class="p-6">
                                 {% if c.active_order_id and c.current_status in ['PENDING', 'IN_PROGRESS'] %}
                                     <div class="relative">
                                         <select onchange="reassignDriver('{{ c.active_order_id }}', this.value)" 
-                                                class="w-full text-xs py-1.5 pl-2 pr-6 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-indigo-400 transition-colors">
-                                            <option value="" disabled>Reassign Driver</option>
+                                                class="w-full text-xs py-2 pl-3 pr-8 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-indigo-400 transition-colors">
+                                            <option value="" disabled>Change Driver</option>
                                             {% for d in drivers %}
                                                 <option value="{{ d._id }}" {% if d._id|string == c.assigned_driver_id %}selected{% endif %}>
                                                     {{ d.name }} ({{ d.assigned_cities[0] if d.assigned_cities else 'N/A' }})
                                                 </option>
                                             {% endfor %}
                                         </select>
-                                        <i class="material-symbols-rounded absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">expand_more</i>
+                                        <i class="material-symbols-rounded absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">expand_more</i>
                                     </div>
                                 {% else %}
-                                    <span class="text-xs text-slate-400 italic">No Active Order</span>
+                                    <p class="text-[11px] text-slate-400 italic">No assigned personnel</p>
                                 {% endif %}
                             </td>
-                            <td class="p-4 text-right">
+                            <td class="p-6 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     {% if c.current_status in ['PENDING', 'IN_PROGRESS'] %}
-                                        <button disabled class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 dark:text-slate-700 cursor-not-allowed">
-                                            <i class="material-symbols-rounded">add_circle</i>
+                                        <button disabled class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-300 dark:text-slate-700 cursor-not-allowed"
+                                                data-tooltip="Active order exists">
+                                            <i class="material-symbols-rounded text-lg">add_circle</i>
                                         </button>
                                     {% else %}
                                         <button onclick="openQuickAssignModal('{{ c._id }}', '{{ c.name }}', '{{ c.city }}')" 
-                                                class="w-8 h-8 flex items-center justify-center rounded-lg text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all" title="Create Order">
-                                            <i class="material-symbols-rounded">add_circle</i>
+                                                class="w-9 h-9 rounded-xl flex items-center justify-center bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:scale-110 transition-all"
+                                                data-tooltip="Create new order">
+                                            <i class="material-symbols-rounded text-lg">add_circle</i>
                                         </button>
                                     {% endif %}
                                     
-                                    <button onclick="openEditModal('{{ c._id }}', '{{ c.name }}', '{{ c.phone_number }}', '{{ c.city }}', '{{ c.landmark }}', '{{ c.pincode or "" }}')" 
-                                            class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all" title="Edit Customer">
-                                        <i class="material-symbols-rounded">edit</i>
+                                    <button onclick="openEditModal('{{ c._id }}', '{{ c.name }}', '{{ c.phone_number }}', '{{ c.city }}', '{{ c.landmark }}', '{{ c.pincode or '' }}')" 
+                                            class="w-9 h-9 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-500 hover:border-indigo-300 transition-all"
+                                            data-tooltip="Edit customer details">
+                                        <i class="material-symbols-rounded text-lg">edit</i>
                                     </button>
                                 </div>
                             </td>
@@ -367,6 +704,7 @@
                 </table>
             </div>
         </div>
+        {% endif %}
     </main>
 
     <footer class="mt-auto py-8 text-center border-t border-slate-200 dark:border-slate-800">
@@ -403,8 +741,9 @@
                         </div>
                     </label>
 
-                    <div id="driverList" class="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-                        </div>
+                    <div id="driverList" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        <!-- Driver list will be populated by JavaScript -->
+                    </div>
 
                     <label class="flex items-center p-4 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                         <input type="radio" name="driver_id" value="later" class="w-4 h-4 text-slate-400 border-slate-300 focus:ring-indigo-500">
@@ -580,14 +919,20 @@
             openModal('assignModal');
         }
 
-        // Edit Modal Initialization
+        // Edit Modal Initialization - FIXED FUNCTION
         function openEditModal(id, name, phone, city, landmark, pincode = '') {
             document.getElementById('edit_customer_id').value = id;
             document.getElementById('edit_name').value = name;
             document.getElementById('edit_phone').value = phone;
-            document.getElementById('edit_city').value = city;
+            
+            // Set city select value
+            const citySelect = document.getElementById('edit_city');
+            if (citySelect) {
+                citySelect.value = city;
+            }
+            
             document.getElementById('edit_landmark').value = landmark;
-            document.getElementById('edit_pincode').value = pincode;
+            document.getElementById('edit_pincode').value = pincode || '';
             openModal('editCustModal');
         }
 
@@ -602,12 +947,12 @@
 
         function updateBulkBtn() {
             const checked = document.querySelectorAll('input[name="customer_select"]:checked').length;
-            const btn = document.getElementById('bulkOrderBtn');
+            const banner = document.getElementById('selectionBanner');
             if (checked > 0) {
-                btn.classList.remove('hidden');
-                btn.innerHTML = `<i class="material-symbols-rounded">inventory_2</i><span class="hidden md:inline">Place Order for ${checked} Selected</span><span class="md:hidden">Order (${checked})</span>`;
+                banner.classList.remove('hidden');
+                document.getElementById('selectedCount').innerText = checked;
             } else {
-                btn.classList.add('hidden');
+                banner.classList.add('hidden');
             }
         }
 
@@ -672,6 +1017,12 @@
             }, 3000);
         }
 
+        // View Format Toggle
+        function toggleFormatView() {
+            const preview = document.getElementById('formatPreview');
+            preview.classList.toggle('hidden');
+        }
+
         // Close on Overlay click
         window.onclick = function(e) { 
             if (e.target.classList.contains('modal-overlay')) {
@@ -687,6 +1038,18 @@
                 });
             }
         };
+
+        // Theme Engine (Preserved)
+        const themeBtn = document.getElementById('navThemeToggle');
+        themeBtn.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('gasflow_theme', isDark ? 'dark' : 'light');
+            themeBtn.querySelector('i').textContent = isDark ? 'light_mode' : 'dark_mode';
+        });
+        if(localStorage.getItem('gasflow_theme') === 'light') { 
+            document.documentElement.classList.remove('dark'); 
+            themeBtn.querySelector('i').textContent = 'dark_mode'; 
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
             // Focus search input on desktop

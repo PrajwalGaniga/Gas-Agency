@@ -84,7 +84,7 @@
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 font-sans min-h-screen flex flex-col selection:bg-indigo-500/30">
 
-    <style>
+   <style>
     :root {
         /* Design Tokens */
         --primary: #6366f1;
@@ -292,51 +292,6 @@
     </div>
 </nav>
 
-<script>
-    (function() {
-        /* 1. Theme Engine Integration */
-        const themeBtn = document.getElementById('navThemeToggle');
-        const htmlEl = document.documentElement;
-        
-        const applyTheme = (theme) => {
-            htmlEl.setAttribute('data-theme', theme);
-            localStorage.setItem('gasflow_theme', theme);
-            const icon = themeBtn.querySelector('i');
-            icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
-        };
-
-        themeBtn.addEventListener('click', () => {
-            const current = htmlEl.getAttribute('data-theme') || 'dark';
-            applyTheme(current === 'dark' ? 'light' : 'dark');
-        });
-
-        // Initialize from storage
-        applyTheme(localStorage.getItem('gasflow_theme') || 'dark');
-
-        /* 2. Intelligent Active Link Detection */
-        const currentPath = window.location.pathname;
-        const navLinks = document.querySelectorAll('.nav-link');
-        
-        navLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            if (currentPath === href || (href !== '/dashboard' && currentPath.startsWith(href))) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
-        });
-
-        /* 3. Mobile Menu Toggle */
-        const mobileBtn = document.getElementById('navMobileBtn');
-        const navMenu = document.getElementById('universalNavMenu');
-        
-        mobileBtn.addEventListener('click', () => {
-            navMenu.classList.toggle('is-open');
-            const icon = mobileBtn.querySelector('i');
-            icon.textContent = navMenu.classList.contains('is-open') ? 'close' : 'menu';
-        });
-    })();
-</script>
 
     <main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-8 w-full flex-grow">
 
@@ -659,5 +614,51 @@
             }
         });
     </script>
+    
+<script>
+    (function() {
+        /* 1. Theme Engine Integration */
+        const themeBtn = document.getElementById('navThemeToggle');
+        const htmlEl = document.documentElement;
+        
+        const applyTheme = (theme) => {
+            htmlEl.setAttribute('data-theme', theme);
+            localStorage.setItem('gasflow_theme', theme);
+            const icon = themeBtn.querySelector('i');
+            icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+        };
+
+        themeBtn.addEventListener('click', () => {
+            const current = htmlEl.getAttribute('data-theme') || 'dark';
+            applyTheme(current === 'dark' ? 'light' : 'dark');
+        });
+
+        // Initialize from storage
+        applyTheme(localStorage.getItem('gasflow_theme') || 'dark');
+
+        /* 2. Intelligent Active Link Detection */
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll('.nav-link');
+        
+        navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (currentPath === href || (href !== '/dashboard' && currentPath.startsWith(href))) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+
+        /* 3. Mobile Menu Toggle */
+        const mobileBtn = document.getElementById('navMobileBtn');
+        const navMenu = document.getElementById('universalNavMenu');
+        
+        mobileBtn.addEventListener('click', () => {
+            navMenu.classList.toggle('is-open');
+            const icon = mobileBtn.querySelector('i');
+            icon.textContent = navMenu.classList.contains('is-open') ? 'close' : 'menu';
+        });
+    })();
+</script>
 </body>
 </html>
