@@ -77,8 +77,14 @@ class ApiService {
   }
 
   // --- ACTION QUEUEING (OFFLINE SYNC) ---
-  Future<Map<String, dynamic>> completeOrder(String token, String orderId, double lat, double lng) async {
-    final payload = {'order_id': orderId, 'lat': lat, 'lng': lng};
+  Future<Map<String, dynamic>> completeOrder(String token, String orderId, double lat, double lng, int emptiesCollected, String paymentMode) async {
+    final payload = {
+      'order_id': orderId, 
+      'lat': lat, 
+      'lng': lng,
+      'empties_collected': emptiesCollected,
+      'payment_mode': paymentMode
+    };
 
     try {
       // 1. Try Live Update

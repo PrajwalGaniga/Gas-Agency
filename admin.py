@@ -285,6 +285,8 @@ async def dashboard_view(request: Request, admin_id: ObjectId = Depends(get_curr
             "is_online": ls_utc and (now_utc - ls_utc).total_seconds() < 300,
             "last_seen": to_ist(ls_utc),
             "work_time": calculate_work_time(d["_id"]),
+            "current_stock": d.get("current_stock", 0),
+            "collected_cash": d.get("collected_cash", 0),
             "completed": order_collection.count_documents({"assigned_driver_id": d["_id"], "status": "DELIVERED"}),
             "pending": order_collection.count_documents({"assigned_driver_id": d["_id"], "status": "PENDING"})
         })

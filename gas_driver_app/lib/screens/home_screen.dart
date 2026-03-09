@@ -322,7 +322,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: status == 'PENDING'
                     ? _mainActionBtn("ACCEPT ORDER", Colors.orange[800]!, () => _handleStatusChange(o, 'accept'))
                     : status == 'IN_PROGRESS'
-                        ? _mainActionBtn("MARK DELIVERED", kSuccessGreen, () => _handleStatusChange(o, 'complete'))
+                        ? _mainActionBtn("MARK DELIVERED", kSuccessGreen, () => _showDeliveryConfirmation(o))
                         : Container(height: 45, alignment: Alignment.center,
                             decoration: BoxDecoration(border: Border.all(color: Colors.green), borderRadius: BorderRadius.circular(8)),
                             child: const Text("COMPLETED", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
@@ -338,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   // --- LOGIC HANDLING (Updated for Offline Feedback) ---
 
-  Future<void> _handleStatusChange(Map o, String action) async {
+  Future<void> _handleStatusChange(Map o, String action, {int empties = 0, String paymentMode = 'CASH'}) async {
     setState(() => isLoading = true);
     
     try {
@@ -347,13 +347,15 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? "Order Accepted")));
       } else {
         Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-        final res = await ApiService().completeOrder(widget.token, o['_id'], pos.latitude, pos.longitude);
+        final res = await ApiService().completeOrder(widget.token, o['_id'], pos.latitude, pos.longitude, empties, paymentMode);
         
         // 🛡️ OFFLINE FEEDBACK: Tell user if it's saved locally
         if (mounted && res['offline'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(backgroundColor: Colors.orange, content: Text("No signal. Delivery saved on phone and will sync later."))
           );
+        } else if (mounted && res['success'] == false) {
+           ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.redAccent, content: Text(res['message'] ?? "Failed to mark delivered.")));
         }
       }
       _refreshData();
@@ -422,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         DropdownButtonFormField(value: "ADDRESS", dropdownColor: const Color(0xFF2C2C2C), style: const TextStyle(color: Colors.white),
           items: const [DropdownMenuItem(value: "ADDRESS", child: Text("Wrong Address")), DropdownMenuItem(value: "PHONE", child: Text("New Phone Number"))],
-          onChanged: (v) => cat = v!, decoration: const InputDecoration(filled: true, fillColor: Color(0xFF121212))),
+          onChanged: (v) => cat = v.toString(), decoration: const InputDecoration(filled: true, fillColor: Color(0xFF121212))),
         const SizedBox(height: 15),
         TextField(controller: det, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: "Correct Details", filled: true, fillColor: Color(0xFF121212))),
       ]),
@@ -435,6 +437,62 @@ class _HomeScreenState extends State<HomeScreen> {
         }, child: const Text("Submit", style: TextStyle(color: Colors.white))),
       ],
     ));
+  }
+
+  void _showDeliveryConfirmation(Map order) {
+    int emptiesCollected = 0;
+    String paymentMode = "CASH";
+    final emptiesController = TextEditingController(text: "0");
+
+    showDialog(context: context, builder: (c) {
+      return StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            backgroundColor: kCardColor,
+            title: const Text("Confirm Delivery", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text("Empties Collected", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: emptiesController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  filled: true, fillColor: Color(0xFF121212),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text("Payment Method", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: paymentMode,
+                dropdownColor: const Color(0xFF2C2C2C),
+                style: const TextStyle(color: Colors.white),
+                items: const [
+                  DropdownMenuItem(value: "CASH", child: Text("Cash (INR)")),
+                  DropdownMenuItem(value: "UPI", child: Text("UPI / Online")),
+                ],
+                onChanged: (v) => setStateDialog(() => paymentMode = v!),
+                decoration: const InputDecoration(filled: true, fillColor: Color(0xFF121212), border: OutlineInputBorder()),
+              ),
+            ]),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: kSuccessGreen), 
+                onPressed: () {
+                  int parsedEmpties = int.tryParse(emptiesController.text) ?? 0;
+                  Navigator.pop(context);
+                  _handleStatusChange(order, 'complete', empties: parsedEmpties, paymentMode: paymentMode);
+                }, 
+                child: const Text("CONFIRM", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold))
+              ),
+            ],
+          );
+        }
+      );
+    });
   }
 
   Future<void> _launchNavigation(dynamic lat, dynamic lng) async {

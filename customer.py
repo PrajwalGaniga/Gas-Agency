@@ -10,8 +10,17 @@ from typing import List
 from auth import get_current_admin
 from app.database import (
     db, customer_collection, order_collection, 
-    cities_collection, driver_collection
+    cities_collection, driver_collection, counters_collection
 )
+
+def get_next_sequence(name: str) -> int:
+    """Atomic sequence generator for custom IDs"""
+    result = counters_collection.find_one_and_update(
+        {"_id": name},
+        {"$inc": {"sequence_value": 1}},
+        return_document=True
+    )
+    return result["sequence_value"]
 
 customer_router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -193,8 +202,13 @@ async def add_customer(
     if not admin_id:
         return RedirectResponse(url="/", status_code=303)
 
+    # 🚀 SECURE ID GENERATION: GF-1002 Format
+    seq = get_next_sequence("customer_id")
+    customer_id_str = f"GF-{seq}"
+
     customer_collection.insert_one({
         "admin_id": admin_id,
+        "customer_id": customer_id_str, # NEW FIELD
         "name": name, 
         "phone_number": phone, 
         "city": city, 
@@ -202,7 +216,8 @@ async def add_customer(
         "pincode": pincode,
         "verified_lat": None, 
         "verified_lng": None, 
-        "records": [], 
+        "records": [],
+        "active_order_lock": False, # Lock for preventing Scenario C double orders
         "created_at": datetime.utcnow()
     })
     return RedirectResponse(url="/customers", status_code=303)
@@ -221,17 +236,22 @@ async def create_order(
     if not admin_id:
         return RedirectResponse(url="/", status_code=303)
     
-    cust = customer_collection.find_one({"_id": ObjectId(customer_id), "admin_id": admin_id})
+    # --- FRAUD DEFENSE: Scenario C (Double Order Atomicity) ---
+    # Find the customer ONLY IF active_order_lock is False, and immediately set it to True.
+    # This guarantees that if two requests hit simultaneously, only one succeeds in locking the row.
+    cust = customer_collection.find_one_and_update(
+        {"_id": ObjectId(customer_id), "admin_id": admin_id, "active_order_lock": {"$ne": True}},
+        {"$set": {"active_order_lock": True}},
+        return_document=True
+    )
+    
     if not cust:
-        raise HTTPException(status_code=403, detail="Customer not found")
-
-    # Prevent double ordering
-    active_exists = order_collection.find_one({
-        "customer_id": cust["_id"],
-        "status": {"$in": ["PENDING", "IN_PROGRESS"]}
-    })
-    if active_exists:
-        return RedirectResponse(url="/customers?error=Active order already exists", status_code=303)
+        # Check if they exist at all, or if they were just locked.
+        exists = customer_collection.find_one({"_id": ObjectId(customer_id), "admin_id": admin_id})
+        if not exists:
+            raise HTTPException(status_code=403, detail="Customer not found")
+        # If they exist but were not returned by find_one_and_update, they are locked.
+        return RedirectResponse(url="/customers?error=Double order prevented! Order already processing.", status_code=303)
 
     # --- SMART ASSIGNMENT LOGIC ---
     final_driver_id = None
@@ -296,11 +316,13 @@ async def bulk_order(
         if not cust: 
             continue
 
-        # Prevent duplicate active orders
-        if order_collection.find_one({
-            "customer_id": cust["_id"], 
-            "status": {"$in": ["PENDING", "IN_PROGRESS"]}
-        }):
+        # Prevent duplicate active orders atomically (Scenario C Defense)
+        cust = customer_collection.find_one_and_update(
+            {"_id": ObjectId(cid), "admin_id": admin_id, "active_order_lock": {"$ne": True}},
+            {"$set": {"active_order_lock": True}},
+            return_document=True
+        )
+        if not cust:
             continue
 
         # AUTO ASSIGNMENT LOGIC

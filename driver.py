@@ -12,6 +12,7 @@ from app.database import (
     driver_audit_collection, driver_location_collection, change_requests_collection
 )
 from app.utils import verify_password
+from app.schemas import DriverLogin, AcceptOrderRequest, CompleteOrderRequest, LocationPing, ChangeRequestPayload
 
 driver_router = APIRouter()
 
@@ -48,13 +49,13 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 # --- 🚀 ROUTES ---
 
 @driver_router.post("/driver/login")
-async def driver_login(data: dict = Body(...)):
-    phone = data.get("phone_number")
-    password = data.get("password")
+async def driver_login(data: DriverLogin = Body(...)):
+    phone = data.phone_number
+    password = data.password
     driver = driver_collection.find_one({"phone_number": phone})
     
     if not driver or not verify_password(password, driver.get("password_hash")):
-        return {"success": False, "message": "Invalid credentials"}
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token = create_driver_token({"sub": str(driver["_id"])})
     driver_audit_collection.insert_one({
@@ -150,10 +151,10 @@ async def get_driver_worklist(
 # --- 🚀 LIFECYCLE & TRACKING ROUTES ---
 
 @driver_router.post("/driver/accept-order")
-async def accept_order(data: dict = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
+async def accept_order(data: AcceptOrderRequest = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
     """Moves an order from PENDING (Orange) to IN_PROGRESS (Blue State)"""
     try:
-        o_id = ObjectId(data.get("order_id"))
+        o_id = ObjectId(data.order_id)
         
         # 🟢 TERMINAL DEBUG: Acceptance Signal
         print(f"🚛 DRIVER STARTING JOB: {o_id}")
@@ -194,14 +195,14 @@ from geopy.exc import GeopyError
 geolocator = Nominatim(user_agent="gas_flow_enterprise_system")
 
 @driver_router.post("/driver/location")
-async def update_driver_location(data: dict = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
+async def update_driver_location(data: LocationPing = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
     """
     Receives GPS from phone, uses Python to resolve the street address,
     and updates the driver's master record.
     """
     try:
-        lat = data.get("lat")
-        lng = data.get("lng")
+        lat = data.lat
+        lng = data.lng
         now = datetime.now(timezone.utc)
         
         # 🛰️ PYTHON REVERSE GEOCODING
@@ -240,12 +241,12 @@ async def update_driver_location(data: dict = Body(...), driver_id: ObjectId = D
         return {"success": False}
 
 @driver_router.post("/driver/change-request")
-async def driver_change_request(data: dict = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
+async def driver_change_request(data: ChangeRequestPayload = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
     driver = driver_collection.find_one({"_id": driver_id})
-    cust = customer_collection.find_one({"_id": ObjectId(data.get("customer_id"))})
+    cust = customer_collection.find_one({"_id": ObjectId(data.customer_id)})
     
     # Determine old value based on category
-    category = data.get("category")
+    category = data.category
     old_val = cust.get("landmark" if category == "ADDRESS" else "phone_number", "N/A")
 
     change_requests_collection.insert_one({
@@ -264,12 +265,12 @@ async def driver_change_request(data: dict = Body(...), driver_id: ObjectId = De
 # driver.py (Add these to your existing file)
 
 @driver_router.post("/driver/complete-order")
-async def complete_order(data: dict = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
-    """Marks delivery as complete and verifies the EXACT GPS received from the phone"""
+async def complete_order(data: CompleteOrderRequest = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
+    """Marks delivery as complete with Distance Checking & Atomic Counting"""
     try:
-        o_id = ObjectId(data.get("order_id"))
-        lat = data.get("lat")
-        lng = data.get("lng")
+        o_id = ObjectId(data.order_id)
+        lat = data.lat
+        lng = data.lng
         
         # 🟢 TERMINAL DEBUG: Verify what the phone actually sent
         print(f"--- ✅ COMPLETING ORDER ---")
@@ -280,18 +281,42 @@ async def complete_order(data: dict = Body(...), driver_id: ObjectId = Depends(g
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
 
-        # 1. Update Order Collection
+        # --- FRAUD DEFENSE: Distance Check (Scenario B Check) ---
+        customer = customer_collection.find_one({"_id": order["customer_id"]})
+        if customer and customer.get("verified_lat") and customer.get("verified_lng"):
+            distance = calculate_distance(lat, lng, customer["verified_lat"], customer["verified_lng"])
+            if distance > 2.0: # 2km threshold
+                raise HTTPException(status_code=403, detail=f"Spoof detected: You are {distance:.2f}km away from the verified location.")
+
+        # --- ATOMIC UPDATES: Driver Inventory & Cash ---
+        driver_collection.update_one(
+            {"_id": driver_id},
+            {"$inc": {
+                "current_stock": -1, # Delivered 1 full cylinder
+                "collected_cash": 1000 if data.payment_mode == "CASH" else 0 # Mock 1000 INR price points for CASH
+            }}
+        )
+
+        # 1. Update Order Collection (Added payment info and empties)
         order_collection.update_one({"_id": o_id}, {"$set": {
             "status": "DELIVERED", 
             "delivered_at": datetime.now(timezone.utc),
             "verified_lat": lat,
-            "verified_lng": lng
+            "verified_lng": lng,
+            "payment_status": "PAID" if data.payment_mode == "UPI" else "CASH_COLLECTED",
+            "payment_mode": data.payment_mode,
+            "cylinders_delivered": 1,
+            "empties_collected": data.empties_collected
         }})
 
-        # 2. Update Customer Record (Permanent Verification)
+        # 2. Update Customer Record (Permanent Verification & Unlock for next order)
         customer_collection.update_one(
             {"_id": order["customer_id"]}, 
-            {"$set": {"verified_lat": lat, "verified_lng": lng}}
+            {"$set": {
+                "verified_lat": lat, 
+                "verified_lng": lng,
+                "active_order_lock": False # UNLOCK!
+            }}
         )
 
         # 3. Sync to Customer's 'records' array for Admin History
@@ -304,4 +329,7 @@ async def complete_order(data: dict = Body(...), driver_id: ObjectId = Depends(g
         return {"success": True}
     except Exception as e:
         print(f"❌ ERROR: {e}")
+        # Reraise HTTP exceptions so they hit the global handler cleanly
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=str(e))
