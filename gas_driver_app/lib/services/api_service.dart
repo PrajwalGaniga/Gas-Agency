@@ -5,7 +5,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class ApiService {
-  static const String baseUrl = "https://gas-agency-backend-go6b.onrender.com";
+  static String baseUrl = "https://gas-agency-backend-go6b.onrender.com";
+  static const String _ngrokUrl = "https://dawdlingly-pseudoinsane-pa.ngrok-free.dev";
+  static const String _renderUrl = "https://gas-agency-backend-go6b.onrender.com";
+  static bool _initialized = false;
+
+  // --- DYNAMIC ROUTING ENGINE ---
+  static Future<void> initBaseUrl() async {
+    if (_initialized) return;
+    try {
+      print("🔍 Checking if Ngrok server is online...");
+      // Send a quick ping to see if local dev environment is open
+      final res = await http.get(Uri.parse('$_ngrokUrl/docs')).timeout(const Duration(seconds: 2));
+      baseUrl = _ngrokUrl;
+      print("🔌 Connected to NGROK local server: $baseUrl");
+    } catch (e) {
+      baseUrl = _renderUrl;
+      print("☁️ Ngrok not reachable. Using RENDER cloud server: $baseUrl");
+    }
+    _initialized = true;
+  }
 
   // Hive Box Names
   static const String orderBoxName = "cached_orders";

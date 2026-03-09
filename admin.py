@@ -283,7 +283,7 @@ async def dashboard_view(request: Request, admin_id: ObjectId = Depends(get_curr
             "name": d["name"],
             "phone": d.get("phone_number", "N/A"),
             "is_online": ls_utc and (now_utc - ls_utc).total_seconds() < 300,
-            "last_seen": to_ist(ls_utc),
+            "last_seen": to_ist(ls_utc).isoformat() if ls_utc else None,
             "work_time": calculate_work_time(d["_id"]),
             "current_stock": d.get("current_stock", 0),
             "collected_cash": d.get("collected_cash", 0),
@@ -577,9 +577,52 @@ async def export_report(period: str = "24h", admin_id: ObjectId = Depends(get_cu
     df = pd.DataFrame(export_data)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer: df.to_excel(writer, index=False)
-    output.seek(0)
-    return StreamingResponse(output, headers={"Content-Disposition": f"attachment; filename=GasDelivery_Report_{period}.xlsx"}, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+# admin.py
 
+@admin_router.get("/reconciliation")
+async def reconciliation_page(request: Request, date: str = Query(None), admin_id: ObjectId = Depends(get_current_admin)):
+    if not admin_id: return RedirectResponse(url="/", status_code=303)
+    
+    target_date = datetime.strptime(date, "%Y-%m-%d").date() if date else ist_now().date()
+    start_utc, end_utc = ist_day_start(target_date), ist_day_end(target_date)
+    
+    drivers = list(driver_collection.find({"admin_id": admin_id, "is_active": True}))
+    reconciliation_data = []
+    
+    for d in drivers:
+        # Get all delivered orders for this day
+        delivered_orders = list(order_collection.find({
+            "assigned_driver_id": d["_id"],
+            "status": "DELIVERED",
+            "delivered_at": {"$gte": start_utc, "$lte": end_utc}
+        }))
+        
+        expected_cash_orders = [o for o in delivered_orders if o.get("payment_mode", "CASH") == "CASH"]
+        expected_upi_orders = [o for o in delivered_orders if o.get("payment_mode") == "UPI"]
+        
+        # Typically gas cylinder cost is fixed, but let's assume it's stored in order or a constant $1000 for demo
+        CYLINDER_PRICE = 900 
+        expected_cash = len(expected_cash_orders) * CYLINDER_PRICE
+        
+        # Assuming we track reported_cash from the driver app side (or we just use expected for now)
+        reported_cash = d.get("collected_cash", 0) # Real-world this would be from a daily tally
+        
+        reconciliation_data.append({
+            "driver_name": d["name"],
+            "total_delivered": len(delivered_orders),
+            "cash_deliveries": len(expected_cash_orders),
+            "upi_deliveries": len(expected_upi_orders),
+            "expected_cash": expected_cash,
+            "reported_cash": reported_cash,
+            "difference": reported_cash - expected_cash
+        })
+        
+    return templates.TemplateResponse("reports.html", { # For now reuse reports.html or create a simplified reconciliation view
+        "request": request,
+        "date_label": target_date.strftime("%d %b %Y"),
+        "reconciliation": reconciliation_data
+    })
+    
 # admin.py
 
 @admin_router.get("/profile")

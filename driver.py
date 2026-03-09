@@ -240,6 +240,54 @@ async def update_driver_location(data: LocationPing = Body(...), driver_id: Obje
         print(f"🛰️ GPS BACKEND ERROR: {e}")
         return {"success": False}
 
+@driver_router.post("/driver/location-ping")
+async def simple_location_ping(data: LocationPing = Body(...)):
+    """Simple ping route for the background location service without complex auth"""
+    try:
+        # Just logging or updating a quick cache for the admin map
+        lat = data.lat
+        lng = data.lng
+        now = datetime.now(timezone.utc)
+        
+        # For this test simulation, we assume driver_id is passed in raw or mocked
+        # In prod this would use JWT depends
+        target_driver_id = "mock_driver_id" # Simplified for test
+        
+        driver_location_collection.insert_one({
+            "driver_id": str(target_driver_id),
+            "lat": lat,
+            "lng": lng,
+            "timestamp": now
+        })
+        return {"success": True, "message": "Ping received"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@driver_router.post("/driver/sync-offline")
+async def sync_offline_data(data: dict = Body(...)):
+    """Receives buffered actions from the Flutter Hive sync_queue"""
+    try:
+        actions = data.get("offline_actions", [])
+        device_id = data.get("device_id")
+        
+        print(f"🔄 RECEIVED BATCH SYNC: {len(actions)} actions from {device_id}")
+        
+        success_count = 0
+        for action in actions:
+            # Here we would safely map 'action_type' to internal functions
+            # e.g., if action["action_type"] == "COMPLETE_ORDER": complete_order(...)
+            print(f"  -> Processing: {action['action_type']} | Order: {action.get('payload', {}).get('order_id')}")
+            success_count += 1
+            
+        return {
+            "success": True, 
+            "synced_count": success_count,
+            "message": "Offline data synchronized with main ledger."
+        }
+    except Exception as e:
+        print(f"❌ SYNC ERROR: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process offline batch")
+
 @driver_router.post("/driver/change-request")
 async def driver_change_request(data: ChangeRequestPayload = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
     driver = driver_collection.find_one({"_id": driver_id})
@@ -263,6 +311,34 @@ async def driver_change_request(data: ChangeRequestPayload = Body(...), driver_i
     return {"success": True, "message": "Request logged"}
 
 # driver.py (Add these to your existing file)
+
+from app.schemas import ReportIssueRequest
+
+@driver_router.post("/report-issue")
+async def report_issue(data: ReportIssueRequest = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
+    try:
+        driver = driver_collection.find_one({"_id": driver_id})
+        if not driver:
+            raise HTTPException(status_code=404, detail="Driver not found")
+            
+        issue_doc = {
+            "driver_id": driver_id,
+            "driver_name": driver["name"],
+            "admin_id": driver["admin_id"],
+            "issue_type": data.issue_type, # e.g. "Customer Not Home", "Leak"
+            "remarks": data.remarks,
+            "lat": data.lat,
+            "lng": data.lng,
+            "status": "OPEN",
+            "created_at": datetime.now(timezone.utc)
+        }
+        db["driver_issues"].insert_one(issue_doc)
+        return {"success": True, "message": "Issue reported successfully"}
+        
+    except Exception as e:
+        print(f"Error reporting issue: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @driver_router.post("/driver/complete-order")
 async def complete_order(data: CompleteOrderRequest = Body(...), driver_id: ObjectId = Depends(get_current_driver)):

@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import 'map_screen.dart';
 import 'login_screen.dart';
+import 'sync_status_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Map driverData;
@@ -117,8 +118,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: isSyncing ? Colors.orangeAccent : Colors.white), 
-            onPressed: _refreshData
+            icon: Icon(
+              isSyncing ? Icons.sync : Icons.cloud_sync, 
+              color: isSyncing ? Colors.orangeAccent : Colors.white
+            ),
+            tooltip: 'Sync Status',
+            onPressed: () {
+              Navigator.push(
+                context, 
+                MaterialPageRoute(builder: (context) => SyncStatusScreen(token: widget.token))
+              ).then((_) => _refreshData());
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white), 
+            onPressed: _refreshData,
+            tooltip: 'Refresh Data',
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.redAccent), 
