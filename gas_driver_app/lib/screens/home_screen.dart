@@ -23,6 +23,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Position? currentPos;
   DateTime selectedDate = DateTime.now();
   Timer? _locationTimer;
+  Map<String, dynamic>? shiftStatus; // 🚚 New: Tracks current inventory
+  int pendingSyncCount = 0; // 🔄 New: Counts items in offline queue
 
   // UX Constants for Consistency
   final Color kBgColor = const Color(0xFF121212); 
@@ -81,10 +83,18 @@ class _HomeScreenState extends State<HomeScreen> {
       final res = await ApiService().getOrders(
         cities, widget.token, currentPos!.latitude, currentPos!.longitude, dateStr
       );
+
+      // 4. Fetch Shift Status (Inventory)
+      final sStatus = await ApiService().getShiftStatus(widget.token);
+      
+      // 5. Check Sync Queue
+      final sCount = await ApiService().getSyncQueueCount();
       
       if (mounted) {
         setState(() {
           orders = res['orders'] ?? [];
+          shiftStatus = sStatus;
+          pendingSyncCount = sCount;
           isLoading = false;
           isSyncing = false;
         });
@@ -215,6 +225,75 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
+          // 1.5️⃣ SHIFT STOCK WIDGET (Enhanced)
+          if (shiftStatus != null && shiftStatus!['active'] == true)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [kCardColor, kCardColor.withOpacity(0.8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))
+                  ]
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("TRUCK STOCK", style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                        Row(
+                          children: [
+                            if (pendingSyncCount > 0)
+                              Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(color: Colors.orangeAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.orangeAccent.withOpacity(0.4))),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.sync_problem, color: Colors.orangeAccent, size: 10),
+                                    const SizedBox(width: 4),
+                                    Text("$pendingSyncCount PENDING", style: const TextStyle(color: Colors.orangeAccent, fontSize: 8, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.green[900]?.withOpacity(0.3), borderRadius: BorderRadius.circular(20)),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.greenAccent, size: 12),
+                                  SizedBox(width: 4),
+                                  Text("SHIFT OPEN", style: TextStyle(color: Colors.greenAccent, fontSize: 9, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _inventoryItem("LOADED", shiftStatus!['inventory']['total_loaded']?.toString() ?? "0", Icons.add_business, Colors.indigoAccent),
+                        _inventoryItem("AVAILABLE", shiftStatus!['inventory']['full_cylinders'].toString(), Icons.propane_tank, Colors.blueAccent),
+                        _inventoryItem("EMPTIES", shiftStatus!['inventory']['empty_cylinders'].toString(), Icons.moped, Colors.orangeAccent),
+                        _inventoryItem("COLLECTED", "₹${shiftStatus!['financials']['expected_cash'] ?? shiftStatus!['financials']['expected_cash_collected'] ?? 0.0}", Icons.payments, Colors.greenAccent),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // 3️⃣ LIST HEADER
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -265,6 +344,19 @@ class _HomeScreenState extends State<HomeScreen> {
         statusColor = Colors.orangeAccent;
     }
 
+    // 🕒 OVERDUE CHECK (> 4 hours pending)
+    bool isOverdue = false;
+    if (status == 'PENDING' && o['created_at'] != null) {
+      try {
+        DateTime createdAt = DateTime.parse(o['created_at'].toString());
+        if (DateTime.now().toUtc().difference(createdAt).inHours >= 4) {
+          isOverdue = true;
+        }
+      } catch (e) {
+        // ignore date parse errors
+      }
+    }
+
     // 🛡️ PRO-FIX: Safe distance parsing to prevent 'String is not a subtype of double' crash
     double distance = 0.0;
     try {
@@ -304,6 +396,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     Icon(Icons.circle, size: 8, color: statusColor),
                     const SizedBox(width: 4),
                     Text(status.replaceAll('_', ' '), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                    if (o['is_rescheduled'] == true) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.amber[900], 
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.amber[400]!, width: 0.5)
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, size: 10, color: Colors.white),
+                            SizedBox(width: 2),
+                            Text('RESCHEDULED', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      )
+                    ] else if (isOverdue) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.red[900], borderRadius: BorderRadius.circular(4)),
+                        child: const Text('DELAYED', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                      )
+                    ]
                   ])
                 ],
               )
@@ -337,7 +454,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: status == 'PENDING'
                     ? _mainActionBtn("ACCEPT ORDER", Colors.orange[800]!, () => _handleStatusChange(o, 'accept'))
                     : status == 'IN_PROGRESS'
-                        ? _mainActionBtn("MARK DELIVERED", kSuccessGreen, () => _showDeliveryConfirmation(o))
+                        ? _mainActionBtn(
+                            "MARK DELIVERED", 
+                            (shiftStatus?['inventory']?['full_cylinders'] ?? 0) > 0 ? kSuccessGreen : Colors.grey, 
+                            () => (shiftStatus?['inventory']?['full_cylinders'] ?? 0) > 0 
+                                ? _showDeliveryConfirmation(o) 
+                                : ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Insufficient Stock on Truck.")))
+                          )
                         : Container(height: 45, alignment: Alignment.center,
                             decoration: BoxDecoration(border: Border.all(color: Colors.green), borderRadius: BorderRadius.circular(8)),
                             child: const Text("COMPLETED", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
@@ -353,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   // --- LOGIC HANDLING (Updated for Offline Feedback) ---
 
-  Future<void> _handleStatusChange(Map o, String action, {int empties = 0, String paymentMode = 'CASH'}) async {
+  Future<void> _handleStatusChange(Map o, String action, {int empties = 0, String paymentMode = 'CASH', double amountCollected = 0.0}) async {
     setState(() => isLoading = true);
     
     try {
@@ -362,7 +485,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? "Order Accepted")));
       } else {
         Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-        final res = await ApiService().completeOrder(widget.token, o['_id'], pos.latitude, pos.longitude, empties, paymentMode);
+        final res = await ApiService().completeOrder(widget.token, o['_id'], pos.latitude, pos.longitude, empties, paymentMode, amountCollected);
         
         // 🛡️ OFFLINE FEEDBACK: Tell user if it's saved locally
         if (mounted && res['offline'] == true) {
@@ -371,6 +494,8 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         } else if (mounted && res['success'] == false) {
            ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.redAccent, content: Text(res['message'] ?? "Failed to mark delivered.")));
+        } else if (mounted && res['success'] == true) {
+           ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.green, content: Text(res['message'] ?? "Delivery successful.")));
         }
       }
       _refreshData();
@@ -424,6 +549,17 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: onTap, child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))));
   }
 
+  Widget _inventoryItem(String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 10, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
   // (Kept _selectDate and _showChangeRequest the same as your previous version for production reliability)
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(context: context, initialDate: selectedDate, firstDate: DateTime(2025), lastDate: DateTime.now(),
@@ -457,7 +593,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showDeliveryConfirmation(Map order) {
     int emptiesCollected = 0;
     String paymentMode = "CASH";
-    final emptiesController = TextEditingController(text: "0");
+    final emptiesController = TextEditingController(text: "1");
+    // Ensure accurate price defaulting or set to empty if 0
+    final initialAmount = order['total_amount']?.toString() ?? "1000";
+    final amountController = TextEditingController(text: initialAmount);
 
     showDialog(context: context, builder: (c) {
       return StatefulBuilder(
@@ -465,41 +604,56 @@ class _HomeScreenState extends State<HomeScreen> {
           return AlertDialog(
             backgroundColor: kCardColor,
             title: const Text("Confirm Delivery", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text("Empties Collected", style: TextStyle(color: Colors.grey, fontSize: 12)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: emptiesController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  filled: true, fillColor: Color(0xFF121212),
-                  border: OutlineInputBorder(),
+            content: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text("Empties Collected", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: emptiesController,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    filled: true, fillColor: Color(0xFF121212),
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              const Text("Payment Method", style: TextStyle(color: Colors.grey, fontSize: 12)),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: paymentMode,
-                dropdownColor: const Color(0xFF2C2C2C),
-                style: const TextStyle(color: Colors.white),
-                items: const [
-                  DropdownMenuItem(value: "CASH", child: Text("Cash (INR)")),
-                  DropdownMenuItem(value: "UPI", child: Text("UPI / Online")),
-                ],
-                onChanged: (v) => setStateDialog(() => paymentMode = v!),
-                decoration: const InputDecoration(filled: true, fillColor: Color(0xFF121212), border: OutlineInputBorder()),
-              ),
-            ]),
+                const SizedBox(height: 15),
+                const Text("Amount Collected (₹)", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: amountController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    filled: true, fillColor: Color(0xFF121212),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                const Text("Payment Method", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: paymentMode,
+                  dropdownColor: const Color(0xFF2C2C2C),
+                  style: const TextStyle(color: Colors.white),
+                  items: const [
+                    DropdownMenuItem(value: "CASH", child: Text("Cash (INR)")),
+                    DropdownMenuItem(value: "UPI", child: Text("UPI / Online")),
+                  ],
+                  onChanged: (v) => setStateDialog(() => paymentMode = v!),
+                  decoration: const InputDecoration(filled: true, fillColor: Color(0xFF121212), border: OutlineInputBorder()),
+                ),
+              ]),
+            ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: kSuccessGreen), 
                 onPressed: () {
                   int parsedEmpties = int.tryParse(emptiesController.text) ?? 0;
+                  double parsedAmount = double.tryParse(amountController.text) ?? 1000.0;
                   Navigator.pop(context);
-                  _handleStatusChange(order, 'complete', empties: parsedEmpties, paymentMode: paymentMode);
+                  _handleStatusChange(order, 'complete', empties: parsedEmpties, paymentMode: paymentMode, amountCollected: parsedAmount);
                 }, 
                 child: const Text("CONFIRM", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold))
               ),

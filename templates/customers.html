@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark" class="scroll-smooth">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Management | GasFlow</title>
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -132,278 +136,332 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 font-sans min-h-screen flex flex-col selection:bg-indigo-500/30">
+
+<body
+    class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 font-sans min-h-screen flex flex-col selection:bg-indigo-500/30">
 
     <style>
-    :root {
-        /* Design Tokens */
-        --primary: #6366f1;
-        --primary-hover: #4f46e5;
-        --primary-light: rgba(99, 102, 241, 0.15);
-        --danger: #ef4444;
-        --header-h: 72px;
-        --radius-md: 12px;
-        --font-display: 'Space Grotesk', sans-serif;
-    }
-
-    /* Theme-Aware Variables */
-    [data-theme="dark"] {
-        --nav-bg: rgba(15, 23, 42, 0.8);
-        --nav-border: rgba(255, 255, 255, 0.08);
-        --nav-text: #94a3b8;
-        --nav-text-active: #f8fafc;
-        --nav-surface: #1e293b;
-    }
-    [data-theme="light"] {
-        --nav-bg: rgba(255, 255, 255, 0.8);
-        --nav-border: rgba(15, 23, 42, 0.08);
-        --nav-text: #64748b;
-        --nav-text-active: #1e293b;
-        --nav-surface: #f1f5f9;
-    }
-
-    /* Navbar Container */
-    .universal-navbar {
-        height: var(--header-h);
-        background: var(--nav-bg);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border-bottom: 1px solid var(--nav-border);
-        position: sticky;
-        top: 0;
-        z-index: 9999;
-        font-family: 'Inter', sans-serif;
-        transition: all 0.3s ease;
-    }
-
-    .nav-inner {
-        max-width: 1400px;
-        margin: 0 auto;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 24px;
-    }
-
-    /* Brand / Logo */
-    .nav-brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 22px;
-        text-decoration: none;
-        color: var(--nav-text-active);
-    }
-    .nav-brand i { 
-        color: var(--primary); 
-        font-size: 28px;
-        filter: drop-shadow(0 0 8px var(--primary-light));
-    }
-
-    /* Nav Links */
-    .nav-menu {
-        display: flex;
-        gap: 6px;
-        background: var(--nav-surface);
-        padding: 5px;
-        border-radius: var(--radius-md);
-        border: 1px solid var(--nav-border);
-    }
-
-    .nav-link {
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--nav-text);
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.2s ease;
-    }
-
-    .nav-link:hover {
-        color: var(--nav-text-active);
-        background: rgba(99, 102, 241, 0.05);
-    }
-
-    .nav-link.active {
-        background: var(--primary-light);
-        color: var(--primary);
-    }
-
-    /* Badges */
-    .nav-badge {
-        background: var(--danger);
-        color: white;
-        font-size: 10px;
-        font-weight: 800;
-        padding: 1px 6px;
-        border-radius: 10px;
-        margin-left: 4px;
-    }
-
-    /* Actions */
-    .nav-actions { display: flex; align-items: center; gap: 16px; }
-
-    .nav-btn {
-        width: 40px; height: 40px;
-        border-radius: 50%;
-        border: 1px solid var(--nav-border);
-        display: grid; place-items: center;
-        color: var(--nav-text);
-        cursor: pointer;
-        transition: all 0.2s;
-        background: var(--nav-surface);
-    }
-    .nav-btn:hover { color: var(--primary); border-color: var(--primary); }
-
-    .nav-user {
-        display: flex; align-items: center; gap: 12px;
-        padding-left: 16px; border-left: 1px solid var(--nav-border);
-        text-decoration: none;
-    }
-
-    .nav-avatar {
-        width: 36px; height: 36px; border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), #818cf8);
-        color: white; display: grid; place-items: center; font-weight: 700;
-        box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
-    }
-
-    .nav-mobile-toggle { display: none; font-size: 24px; color: var(--nav-text); cursor: pointer; }
-
-    /* Responsive Logic */
-    @media (max-width: 1024px) {
-        .nav-menu { display: none; }
-        .nav-menu.is-open {
-            display: flex; flex-direction: column;
-            position: absolute; top: var(--header-h); left: 0; right: 0;
-            background: var(--nav-bg); padding: 16px; border-bottom: 1px solid var(--nav-border);
+        :root {
+            /* Design Tokens */
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-light: rgba(99, 102, 241, 0.15);
+            --danger: #ef4444;
+            --header-h: 72px;
+            --radius-md: 12px;
+            --font-display: 'Space Grotesk', sans-serif;
         }
-        .nav-mobile-toggle { display: block; }
-        .desktop-only { display: none !important; }
-    }
-</style>
 
-<nav class="universal-navbar">
-    <div class="nav-inner">
-        <a href="/dashboard" class="nav-brand">
-            <i class="material-symbols-rounded">local_fire_department</i>
-            <span>GasFlow</span>
-        </a>
+        /* Theme-Aware Variables */
+        [data-theme="dark"] {
+            --nav-bg: rgba(15, 23, 42, 0.8);
+            --nav-border: rgba(255, 255, 255, 0.08);
+            --nav-text: #94a3b8;
+            --nav-text-active: #f8fafc;
+            --nav-surface: #1e293b;
+        }
 
-        <div class="nav-menu" id="universalNavMenu">
-            <a href="/customers" class="nav-link">
-                <i class="material-symbols-rounded">group</i> Customers
-            </a>
-            <a href="/drivers" class="nav-link">
-                <i class="material-symbols-rounded">local_shipping</i> Drivers
-            </a>
-            <a href="/assignments" class="nav-link">
-                <i class="material-symbols-rounded">assignment</i> Assignments
-                {% if stats and stats.pending > 0 %}
-                <span class="nav-badge">{{ stats.pending }}</span>
-                {% endif %}
-            </a>
-            <a href="/reports" class="nav-link">
-                <i class="material-symbols-rounded">bar_chart</i> Reports
-            </a>
-            <a href="/driver-audit" class="nav-link">
-                <i class="material-symbols-rounded">fact_check</i> Audit
-            </a>
-        </div>
+        [data-theme="light"] {
+            --nav-bg: rgba(255, 255, 255, 0.8);
+            --nav-border: rgba(15, 23, 42, 0.08);
+            --nav-text: #64748b;
+            --nav-text-active: #1e293b;
+            --nav-surface: #f1f5f9;
+        }
 
-        <div class="nav-actions">
-            <button class="nav-btn" id="navThemeToggle" title="Toggle Theme">
-                <i class="material-symbols-rounded">light_mode</i>
-            </button>
-            
-            <div class="nav-mobile-toggle" id="navMobileBtn">
-                <i class="material-symbols-rounded">menu</i>
+        /* Navbar Container */
+        .universal-navbar {
+            height: var(--header-h);
+            background: var(--nav-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--nav-border);
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .nav-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+
+        /* Brand / Logo */
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 22px;
+            text-decoration: none;
+            color: var(--nav-text-active);
+        }
+
+        .nav-brand i {
+            color: var(--primary);
+            font-size: 28px;
+            filter: drop-shadow(0 0 8px var(--primary-light));
+        }
+
+        /* Nav Links */
+        .nav-menu {
+            display: flex;
+            gap: 6px;
+            background: var(--nav-surface);
+            padding: 5px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--nav-border);
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--nav-text);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--nav-text-active);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .nav-link.active {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        /* Badges */
+        .nav-badge {
+            background: var(--danger);
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: 4px;
+        }
+
+        /* Actions */
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid var(--nav-border);
+            display: grid;
+            place-items: center;
+            color: var(--nav-text);
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--nav-surface);
+        }
+
+        .nav-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-left: 16px;
+            border-left: 1px solid var(--nav-border);
+            text-decoration: none;
+        }
+
+        .nav-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            color: white;
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+        }
+
+        .nav-mobile-toggle {
+            display: none;
+            font-size: 24px;
+            color: var(--nav-text);
+            cursor: pointer;
+        }
+
+        /* Responsive Logic */
+        @media (max-width: 1024px) {
+            .nav-menu {
+                display: none;
+            }
+
+            .nav-menu.is-open {
+                display: flex;
+                flex-direction: column;
+                position: absolute;
+                top: var(--header-h);
+                left: 0;
+                right: 0;
+                background: var(--nav-bg);
+                padding: 16px;
+                border-bottom: 1px solid var(--nav-border);
+            }
+
+            .nav-mobile-toggle {
+                display: block;
+            }
+
+            .desktop-only {
+                display: none !important;
+            }
+        }
+    </style>
+
+    <nav class="universal-navbar">
+        <div class="nav-inner">
+            <a href="/dashboard" class="nav-brand">
+                <i class="material-symbols-rounded">local_fire_department</i>
+                <span>GasFlow</span>
+            </a>
+
+            <div class="nav-menu" id="universalNavMenu">
+                <a href="/customers" class="nav-link">
+                    <i class="material-symbols-rounded">group</i> Customers
+                </a>
+                <a href="/drivers" class="nav-link">
+                    <i class="material-symbols-rounded">local_shipping</i> Drivers
+                </a>
+                <a href="/assignments" class="nav-link">
+                    <i class="material-symbols-rounded">assignment</i> Assignments
+                    {% if stats and stats.pending > 0 %}
+                    <span class="nav-badge">{{ stats.pending }}</span>
+                    {% endif %}
+                </a>
+                <a href="/inventory" class="nav-link">
+                    <i class="material-symbols-rounded">inventory_2</i> Inventory
+                </a>
+                <a href="/reports" class="nav-link">
+                    <i class="material-symbols-rounded">bar_chart</i> Reports
+                </a>
+                <a href="/admin/pending-orders" class="nav-link">
+                    <i class="material-symbols-rounded">gavel</i> Resolutions
+                </a>
+                <a href="/driver-audit" class="nav-link">
+                    <i class="material-symbols-rounded">fact_check</i> Audit
+                </a>
             </div>
 
-            <a href="/profile" class="nav-user desktop-only">
-                <div style="text-align: right;">
-                    <p style="font-size: 13px; font-weight: 700; color: var(--nav-text-active); margin:0;">Admin User</p>
-                    <p style="font-size: 11px; color: var(--nav-text); margin:0;">Fleet Manager</p>
+            <div class="nav-actions">
+                <button class="nav-btn" id="navThemeToggle" title="Toggle Theme">
+                    <i class="material-symbols-rounded">light_mode</i>
+                </button>
+
+                <div class="nav-mobile-toggle" id="navMobileBtn">
+                    <i class="material-symbols-rounded">menu</i>
                 </div>
-                <div class="nav-avatar">AD</div>
-            </a>
 
-            <a href="/logout" class="nav-btn desktop-only" title="Logout">
-                <i class="material-symbols-rounded">logout</i>
-            </a>
+                <a href="/profile" class="nav-user desktop-only">
+                    <div style="text-align: right;">
+                        <p style="font-size: 13px; font-weight: 700; color: var(--nav-text-active); margin:0;">Admin
+                            User</p>
+                        <p style="font-size: 11px; color: var(--nav-text); margin:0;">Fleet Manager</p>
+                    </div>
+                    <div class="nav-avatar">AD</div>
+                </a>
+
+                <a href="/logout" class="nav-btn desktop-only" title="Logout">
+                    <i class="material-symbols-rounded">logout</i>
+                </a>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
-<script>
-    (function() {
-        /* 1. Theme Engine Integration */
-        const themeBtn = document.getElementById('navThemeToggle');
-        const htmlEl = document.documentElement;
-        
-        const applyTheme = (theme) => {
-            htmlEl.setAttribute('data-theme', theme);
-            localStorage.setItem('gasflow_theme', theme);
-            const icon = themeBtn.querySelector('i');
-            icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
-        };
+    <script>
+            (function () {
+                /* 1. Theme Engine Integration */
+                const themeBtn = document.getElementById('navThemeToggle');
+                const htmlEl = document.documentElement;
 
-        themeBtn.addEventListener('click', () => {
-            const current = htmlEl.getAttribute('data-theme') || 'dark';
-            applyTheme(current === 'dark' ? 'light' : 'dark');
-        });
+                const applyTheme = (theme) => {
+                    htmlEl.setAttribute('data-theme', theme);
+                    localStorage.setItem('gasflow_theme', theme);
+                    const icon = themeBtn.querySelector('i');
+                    icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+                };
 
-        // Initialize from storage
-        applyTheme(localStorage.getItem('gasflow_theme') || 'dark');
+                themeBtn.addEventListener('click', () => {
+                    const current = htmlEl.getAttribute('data-theme') || 'dark';
+                    applyTheme(current === 'dark' ? 'light' : 'dark');
+                });
 
-        /* 2. Intelligent Active Link Detection */
-        const currentPath = window.location.pathname;
-        const navLinks = document.querySelectorAll('.nav-link');
-        
-        navLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            if (currentPath === href || (href !== '/dashboard' && currentPath.startsWith(href))) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
-        });
+                // Initialize from storage
+                applyTheme(localStorage.getItem('gasflow_theme') || 'dark');
 
-        /* 3. Mobile Menu Toggle */
-        const mobileBtn = document.getElementById('navMobileBtn');
-        const navMenu = document.getElementById('universalNavMenu');
-        
-        mobileBtn.addEventListener('click', () => {
-            navMenu.classList.toggle('is-open');
-            const icon = mobileBtn.querySelector('i');
-            icon.textContent = navMenu.classList.contains('is-open') ? 'close' : 'menu';
-        });
-    })();
-</script>
+                /* 2. Intelligent Active Link Detection */
+                const currentPath = window.location.pathname;
+                const navLinks = document.querySelectorAll('.nav-link');
+
+                navLinks.forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (currentPath === href || (href !== '/dashboard' && currentPath.startsWith(href))) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+
+                /* 3. Mobile Menu Toggle */
+                const mobileBtn = document.getElementById('navMobileBtn');
+                const navMenu = document.getElementById('universalNavMenu');
+
+                mobileBtn.addEventListener('click', () => {
+                    navMenu.classList.toggle('is-open');
+                    const icon = mobileBtn.querySelector('i');
+                    icon.textContent = navMenu.classList.contains('is-open') ? 'close' : 'menu';
+                });
+            })();
+    </script>
 
     <main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-8 w-full flex-grow">
-        
+
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-fade-in-up">
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
+            <div
+                class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Customers</p>
-                        <p class="font-display text-3xl font-bold text-slate-900 dark:text-white">{{ customers|length }}</p>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Customers
+                        </p>
+                        <p class="font-display text-3xl font-bold text-slate-900 dark:text-white">{{ customers|length }}
+                        </p>
                     </div>
-                    <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                    <div
+                        class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                         <i class="material-symbols-rounded text-2xl">group</i>
                     </div>
                 </div>
             </div>
-            
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
+
+            <div
+                class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Pending Orders</p>
@@ -411,13 +469,15 @@
                             {{ customers|selectattr('current_status', 'equalto', 'PENDING')|list|length }}
                         </p>
                     </div>
-                    <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                    <div
+                        class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-amber-500 group-hover:text-white transition-colors">
                         <i class="material-symbols-rounded text-2xl">schedule</i>
                     </div>
                 </div>
             </div>
-            
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
+
+            <div
+                class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">In Progress</p>
@@ -425,13 +485,15 @@
                             {{ customers|selectattr('current_status', 'equalto', 'IN_PROGRESS')|list|length }}
                         </p>
                     </div>
-                    <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                    <div
+                        class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-blue-500 group-hover:text-white transition-colors">
                         <i class="material-symbols-rounded text-2xl">local_shipping</i>
                     </div>
                 </div>
             </div>
-            
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
+
+            <div
+                class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm card-hover group">
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Delivered</p>
@@ -439,40 +501,42 @@
                             {{ customers|selectattr('current_status', 'equalto', 'DELIVERED')|list|length }}
                         </p>
                     </div>
-                    <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                    <div
+                        class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
                         <i class="material-symbols-rounded text-2xl">check_circle</i>
                     </div>
                 </div>
             </div>
         </div>
 
-        <section class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 mb-8 items-start animate-fade-in-up" style="animation-delay: 0.1s;">
-            
+        <section class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 mb-8 items-start animate-fade-in-up"
+            style="animation-delay: 0.1s;">
+
             <div class="flex flex-col md:flex-row gap-4">
                 <form action="/customers" method="GET" class="relative group flex-grow max-w-md">
-                    <i class="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">search</i>
-                    <input type="text" 
-                           name="search" 
-                           value="{{ search_query }}" 
-                           placeholder="Search customers by name or phone..." 
-                           class="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-400 shadow-sm">
+                    <i
+                        class="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">search</i>
+                    <input type="text" name="search" value="{{ search_query }}"
+                        placeholder="Search customers by name or phone..."
+                        class="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-400 shadow-sm">
                 </form>
-                
-                <div class="flex p-1 bg-slate-200/50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <a href="/customers?filter_type=all" 
-                       class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'all' %} bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm {% else %} text-slate-500 {% endif %}">
+
+                <div
+                    class="flex p-1 bg-slate-200/50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <a href="/customers?filter_type=all"
+                        class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'all' %} bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm {% else %} text-slate-500 {% endif %}">
                         <i class="material-symbols-rounded text-sm">layers</i> ALL
                     </a>
-                    <a href="/customers?filter_type=pending" 
-                       class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'pending' %} bg-amber-500 text-white shadow-md {% else %} text-slate-500 {% endif %}">
+                    <a href="/customers?filter_type=pending"
+                        class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'pending' %} bg-amber-500 text-white shadow-md {% else %} text-slate-500 {% endif %}">
                         <i class="material-symbols-rounded text-sm">schedule</i> PENDING
                     </a>
-                    <a href="/customers?filter_type=in_progress" 
-                       class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'in_progress' %} bg-blue-500 text-white shadow-md {% else %} text-slate-500 {% endif %}">
+                    <a href="/customers?filter_type=in_progress"
+                        class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'in_progress' %} bg-blue-500 text-white shadow-md {% else %} text-slate-500 {% endif %}">
                         <i class="material-symbols-rounded text-sm">local_shipping</i> IN TRANSIT
                     </a>
-                    <a href="/customers?filter_type=delivered" 
-                       class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'delivered' %} bg-emerald-500 text-white shadow-md {% else %} text-slate-500 {% endif %}">
+                    <a href="/customers?filter_type=delivered"
+                        class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 {% if active_filter == 'delivered' %} bg-emerald-500 text-white shadow-md {% else %} text-slate-500 {% endif %}">
                         <i class="material-symbols-rounded text-sm">check_circle</i> DELIVERED
                     </a>
                 </div>
@@ -480,76 +544,89 @@
 
             <div class="flex flex-wrap items-center gap-3">
                 <div class="flex items-center bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-1 group">
-                    <button onclick="toggleFormatView()" 
-                            class="px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all flex items-center gap-2"
-                            data-tooltip="Show/Hide import format">
+                    <button onclick="toggleFormatView()"
+                        class="px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all flex items-center gap-2"
+                        data-tooltip="Show/Hide import format">
                         <i class="material-symbols-rounded text-sm">visibility</i> VIEW FORMAT
                     </button>
-                    <a href="/download-template" 
-                       class="px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all flex items-center gap-2"
-                       data-tooltip="Download Excel template">
+                    <a href="/download-template"
+                        class="px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all flex items-center gap-2"
+                        data-tooltip="Download Excel template">
                         <i class="material-symbols-rounded text-sm">download</i> TEMPLATE
                     </a>
                 </div>
 
-                <button onclick="openModal('addCityModal')" 
-                        class="h-11 px-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
-                        data-tooltip="Add new service city">
+                <button onclick="openModal('addCityModal')"
+                    class="h-11 px-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+                    data-tooltip="Add new service city">
                     <i class="material-symbols-rounded text-slate-400">location_city</i> Add City
                 </button>
-                <button onclick="openModal('addCustModal')" 
-                        class="h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition-all"
-                        data-tooltip="Add single customer">
+                <button onclick="openModal('addCustModal')"
+                    class="h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition-all"
+                    data-tooltip="Add single customer">
                     <i class="material-symbols-rounded">person_add</i> Add Customer
                 </button>
-                
-                <form action="/upload-customers" method="POST" enctype="multipart/form-data" class="flex items-center">
-                    <input type="file" name="file" id="bulkInput" class="hidden" onchange="this.form.submit()" accept=".xlsx,.csv">
-                    <button type="button" 
-                            onclick="document.getElementById('bulkInput').click()" 
-                            class="h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
-                            data-tooltip="Bulk import from Excel/CSV">
+
+                <form id="bulkImportForm" class="flex items-center">
+                    <input type="file" id="bulkInput" class="hidden" onchange="handleBulkUpload(this, 'bulkUploadBtn')"
+                        accept=".xlsx,.csv">
+                    <button type="button" id="bulkUploadBtn" onclick="document.getElementById('bulkInput').click()"
+                        class="h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
+                        data-tooltip="Bulk import from Excel/CSV">
                         <i class="material-symbols-rounded">database</i> Bulk Import
                     </button>
                 </form>
             </div>
         </section>
 
-        <div id="formatPreview" class="hidden mb-8 p-4 bg-indigo-50 dark:bg-indigo-500/5 rounded-2xl border border-dashed border-indigo-200 dark:border-indigo-900/30 animate-fade-in-up">
-            <h4 class="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-3">Required Excel Structure (Headers)</h4>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+        <div id="formatPreview"
+            class="hidden mb-8 p-4 bg-indigo-50 dark:bg-indigo-500/5 rounded-2xl border border-dashed border-indigo-200 dark:border-indigo-900/30 animate-fade-in-up">
+            <h4 class="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-3">Required
+                Excel Structure (Headers)</h4>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <div
+                    class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+                    <p class="text-[11px] font-bold">consumer_id</p>
+                    <p class="text-[9px] text-slate-400 mt-1 uppercase">Required</p>
+                </div>
+                <div
+                    class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
                     <p class="text-[11px] font-bold">name</p>
                     <p class="text-[9px] text-slate-400 mt-1 uppercase">Required</p>
                 </div>
-                <div class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+                <div
+                    class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
                     <p class="text-[11px] font-bold">phone_number</p>
                     <p class="text-[9px] text-slate-400 mt-1 uppercase">Required</p>
                 </div>
-                <div class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+                <div
+                    class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
                     <p class="text-[11px] font-bold">city</p>
                     <p class="text-[9px] text-slate-400 mt-1 uppercase">Required</p>
                 </div>
-                <div class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+                <div
+                    class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
                     <p class="text-[11px] font-bold">landmark</p>
                     <p class="text-[9px] text-slate-400 mt-1 uppercase">Optional</p>
                 </div>
-                <div class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+                <div
+                    class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
                     <p class="text-[11px] font-bold">pincode</p>
                     <p class="text-[9px] text-slate-400 mt-1 uppercase">Optional</p>
                 </div>
             </div>
         </div>
 
-        <div id="selectionBanner" class="hidden fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-6 animate-fade-in-up border border-slate-800 dark:border-slate-100">
+        <div id="selectionBanner"
+            class="hidden fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-6 animate-fade-in-up border border-slate-800 dark:border-slate-100">
             <p class="text-sm font-bold"><span id="selectedCount">0</span> Customers selected for bulk order</p>
             <div class="flex items-center gap-2">
-                <button onclick="submitBulkOrder()" 
-                        class="px-6 py-2 bg-indigo-500 text-white rounded-xl text-xs font-black hover:bg-indigo-600 transition-all">
+                <button onclick="submitBulkOrder()"
+                    class="px-6 py-2 bg-indigo-500 text-white rounded-xl text-xs font-black hover:bg-indigo-600 transition-all">
                     PROCESS ORDERS
                 </button>
-                <button onclick="document.getElementById('selectAll').click()" 
-                        class="text-xs font-bold opacity-50 hover:opacity-100">
+                <button onclick="document.getElementById('selectAll').click()"
+                    class="text-xs font-bold opacity-50 hover:opacity-100">
                     Cancel
                 </button>
             </div>
@@ -569,50 +646,56 @@
                 {% endif %}
             </p>
             <div class="flex flex-wrap gap-3 justify-center">
-                <button onclick="openModal('addCustModal')" 
-                        class="btn-primary px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium">
+                <button onclick="openModal('addCustModal')"
+                    class="btn-primary px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium">
                     <i class="material-symbols-rounded">person_add</i> Add Customer
                 </button>
-                <a href="/download-template" 
-                   class="btn-secondary px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium">
+                <a href="/download-template"
+                    class="btn-secondary px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium">
                     <i class="material-symbols-rounded">download</i> Download Template
                 </a>
             </div>
         </div>
         {% else %}
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden animate-fade-in-up" style="animation-delay: 0.2s;">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden animate-fade-in-up"
+            style="animation-delay: 0.2s;">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
-                    <thead class="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
+                    <thead
+                        class="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
                         <tr>
                             <th class="p-6 w-12">
-                                <input type="checkbox" 
-                                       id="selectAll" 
-                                       onclick="toggleAll(this)" 
-                                       class="w-5 h-5 rounded-lg border-slate-300 accent-indigo-600 cursor-pointer"
-                                       data-tooltip="Select all customers">
+                                <input type="checkbox" id="selectAll" onclick="toggleAll(this)"
+                                    class="w-5 h-5 rounded-lg border-slate-300 accent-indigo-600 cursor-pointer"
+                                    data-tooltip="Select all customers">
                             </th>
-                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Customer Profile</th>
-                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Delivery Address</th>
-                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">GPS Status</th>
-                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Order Pipeline</th>
-                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Personnel</th>
-                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Customer
+                                Profile</th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Delivery
+                                Address</th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">GPS Status
+                            </th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Order
+                                Pipeline</th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Personnel
+                            </th>
+                            <th class="p-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">
+                                Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         {% for c in customers %}
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group even:bg-slate-50/50 dark:even:bg-slate-900/20">
+                        <tr
+                            class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group even:bg-slate-50/50 dark:even:bg-slate-900/20">
                             <td class="p-6">
-                                <input type="checkbox" 
-                                       name="customer_select" 
-                                       value="{{ c._id }}" 
-                                       onclick="updateBulkBtn()" 
-                                       class="w-5 h-5 rounded-lg border-slate-300 accent-indigo-600 cursor-pointer">
+                                <input type="checkbox" name="customer_select" value="{{ c._id }}"
+                                    onclick="updateBulkBtn()"
+                                    class="w-5 h-5 rounded-lg border-slate-300 accent-indigo-600 cursor-pointer">
                             </td>
                             <td class="p-6">
                                 <div class="font-bold text-slate-900 dark:text-slate-200">{{ c.name }}</div>
-                                <div class="text-xs text-indigo-500 font-mono mt-1">{{ c.phone_number }}</div>
+                                <div class="text-xs text-indigo-500 font-mono mt-1 font-bold">ID: {{ c.consumer_id }}
+                                </div>
                                 {% if c.created_at %}
                                 <div class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
                                     <i class="material-symbols-rounded text-[10px]">calendar_today</i>
@@ -629,71 +712,82 @@
                             </td>
                             <td class="p-6">
                                 {% if c.is_verified %}
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-black tracking-tighter border border-emerald-500/20">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-black tracking-tighter border border-emerald-500/20">
                                     <i class="material-symbols-rounded text-sm">location_on</i> VERIFIED
                                 </span>
                                 <div class="text-[10px] text-slate-400 mt-1 font-mono">
-                                    {{ "%.4f"|format(c.verified_lat) if c.verified_lat else '' }}, {{ "%.4f"|format(c.verified_lng) if c.verified_lng else '' }}
+                                    {{ "%.4f"|format(c.verified_lat) if c.verified_lat else '' }}, {{
+                                    "%.4f"|format(c.verified_lng) if c.verified_lng else '' }}
                                 </div>
                                 {% else %}
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 text-[10px] font-black tracking-tighter border border-red-500/20">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 text-[10px] font-black tracking-tighter border border-red-500/20">
                                     <i class="material-symbols-rounded text-sm">wrong_location</i> NOT SYNCED
                                 </span>
                                 {% endif %}
                             </td>
                             <td class="p-6">
                                 {% if c.current_status == 'PENDING' %}
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border bg-amber-500/10 text-amber-600 border-amber-500/20">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> PENDING
-                                    </span>
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border bg-amber-500/10 text-amber-600 border-amber-500/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> PENDING
+                                </span>
                                 {% elif c.current_status == 'IN_PROGRESS' %}
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border bg-blue-500/10 text-blue-600 border-blue-500/20 animate-pulse">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> IN PROGRESS
-                                    </span>
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border bg-blue-500/10 text-blue-600 border-blue-500/20 animate-pulse">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> IN PROGRESS
+                                </span>
                                 {% elif c.current_status == 'DELIVERED' %}
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> DELIVERED
-                                    </span>
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> DELIVERED
+                                </span>
                                 {% else %}
-                                    <span class="text-slate-400 text-[10px] font-medium">--</span>
+                                <span class="text-slate-400 text-[10px] font-medium">--</span>
                                 {% endif %}
                             </td>
                             <td class="p-6">
                                 {% if c.active_order_id and c.current_status in ['PENDING', 'IN_PROGRESS'] %}
-                                    <div class="relative">
-                                        <select onchange="reassignDriver('{{ c.active_order_id }}', this.value)" 
-                                                class="w-full text-xs py-2 pl-3 pr-8 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-indigo-400 transition-colors">
-                                            <option value="" disabled>Change Driver</option>
-                                            {% for d in drivers %}
-                                                <option value="{{ d._id }}" {% if d._id|string == c.assigned_driver_id %}selected{% endif %}>
-                                                    {{ d.name }} ({{ d.assigned_cities[0] if d.assigned_cities else 'N/A' }})
-                                                </option>
-                                            {% endfor %}
-                                        </select>
-                                        <i class="material-symbols-rounded absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">expand_more</i>
-                                    </div>
+                                <div class="relative">
+                                    <select onchange="reassignDriver('{{ c.active_order_id }}', this.value)"
+                                        class="w-full text-xs py-2 pl-3 pr-8 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-indigo-500 outline-none appearance-none cursor-pointer hover:border-indigo-400 transition-colors">
+                                        <option value="" disabled>Change Driver</option>
+                                        {% for d in drivers %}
+                                        <option value="{{ d._id }}" {% if d._id|string==c.assigned_driver_id
+                                            %}selected{% endif %}>
+                                            {{ d.name }} ({{ d.assigned_cities[0] if d.assigned_cities else 'N/A' }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <i
+                                        class="material-symbols-rounded absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">expand_more</i>
+                                </div>
                                 {% else %}
-                                    <p class="text-[11px] text-slate-400 italic">No assigned personnel</p>
+                                <p class="text-[11px] text-slate-400 italic">No assigned personnel</p>
                                 {% endif %}
                             </td>
                             <td class="p-6 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     {% if c.current_status in ['PENDING', 'IN_PROGRESS'] %}
-                                        <button disabled class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-300 dark:text-slate-700 cursor-not-allowed"
-                                                data-tooltip="Active order exists">
-                                            <i class="material-symbols-rounded text-lg">add_circle</i>
-                                        </button>
+                                    <button disabled
+                                        class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-300 dark:text-slate-700 cursor-not-allowed"
+                                        data-tooltip="Active order exists">
+                                        <i class="material-symbols-rounded text-lg">add_circle</i>
+                                    </button>
                                     {% else %}
-                                        <button onclick="openQuickAssignModal('{{ c._id }}', '{{ c.name }}', '{{ c.city }}')" 
-                                                class="w-9 h-9 rounded-xl flex items-center justify-center bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:scale-110 transition-all"
-                                                data-tooltip="Create new order">
-                                            <i class="material-symbols-rounded text-lg">add_circle</i>
-                                        </button>
+                                    <button
+                                        onclick="openQuickAssignModal('{{ c._id }}', '{{ c.name }}', '{{ c.city }}')"
+                                        class="w-9 h-9 rounded-xl flex items-center justify-center bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:scale-110 transition-all"
+                                        data-tooltip="Create new order">
+                                        <i class="material-symbols-rounded text-lg">add_circle</i>
+                                    </button>
                                     {% endif %}
-                                    
-                                    <button onclick="openEditModal('{{ c._id }}', '{{ c.name }}', '{{ c.phone_number }}', '{{ c.city }}', '{{ c.landmark }}', '{{ c.pincode or '' }}')" 
-                                            class="w-9 h-9 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-500 hover:border-indigo-300 transition-all"
-                                            data-tooltip="Edit customer details">
+
+                                    <button
+                                        onclick="openEditModal('{{ c._id }}', '{{ c.name }}', '{{ c.phone_number }}', '{{ c.city }}', '{{ c.landmark }}', '{{ c.pincode or '' }}')"
+                                        class="w-9 h-9 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-500 hover:border-indigo-300 transition-all"
+                                        data-tooltip="Edit customer details">
                                         <i class="material-symbols-rounded text-lg">edit</i>
                                     </button>
                                 </div>
@@ -710,7 +804,8 @@
     <footer class="mt-auto py-8 text-center border-t border-slate-200 dark:border-slate-800">
         <div class="max-w-[1400px] mx-auto px-6">
             <p class="font-bold text-sm text-slate-900 dark:text-white tracking-wide">GasFlow Customer Management</p>
-            <p class="mt-2 text-xs text-slate-500 dark:text-slate-500">© 2026 GasFlow Delivery Services. All rights reserved.</p>
+            <p class="mt-2 text-xs text-slate-500 dark:text-slate-500">© 2026 GasFlow Delivery Services. All rights
+                reserved.</p>
         </div>
     </footer>
 
@@ -726,18 +821,23 @@
                     <i class="material-symbols-rounded text-xl">close</i>
                 </button>
             </div>
-            
-            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Create order for <span id="assignCustName" class="font-bold text-slate-900 dark:text-white"></span> in <span id="assignCity" class="font-bold text-indigo-500"></span></p>
-            
+
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Create order for <span id="assignCustName"
+                    class="font-bold text-slate-900 dark:text-white"></span> in <span id="assignCity"
+                    class="font-bold text-indigo-500"></span></p>
+
             <form action="/create-order" method="POST" class="space-y-4">
                 <input type="hidden" id="assignCustId" name="customer_id">
-                
+
                 <div class="space-y-3">
-                    <label class="flex items-start p-4 border border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-500/10 rounded-xl cursor-pointer hover:border-indigo-500 transition-all relative overflow-hidden group">
-                        <input type="radio" name="driver_id" value="auto" checked class="mt-1 w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                    <label
+                        class="flex items-start p-4 border border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-500/10 rounded-xl cursor-pointer hover:border-indigo-500 transition-all relative overflow-hidden group">
+                        <input type="radio" name="driver_id" value="auto" checked
+                            class="mt-1 w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
                         <div class="ml-3 z-10">
                             <p class="font-bold text-indigo-600 dark:text-indigo-400 text-sm">🚀 Smart Auto-Assign</p>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Automatically assigns to the nearest available driver.</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Automatically assigns to the
+                                nearest available driver.</p>
                         </div>
                     </label>
 
@@ -745,16 +845,20 @@
                         <!-- Driver list will be populated by JavaScript -->
                     </div>
 
-                    <label class="flex items-center p-4 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                        <input type="radio" name="driver_id" value="later" class="w-4 h-4 text-slate-400 border-slate-300 focus:ring-indigo-500">
+                    <label
+                        class="flex items-center p-4 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                        <input type="radio" name="driver_id" value="later"
+                            class="w-4 h-4 text-slate-400 border-slate-300 focus:ring-indigo-500">
                         <div class="ml-3">
                             <p class="font-bold text-slate-700 dark:text-slate-200 text-sm">🕒 Assign Later</p>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">Keep in queue for manual assignment.</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Keep in queue for manual assignment.
+                            </p>
                         </div>
                     </label>
                 </div>
 
-                <button type="submit" class="btn-primary w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 mt-6">
+                <button type="submit"
+                    class="btn-primary w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 mt-6">
                     <i class="material-symbols-rounded">check_circle</i> Confirm Order
                 </button>
             </form>
@@ -767,34 +871,52 @@
                 <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
                     <i class="material-symbols-rounded text-indigo-500">person_add</i> New Customer
                 </h2>
-                <button onclick="closeModal('addCustModal')" class="text-slate-400 hover:text-red-500 transition-colors">
+                <button onclick="closeModal('addCustModal')"
+                    class="text-slate-400 hover:text-red-500 transition-colors">
                     <i class="material-symbols-rounded text-xl">close</i>
                 </button>
             </div>
-            <form action="/add-customer" method="POST" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" name="name" placeholder="Full Name *" class="form-input" required>
-                    <input type="text" name="phone" placeholder="Phone Number *" class="form-input" required>
+            <form action="/add-customer" method="POST" class="space-y-4" id="addCustForm">
+                <div>
+                    <input type="number" id="consumer_id_input" name="consumer_id"
+                        placeholder="Consumer ID (Example: 8829102) *" class="form-input w-full font-mono font-bold"
+                        max="9999999" required onblur="validateConsumerId(this.value)">
+                    <p id="consumer_id_error" class="hidden text-xs text-red-500 font-bold mt-1 pl-2 py-1"><i
+                            class="material-symbols-rounded text-xs align-middle mr-1">warning</i><span
+                            id="consumer_id_err_txt"></span></p>
                 </div>
-                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="cust_name_input" name="name" placeholder="Full Name *" class="form-input"
+                        required disabled>
+                    <input type="text" id="cust_phone_input" name="phone" placeholder="Phone Number *"
+                        class="form-input" required disabled>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="relative">
-                        <select name="city" class="form-input appearance-none" required>
+                        <select id="cust_city_input" name="city" class="form-input appearance-none" required disabled>
                             <option value="" disabled selected>Select City</option>
                             {% for city in cities %}
                             <option value="{{ city.name }}">{{ city.name }}</option>
                             {% endfor %}
                         </select>
-                        <i class="material-symbols-rounded absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</i>
+                        <i
+                            class="material-symbols-rounded absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</i>
                     </div>
-                    <input type="text" name="pincode" placeholder="Pincode" class="form-input">
+                    <input type="text" id="cust_pin_input" name="pincode" placeholder="Pincode" class="form-input"
+                        disabled>
                 </div>
-                
-                <textarea name="landmark" placeholder="Complete Address & Landmark *" rows="3" class="form-input resize-none" required></textarea>
-                
+
+                <textarea id="cust_land_input" name="landmark" placeholder="Complete Address & Landmark *" rows="3"
+                    class="form-input resize-none" required disabled></textarea>
+
                 <div class="flex gap-3 pt-2">
-                    <button type="button" onclick="closeModal('addCustModal')" class="btn-secondary flex-1 py-3 rounded-xl font-medium">Cancel</button>
-                    <button type="submit" class="btn-primary flex-1 py-3 rounded-xl font-bold shadow-md">Register Customer</button>
+                    <button type="button" onclick="closeModal('addCustModal')"
+                        class="btn-secondary flex-1 py-3 rounded-xl font-medium">Cancel</button>
+                    <button type="submit" id="cust_submit_btn"
+                        class="btn-primary flex-1 py-3 rounded-xl font-bold shadow-md opacity-50 cursor-not-allowed"
+                        disabled>Register
+                        Customer</button>
                 </div>
             </form>
         </div>
@@ -806,7 +928,8 @@
                 <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
                     <i class="material-symbols-rounded text-indigo-500">location_city</i> Add City
                 </h2>
-                <button onclick="closeModal('addCityModal')" class="text-slate-400 hover:text-red-500 transition-colors">
+                <button onclick="closeModal('addCityModal')"
+                    class="text-slate-400 hover:text-red-500 transition-colors">
                     <i class="material-symbols-rounded text-xl">close</i>
                 </button>
             </div>
@@ -823,18 +946,20 @@
                 <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
                     <i class="material-symbols-rounded text-indigo-500">edit</i> Edit Customer
                 </h2>
-                <button onclick="closeModal('editCustModal')" class="text-slate-400 hover:text-red-500 transition-colors">
+                <button onclick="closeModal('editCustModal')"
+                    class="text-slate-400 hover:text-red-500 transition-colors">
                     <i class="material-symbols-rounded text-xl">close</i>
                 </button>
             </div>
             <form action="/update-customer" method="POST" class="space-y-4">
                 <input type="hidden" id="edit_customer_id" name="customer_id">
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="text" id="edit_name" name="name" placeholder="Full Name *" class="form-input" required>
-                    <input type="text" id="edit_phone" name="phone_number" placeholder="Phone Number *" class="form-input" required>
+                    <input type="text" id="edit_phone" name="phone_number" placeholder="Phone Number *"
+                        class="form-input" required>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="relative">
                         <select id="edit_city" name="city" class="form-input appearance-none" required>
@@ -842,21 +967,147 @@
                             <option value="{{ city.name }}">{{ city.name }}</option>
                             {% endfor %}
                         </select>
-                        <i class="material-symbols-rounded absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</i>
+                        <i
+                            class="material-symbols-rounded absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</i>
                     </div>
                     <input type="text" id="edit_pincode" name="pincode" placeholder="Pincode" class="form-input">
                 </div>
-                
-                <textarea id="edit_landmark" name="landmark" placeholder="Address & Landmark *" rows="3" class="form-input resize-none" required></textarea>
-                
-                <button type="submit" class="btn-primary w-full py-3 rounded-xl font-bold shadow-md">Save Changes</button>
+
+                <textarea id="edit_landmark" name="landmark" placeholder="Address & Landmark *" rows="3"
+                    class="form-input resize-none" required></textarea>
+
+                <button type="submit" class="btn-primary w-full py-3 rounded-xl font-bold shadow-md">Save
+                    Changes</button>
             </form>
+        </div>
+    </div>
+
+    <!-- High-Contrast Import Summary Modal -->
+    <div id="importSummaryModal"
+        class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300">
+        <div
+            class="modal-content w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up p-0">
+            <div class="flex justify-between items-center p-6 border-b border-slate-800 bg-slate-950/50">
+                <h2 class="text-xl font-bold font-display text-white flex items-center gap-2">
+                    <i class="material-symbols-rounded text-emerald-500">cloud_done</i> Import Complete!
+                </h2>
+                <button onclick="window.location.reload()" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="material-symbols-rounded text-xl">close</i>
+                </button>
+            </div>
+
+            <div class="p-6 text-slate-300">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-slate-800 rounded-xl p-4 border border-slate-700 text-center">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Processed</p>
+                        <p class="text-2xl font-black text-white" id="statProcessed">0</p>
+                    </div>
+                    <div class="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/20 text-center">
+                        <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-1">Added</p>
+                        <p class="text-2xl font-black text-emerald-500" id="statSuccess">0</p>
+                    </div>
+                    <div class="bg-amber-500/10 rounded-xl p-4 border border-amber-500/20 text-center">
+                        <p class="text-[10px] text-amber-400 font-bold uppercase tracking-wider mb-1">Skipped (Dupes)
+                        </p>
+                        <p class="text-2xl font-black text-amber-500" id="statDuplicates">0</p>
+                    </div>
+                    <div class="bg-red-500/10 rounded-xl p-4 border border-red-500/20 text-center">
+                        <p class="text-[10px] text-red-400 font-bold uppercase tracking-wider mb-1">Failed</p>
+                        <p class="text-2xl font-black text-red-500" id="statErrors">0</p>
+                    </div>
+                </div>
+
+                <div id="newCitiesAlert"
+                    class="hidden mb-6 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-start gap-3">
+                    <i class="material-symbols-rounded text-indigo-400 mt-0.5">location_city</i>
+                    <div>
+                        <p class="font-bold text-sm text-indigo-400 mb-1" id="newCitiesTitle">New Cities Discovered!</p>
+                        <p class="text-xs" id="newCitiesList"></p>
+                    </div>
+                </div>
+
+                <div id="errorLogSection" class="hidden">
+                    <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider">Error Log <span
+                            class="text-slate-500 text-xs font-normal lowercase">(Requires manual fix)</span></h3>
+                    <div
+                        class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden max-h-48 overflow-y-auto w-full custom-scrollbar">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-900 border-b border-slate-800 sticky top-0">
+                                <tr>
+                                    <th class="py-2 px-4 text-[10px] font-bold text-slate-400 uppercase">Row</th>
+                                    <th class="py-2 px-4 text-[10px] font-bold text-slate-400 uppercase">Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody id="errorLogBody" class="divide-y divide-slate-800/50">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-950/50 border-t border-slate-800 flex justify-end">
+                <button onclick="window.location.reload()"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20">
+                    Acknowledge & Refresh
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
         // Driver data passed from backend
-        const allDrivers = {{ drivers|tojson|safe }}; 
+        const allDrivers = {{ drivers| tojson | safe }};
+
+        // Consumer ID Validation Logic
+        async function validateConsumerId(idString) {
+            const errorTxt = document.getElementById('consumer_id_err_txt');
+            const errorContainer = document.getElementById('consumer_id_error');
+            const submitBtn = document.getElementById('cust_submit_btn');
+
+            const nameInput = document.getElementById('cust_name_input');
+            const phoneInput = document.getElementById('cust_phone_input');
+            const cityInput = document.getElementById('cust_city_input');
+            const pinInput = document.getElementById('cust_pin_input');
+            const landInput = document.getElementById('cust_land_input');
+
+            if (!idString || idString.length > 7) {
+                errorTxt.textContent = "ID must be a number up to 7 digits.";
+                errorContainer.classList.remove('hidden');
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                disableInputs([nameInput, phoneInput, cityInput, pinInput, landInput]);
+                return;
+            }
+
+            errorContainer.classList.add('hidden');
+
+            try {
+                const res = await fetch(`/validate-consumer-id?id=${idString}`);
+                const data = await res.json();
+
+                if (!data.valid) {
+                    errorTxt.textContent = data.error || "ID Taken.";
+                    errorContainer.classList.remove('hidden');
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    disableInputs([nameInput, phoneInput, cityInput, pinInput, landInput]);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    enableInputs([nameInput, phoneInput, cityInput, pinInput, landInput]);
+                }
+            } catch (e) {
+                console.error("Validation error", e);
+            }
+        }
+
+        function disableInputs(inputs) {
+            inputs.forEach(input => input.disabled = true);
+        }
+
+        function enableInputs(inputs) {
+            inputs.forEach(input => input.disabled = false);
+        }
 
         // Modal Logic
         function openModal(id) {
@@ -883,18 +1134,18 @@
 
             const list = document.getElementById('driverList');
             list.innerHTML = "";
-            
+
             // Normalize city name for accurate matching
             const targetCity = city.trim().toLowerCase();
 
             // Filter drivers who are active AND serve this city
-            const cityDrivers = allDrivers.filter(d => 
-                d.is_active && 
-                d.assigned_cities && 
+            const cityDrivers = allDrivers.filter(d =>
+                d.is_active &&
+                d.assigned_cities &&
                 d.assigned_cities.some(c => c && c.trim().toLowerCase() === targetCity)
             );
 
-            if(cityDrivers.length > 0) {
+            if (cityDrivers.length > 0) {
                 cityDrivers.forEach(d => {
                     list.innerHTML += `
                         <label class="flex items-center p-3 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
@@ -924,13 +1175,13 @@
             document.getElementById('edit_customer_id').value = id;
             document.getElementById('edit_name').value = name;
             document.getElementById('edit_phone').value = phone;
-            
+
             // Set city select value
             const citySelect = document.getElementById('edit_city');
             if (citySelect) {
                 citySelect.value = city;
             }
-            
+
             document.getElementById('edit_landmark').value = landmark;
             document.getElementById('edit_pincode').value = pincode || '';
             openModal('editCustModal');
@@ -939,7 +1190,7 @@
         // Bulk Actions
         function toggleAll(source) {
             const checkboxes = document.getElementsByName('customer_select');
-            for(let cb of checkboxes) {
+            for (let cb of checkboxes) {
                 cb.checked = source.checked;
             }
             updateBulkBtn();
@@ -958,26 +1209,26 @@
 
         async function submitBulkOrder() {
             const checkboxes = document.querySelectorAll('input[name="customer_select"]:checked');
-            if(checkboxes.length === 0) return;
-            if(!confirm(`Place auto-assigned orders for ${checkboxes.length} customers?`)) return;
+            if (checkboxes.length === 0) return;
+            if (!confirm(`Place auto-assigned orders for ${checkboxes.length} customers?`)) return;
 
             const formData = new FormData();
             Array.from(checkboxes).forEach(cb => formData.append('customer_ids', cb.value));
 
             try {
-                const res = await fetch('/customers/bulk-order', { 
-                    method: 'POST', 
-                    body: formData 
+                const res = await fetch('/customers/bulk-order', {
+                    method: 'POST',
+                    body: formData
                 });
                 const data = await res.json();
-                if(data.success) {
+                if (data.success) {
                     showNotification(data.message, 'success');
                     setTimeout(() => window.location.reload(), 1000);
                 } else {
                     showNotification('Error: ' + data.message, 'error');
                 }
-            } catch (e) { 
-                showNotification('Failed to place bulk order.', 'error'); 
+            } catch (e) {
+                showNotification('Failed to place bulk order.', 'error');
             }
         }
 
@@ -988,18 +1239,18 @@
             formData.append('driver_id', driverId);
 
             try {
-                const res = await fetch('/customers/reassign-driver', { 
-                    method: 'POST', 
-                    body: formData 
+                const res = await fetch('/customers/reassign-driver', {
+                    method: 'POST',
+                    body: formData
                 });
                 const data = await res.json();
-                if(data.success) {
+                if (data.success) {
                     showNotification('Driver reassigned successfully!', 'success');
                 } else {
                     showNotification('Failed: ' + data.message, 'error');
                 }
-            } catch (e) { 
-                showNotification('Network error.', 'error'); 
+            } catch (e) {
+                showNotification('Network error.', 'error');
             }
         }
 
@@ -1017,6 +1268,79 @@
             }, 3000);
         }
 
+        async function handleBulkUpload(input, btnId) {
+            if (!input.files || input.files.length === 0) return;
+
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const btn = document.getElementById(btnId);
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="material-symbols-rounded animate-spin">sync</i> Processing...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/upload-customers', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.summary && data.summary.error) {
+                    showNotification("Import Error: " + data.summary.error, 'error');
+                } else {
+                    showImportSummary(data);
+                }
+            } catch (err) {
+                showNotification("Network error. Could not process bulk import.", 'error');
+                console.error(err);
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+                input.value = '';
+            }
+        }
+
+        function showImportSummary(data) {
+            const summary = data.summary;
+            document.getElementById('statProcessed').textContent = summary.total_processed;
+            document.getElementById('statSuccess').textContent = summary.success_count;
+            document.getElementById('statDuplicates').textContent = summary.duplicate_count;
+            document.getElementById('statErrors').textContent = summary.error_count;
+
+            const citiesAlert = document.getElementById('newCitiesAlert');
+            if (summary.new_cities && summary.new_cities.length > 0) {
+                document.getElementById('newCitiesTitle').textContent = `${summary.new_cities.length} New cities were automatically registered.`;
+                document.getElementById('newCitiesList').textContent = `Added: ${summary.new_cities.join(', ')}`;
+                citiesAlert.classList.remove('hidden');
+            } else {
+                citiesAlert.classList.add('hidden');
+            }
+
+            const errorDoc = document.getElementById('errorLogSection');
+            const tbody = document.getElementById('errorLogBody');
+            tbody.innerHTML = '';
+
+            if (data.errors && data.errors.length > 0) {
+                data.errors.forEach(e => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-800/50 transition-colors";
+                    tr.innerHTML = `
+                        <td class="py-2 px-4 font-mono text-red-400 text-xs">#${e.row}</td>
+                        <td class="py-2 px-4 text-slate-300 text-xs truncate max-w-[300px]" title="${e.reason}">${e.reason}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                errorDoc.classList.remove('hidden');
+            } else {
+                errorDoc.classList.add('hidden');
+            }
+
+            openModal('importSummaryModal');
+        }
+
         // View Format Toggle
         function toggleFormatView() {
             const preview = document.getElementById('formatPreview');
@@ -1024,14 +1348,14 @@
         }
 
         // Close on Overlay click
-        window.onclick = function(e) { 
+        window.onclick = function (e) {
             if (e.target.classList.contains('modal-overlay')) {
                 closeModal(e.target.id);
             }
         }
 
         // Close on ESC key
-        document.onkeydown = function(e) { 
+        document.onkeydown = function (e) {
             if (e.key === 'Escape') {
                 document.querySelectorAll('.modal-overlay.active').forEach(m => {
                     closeModal(m.id);
@@ -1046,12 +1370,12 @@
             localStorage.setItem('gasflow_theme', isDark ? 'dark' : 'light');
             themeBtn.querySelector('i').textContent = isDark ? 'light_mode' : 'dark_mode';
         });
-        if(localStorage.getItem('gasflow_theme') === 'light') { 
-            document.documentElement.classList.remove('dark'); 
-            themeBtn.querySelector('i').textContent = 'dark_mode'; 
+        if (localStorage.getItem('gasflow_theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+            themeBtn.querySelector('i').textContent = 'dark_mode';
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Focus search input on desktop
             const searchInput = document.querySelector('input[name="search"]');
             if (searchInput && window.innerWidth > 768) {
@@ -1074,4 +1398,5 @@
         });
     </script>
 </body>
+
 </html>

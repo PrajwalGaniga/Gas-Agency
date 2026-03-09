@@ -10,7 +10,7 @@ from typing import List
 from auth import get_current_admin
 from app.database import (
     db, customer_collection, order_collection, 
-    cities_collection, driver_collection, counters_collection
+    cities_collection, driver_collection, counters_collection, shifts_collection
 )
 
 def get_next_sequence(name: str) -> int:
@@ -32,7 +32,8 @@ def get_optimal_driver(admin_id: ObjectId, city: str):
     Finds the best driver for a specific city based on:
     1. Active Status
     2. Assigned City
-    3. Lowest number of PENDING/IN_PROGRESS orders (Load Balancing)
+    3. Active Shift with Full Cylinders > 0
+    4. Lowest number of PENDING/IN_PROGRESS orders (Load Balancing)
     """
     # 1. Find all active drivers for this admin in this city
     drivers = list(driver_collection.find({
@@ -44,11 +45,27 @@ def get_optimal_driver(admin_id: ObjectId, city: str):
     if not drivers:
         return None
         
-    # 2. Find driver with least load
+    # 2. Filter drivers: Must have an OPEN shift with current_full > 0
+    eligible_drivers = []
+    for d in drivers:
+        shift = shifts_collection.find_one({
+            "driver_id": str(d["_id"]),
+            "status": "OPEN"
+        })
+        if shift:
+            # Logic: Departure Full - Returned Full (consumption)
+            current_full = shift["load_departure"]["full"] - shift["load_return"]["full"]
+            if current_full > 0:
+                eligible_drivers.append(d)
+
+    if not eligible_drivers:
+        return None
+        
+    # 3. Find driver with least load among eligible ones
     best_driver = None
     min_load = float('inf')
     
-    for driver in drivers:
+    for driver in eligible_drivers:
         # Count active orders for this driver
         load = order_collection.count_documents({
             "assigned_driver_id": driver["_id"],
@@ -192,6 +209,7 @@ async def add_city(city_name: str = Form(...)):
 @customer_router.post("/add-customer")
 async def add_customer(
     request: Request, 
+    consumer_id: int = Form(...), 
     name: str = Form(...), 
     phone: str = Form(...), 
     city: str = Form(...), 
@@ -202,16 +220,26 @@ async def add_customer(
     if not admin_id:
         return RedirectResponse(url="/", status_code=303)
 
-    # 🚀 SECURE ID GENERATION: GF-1002 Format
-    seq = get_next_sequence("customer_id")
-    customer_id_str = f"GF-{seq}"
+    try:
+        # Check uniqueness
+        if customer_collection.find_one({"consumer_id": consumer_id}):
+            return RedirectResponse(url="/customers?error=Consumer ID already exists", status_code=303)
+    except Exception as e:
+        pass
+
+    city_name = city.strip()
+    db["cities"].update_one(
+        {"name": {"$regex": f"^{city_name}$", "$options": "i"}},
+        {"$set": {"name": city_name}},
+        upsert=True
+    )
 
     customer_collection.insert_one({
         "admin_id": admin_id,
-        "customer_id": customer_id_str, # NEW FIELD
-        "name": name, 
+        "consumer_id": consumer_id, # EXPLICIT CONSUMER ID
+        "name": name,
         "phone_number": phone, 
-        "city": city, 
+        "city": city_name, 
         "landmark": landmark,
         "pincode": pincode,
         "verified_lat": None, 
@@ -223,6 +251,19 @@ async def add_customer(
     return RedirectResponse(url="/customers", status_code=303)
 
 # customer.py
+from fastapi import Query
+from fastapi.responses import JSONResponse
+
+@customer_router.get("/validate-consumer-id")
+async def validate_consumer_id(id: int = Query(...), admin_id: ObjectId = Depends(get_current_admin)):
+    if not admin_id:
+        return JSONResponse({"valid": False, "error": "Unauthorized"}, status_code=401)
+    
+    exists = customer_collection.find_one({"consumer_id": id})
+    if exists:
+        return JSONResponse({"valid": False, "error": "Consumer ID already exists."})
+    return JSONResponse({"valid": True})
+
 
 # customer.py
 

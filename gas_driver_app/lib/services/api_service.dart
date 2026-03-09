@@ -8,14 +8,25 @@ class ApiService {
   static String baseUrl = "https://gas-agency-backend-go6b.onrender.com";
   static const String _ngrokUrl = "https://dawdlingly-pseudoinsane-pa.ngrok-free.dev";
   static const String _renderUrl = "https://gas-agency-backend-go6b.onrender.com";
+  static const String _emulatorUrl = "http://10.0.2.2:8000"; // 📱 Standard Android Emulator Host
   static bool _initialized = false;
 
   // --- DYNAMIC ROUTING ENGINE ---
   static Future<void> initBaseUrl() async {
     if (_initialized) return;
     try {
-      print("🔍 Checking if Ngrok server is online...");
-      // Send a quick ping to see if local dev environment is open
+      print("🔍 Checking local server (Emulator)...");
+      final res = await http.get(Uri.parse('$_emulatorUrl/docs')).timeout(const Duration(seconds: 1));
+      if (res.statusCode == 200) {
+        baseUrl = _emulatorUrl;
+        print("📱 Connected to EMULATOR local server: $baseUrl");
+        _initialized = true;
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      print("🔍 Checking Ngrok server...");
       final res = await http.get(Uri.parse('$_ngrokUrl/docs')).timeout(const Duration(seconds: 2));
       baseUrl = _ngrokUrl;
       print("🔌 Connected to NGROK local server: $baseUrl");
@@ -29,6 +40,7 @@ class ApiService {
   // Hive Box Names
   static const String orderBoxName = "cached_orders";
   static const String syncQueueBoxName = "sync_queue";
+  static const String settingsBoxName = "settings"; // 📦 Added: For shift status & app settings
 
   // --- SESSION MANAGEMENT ---
   Future<void> saveSession(String token, Map driver) async {
@@ -57,12 +69,23 @@ class ApiService {
   // --- AUTHENTICATION ---
   Future<Map<String, dynamic>> login(String phone, String password) async {
     try {
+      print("🚀 Attempting Login at: $baseUrl/driver/login");
       final res = await http.post(Uri.parse('$baseUrl/driver/login'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'phone_number': phone, 'password': password}));
-      return jsonDecode(res.body);
+      
+      final data = jsonDecode(res.body);
+      if (res.statusCode == 200) {
+        return data;
+      } else {
+        // Handle FastAPI detail errors
+        return {
+          'success': false, 
+          'message': data['detail'] ?? 'Login failed (${res.statusCode})'
+        };
+      }
     } catch (e) {
-      return {'success': false, 'message': 'Network error: Please check your connection.'};
+      return {'success': false, 'message': 'Network error: $baseUrl might be offline.'};
     }
   }
 
@@ -96,13 +119,14 @@ class ApiService {
   }
 
   // --- ACTION QUEUEING (OFFLINE SYNC) ---
-  Future<Map<String, dynamic>> completeOrder(String token, String orderId, double lat, double lng, int emptiesCollected, String paymentMode) async {
+  Future<Map<String, dynamic>> completeOrder(String token, String orderId, double lat, double lng, int emptiesCollected, String paymentMode, double amountCollected) async {
     final payload = {
       'order_id': orderId, 
       'lat': lat, 
       'lng': lng,
       'empties_collected': emptiesCollected,
-      'payment_mode': paymentMode
+      'payment_mode': paymentMode,
+      'amount_collected': amountCollected
     };
 
     try {
@@ -123,6 +147,22 @@ class ApiService {
       if (!currentQueue.any((item) => item['order_id'] == orderId)) {
         currentQueue.add(payload);
         await syncBox.put('pending_completions', currentQueue);
+        
+        // 💾 OFFLINE STOCK UPDATE: Update the cached shift status so UI stays accurate
+        var box = Hive.box(ApiService.settingsBoxName);
+        String? cachedShift = box.get('last_shift_status');
+        if (cachedShift != null) {
+          Map<String, dynamic> shift = jsonDecode(cachedShift);
+          if (shift['active'] == true) {
+            shift['inventory']['full_cylinders'] = (shift['inventory']['full_cylinders'] as int) - 1;
+            shift['inventory']['empty_cylinders'] = (shift['inventory']['empty_cylinders'] as int) + emptiesCollected;
+            if (paymentMode == 'CASH') {
+              // We don't know the price here easily without searching orders, 
+              // but we can at least update cylinder counts which is most critical.
+            }
+            await box.put('last_shift_status', jsonEncode(shift));
+          }
+        }
       }
 
       return {
@@ -196,5 +236,33 @@ class ApiService {
         body: jsonEncode({'lat': lat, 'lng': lng}),
       ).timeout(const Duration(seconds: 5));
     } catch (_) {}
+  }
+
+  Future<Map<String, dynamic>> getShiftStatus(String token) async {
+    var box = Hive.box(ApiService.settingsBoxName);
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/driver/shift/status'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 5));
+      
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        await box.put('last_shift_status', res.body);
+        return data;
+      }
+    } catch (e) {
+      print("Shift Status Offline: Loading cache.");
+    }
+    
+    String? cached = box.get('last_shift_status');
+    if (cached != null) return jsonDecode(cached);
+    return {'active': false, 'message': 'Network error'};
+  }
+
+  Future<int> getSyncQueueCount() async {
+    var syncBox = Hive.box(ApiService.syncQueueBoxName);
+    List pending = syncBox.get('pending_completions', defaultValue: []);
+    return pending.length;
   }
 }

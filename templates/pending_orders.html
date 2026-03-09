@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Driver Assignment | GasFlow</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ============================================
+           1. DESIGN SYSTEM & TOKENS
+           ============================================ */
+        :root {
+            /* Brand Colors */
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-light: rgba(99, 102, 241, 0.15);
+
+            /* Status Colors */
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.1);
+            --info: #3b82f6;
+
+            /* Dimensions */
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --header-h: 72px;
+            --container-w: 1400px;
+
+            /* Typography */
+            --font-main: 'Inter', sans-serif;
+            --font-display: 'Space Grotesk', sans-serif;
+
+            /* Transitions */
+            --ease-out: cubic-bezier(0.25, 0.8, 0.25, 1);
+            --duration: 0.2s;
+        }
+
+        /* DARK THEME */
+        [data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-card: #1e293b;
+            --bg-glass: rgba(15, 23, 42, 0.8);
+            --border: #334155;
+            --border-hover: #475569;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --input-bg: #0f172a;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        /* LIGHT THEME */
+        [data-theme="light"] {
+            --bg-body: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-card: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.8);
+            --border: #e2e8f0;
+            --border-hover: #cbd5e1;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --input-bg: #f1f5f9;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        /* ============================================
+           2. BASE STYLES
+           ============================================ */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            outline: none;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            overflow-x: hidden;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+            transition: var(--duration);
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-family: inherit;
+        }
+
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+            color: inherit;
+        }
+
+        .container {
+            max-width: var(--container-w);
+            margin: 0 auto;
+            padding: 0 24px;
+            width: 100%;
+        }
+
+        /* ============================================
+           3. NAVBAR (Unified Professional Header)
+           ============================================ */
+        .navbar {
+            height: var(--header-h);
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 24px;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+
+        .brand i {
+            color: var(--primary);
+            font-size: 30px;
+            filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.5));
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-surface);
+            padding: 4px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+
+        .nav-item {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            color: var(--text-main);
+            background: var(--bg-body);
+        }
+
+        .nav-item.active {
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .badge {
+            background: var(--danger);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 20px;
+            font-weight: 700;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .theme-toggle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            color: var(--warning);
+            border-color: var(--warning);
+            background: var(--bg-surface);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-left: 16px;
+            border-left: 1px solid var(--border);
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            color: white;
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            color: var(--text-main);
+            font-size: 24px;
+        }
+
+        /* New Table Overrides */
+        .page-header {
+            margin: 40px 0 32px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .page-header h1 {
+            font-family: var(--font-display);
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 15px;
+            margin-top: 4px;
+        }
+
+        .date-filter-box {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .date-filter-box input {
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-family: 'Inter';
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+        }
+
+        .territory-block {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        .territory-header {
+            padding: 20px 24px;
+            background: var(--bg-glass);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .territory-header:hover {
+            background: var(--bg-surface);
+        }
+
+        .territory-header.open {
+            border-bottom-color: var(--border);
+        }
+
+        .t-title {
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .t-badge {
+            background: var(--primary-light);
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .t-driver {
+            color: var(--text-muted);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .territory-body {
+            display: none;
+            padding: 0;
+        }
+
+        .territory-body.open {
+            display: block;
+            animation: slideDown 0.3s ease-out forwards;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .data-table th {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px 24px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .data-table td {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+            font-size: 14px;
+        }
+
+        .data-table tr:hover td {
+            background: var(--bg-surface);
+        }
+
+        .checkbox-cell {
+            width: 50px;
+        }
+
+        .custom-checkbox {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 2px solid var(--border);
+            appearance: none;
+            cursor: pointer;
+            position: relative;
+            background: var(--bg-body);
+            transition: all 0.2s;
+        }
+
+        .custom-checkbox:checked {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .custom-checkbox:checked::after {
+            content: '✔';
+            position: absolute;
+            color: white;
+            font-size: 12px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .mass-action-bar {
+            padding: 16px 24px;
+            background: var(--bg-glass);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Modal Overrides */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 100000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            width: 100%;
+            max-width: 500px;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            padding: 32px;
+            position: relative;
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 24px;
+        }
+
+        .driver-select-grid {
+            display: grid;
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .driver-option {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .driver-option:hover {
+            border-color: var(--primary);
+            background: var(--bg-surface);
+        }
+
+        .driver-option.selected {
+            border-color: var(--success);
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .driver-option.warning {
+            border-color: var(--warning);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .d-opt-name {
+            font-weight: 700;
+            color: var(--text-main);
+            font-size: 15px;
+        }
+
+        .d-opt-load {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .cap-badge {
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .cap-safe {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+        }
+
+        .cap-warn {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================
+           4. PAGE CONTENT & COMMAND CENTER
+           ============================================ */
+        .main-container {
+            max-width: var(--container-w);
+            margin: 40px auto;
+            padding: 0 24px;
+            width: 100%;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-size: 15px;
+        }
+
+        .date-filter-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-surface);
+            padding: 12px 20px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .date-filter-box input[type="date"] {
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .date-filter-box input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            opacity: 0.5;
+            cursor: pointer;
+        }
+
+        /* Territory Blocks */
+        .territory-block {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .territory-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            background: var(--bg-card);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .territory-header:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .t-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .t-badge {
+            background: var(--primary-light);
+            color: var(--primary);
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 700;
+        }
+
+        .t-driver {
+            font-size: 13px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* Buttons */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        /* Tables & Expandable Body */
+        .territory-body {
+            display: none;
+            border-top: 1px solid var(--border);
+            background: var(--bg-body);
+        }
+
+        .territory-body.open {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 16px 24px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        .data-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            background: var(--bg-card);
+        }
+
+        .data-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .checkbox-cell {
+            width: 48px;
+            text-align: center;
+        }
+
+        .custom-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            background: var(--bg-surface);
+            border-radius: var(--radius-lg);
+            border: 1px dashed var(--border);
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            color: var(--success);
+            margin-bottom: 16px;
+            opacity: 0.8;
+        }
+
+        .empty-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .empty-desc {
+            color: var(--text-muted);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* ============================================
+           6. RESPONSIVE
+           ============================================ */
+        @media (max-width: 1024px) {
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .main-container {
+                padding: 0 16px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header h1 {
+                font-size: 24px;
+            }
+
+            .navbar {
+                height: 64px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <style>
+        :root {
+            /* Design Tokens */
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-light: rgba(99, 102, 241, 0.15);
+            --danger: #ef4444;
+            --header-h: 72px;
+            --radius-md: 12px;
+            --font-display: 'Space Grotesk', sans-serif;
+        }
+
+        /* Theme-Aware Variables */
+        [data-theme="dark"] {
+            --nav-bg: rgba(15, 23, 42, 0.8);
+            --nav-border: rgba(255, 255, 255, 0.08);
+            --nav-text: #94a3b8;
+            --nav-text-active: #f8fafc;
+            --nav-surface: #1e293b;
+        }
+
+        [data-theme="light"] {
+            --nav-bg: rgba(255, 255, 255, 0.8);
+            --nav-border: rgba(15, 23, 42, 0.08);
+            --nav-text: #64748b;
+            --nav-text-active: #1e293b;
+            --nav-surface: #f1f5f9;
+        }
+
+        /* Navbar Container */
+        .universal-navbar {
+            height: var(--header-h);
+            background: var(--nav-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--nav-border);
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .nav-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+
+        /* Brand / Logo */
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 22px;
+            text-decoration: none;
+            color: var(--nav-text-active);
+        }
+
+        .nav-brand i {
+            color: var(--primary);
+            font-size: 28px;
+            filter: drop-shadow(0 0 8px var(--primary-light));
+        }
+
+        /* Nav Links */
+        .nav-menu {
+            display: flex;
+            gap: 6px;
+            background: var(--nav-surface);
+            padding: 5px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--nav-border);
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--nav-text);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--nav-text-active);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .nav-link.active {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        /* Badges */
+        .nav-badge {
+            background: var(--danger);
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: 4px;
+        }
+
+        /* Actions */
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid var(--nav-border);
+            display: grid;
+            place-items: center;
+            color: var(--nav-text);
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--nav-surface);
+        }
+
+        .nav-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-left: 16px;
+            border-left: 1px solid var(--nav-border);
+            text-decoration: none;
+        }
+
+        .nav-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            color: white;
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+        }
+
+        .nav-mobile-toggle {
+            display: none;
+            font-size: 24px;
+            color: var(--nav-text);
+            cursor: pointer;
+        }
+
+        /* Responsive Logic */
+        @media (max-width: 1024px) {
+            .nav-menu {
+                display: none;
+            }
+
+            .nav-menu.is-open {
+                display: flex;
+                flex-direction: column;
+                position: absolute;
+                top: var(--header-h);
+                left: 0;
+                right: 0;
+                background: var(--nav-bg);
+                padding: 16px;
+                border-bottom: 1px solid var(--nav-border);
+            }
+
+            .nav-mobile-toggle {
+                display: block;
+            }
+
+            .desktop-only {
+                display: none !important;
+            }
+        }
+    </style>
+
+    <nav class="universal-navbar">
+        <div class="nav-inner">
+            <a href="/dashboard" class="nav-brand">
+                <i class="material-symbols-rounded">local_fire_department</i>
+                <span>GasFlow</span>
+            </a>
+
+            <div class="nav-menu" id="universalNavMenu">
+                <a href="/customers" class="nav-link">
+                    <i class="material-symbols-rounded">group</i> Customers
+                </a>
+                <a href="/drivers" class="nav-link">
+                    <i class="material-symbols-rounded">local_shipping</i> Drivers
+                </a>
+                <a href="/assignments" class="nav-link">
+                    <i class="material-symbols-rounded">assignment</i> Assignments
+                    {% if stats and stats.pending > 0 %}
+                    <span class="nav-badge">{{ stats.pending }}</span>
+                    {% endif %}
+                </a>
+                <a href="/inventory" class="nav-link">
+                    <i class="material-symbols-rounded">inventory_2</i> Inventory
+                </a>
+                <a href="/reports" class="nav-link">
+                    <i class="material-symbols-rounded">bar_chart</i> Reports
+                </a>
+                <a href="/admin/pending-orders" class="nav-link">
+                    <i class="material-symbols-rounded">gavel</i> Resolutions
+                </a>
+                <a href="/driver-audit" class="nav-link">
+                    <i class="material-symbols-rounded">fact_check</i> Audit
+                </a>
+            </div>
+
+            <div class="nav-actions">
+                <button class="nav-btn" id="navThemeToggle" title="Toggle Theme">
+                    <i class="material-symbols-rounded">light_mode</i>
+                </button>
+
+                <div class="nav-mobile-toggle" id="navMobileBtn">
+                    <i class="material-symbols-rounded">menu</i>
+                </div>
+
+                <a href="/profile" class="nav-user desktop-only">
+                    <div style="text-align: right;">
+                        <p style="font-size: 13px; font-weight: 700; color: var(--nav-text-active); margin:0;">Admin
+                            User</p>
+                        <p style="font-size: 11px; color: var(--nav-text); margin:0;">Fleet Manager</p>
+                    </div>
+                    <div class="nav-avatar">AD</div>
+                </a>
+
+                <a href="/logout" class="nav-btn desktop-only" title="Logout">
+                    <i class="material-symbols-rounded">logout</i>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        (function () {
+            /* 1. Theme Engine Integration */
+            const themeBtn = document.getElementById('navThemeToggle');
+            const htmlEl = document.documentElement;
+
+            const applyTheme = (theme) => {
+                htmlEl.setAttribute('data-theme', theme);
+                localStorage.setItem('gasflow_theme', theme);
+                const icon = themeBtn.querySelector('i');
+                icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+            };
+
+            themeBtn.addEventListener('click', () => {
+                const current = htmlEl.getAttribute('data-theme') || 'dark';
+                applyTheme(current === 'dark' ? 'light' : 'dark');
+            });
+
+            // Initialize from storage
+            applyTheme(localStorage.getItem('gasflow_theme') || 'dark');
+
+            /* 2. Intelligent Active Link Detection */
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            navLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (currentPath === href || (href !== '/dashboard' && currentPath.startsWith(href))) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+
+            /* 3. Mobile Menu Toggle */
+            const mobileBtn = document.getElementById('navMobileBtn');
+            const navMenu = document.getElementById('universalNavMenu');
+
+            mobileBtn.addEventListener('click', () => {
+                navMenu.classList.toggle('is-open');
+                const icon = mobileBtn.querySelector('i');
+                icon.textContent = navMenu.classList.contains('is-open') ? 'close' : 'menu';
+            });
+        })();
+    </script>
+
+    <main class="main-container">
+
+        <header class="page-header">
+            <div>
+                <h1>Command Center</h1>
+                <p>Manage and mass-reschedule leftover distributions.</p>
+            </div>
+            <div class="date-filter-box">
+                <i class="material-symbols-rounded text-primary">calendar_month</i>
+                <input type="date" id="dateFilter" value="{{ selected_date }}" onchange="handleDateFilter(this.value)">
+                <span class="text-xs text-muted" style="color:var(--text-muted)">Displaying: {{ selected_date_display
+                    }}</span>
+            </div>
+        </header>
+
+        {% if territories|length == 0 %}
+        <div class="empty-state">
+            <i class="material-symbols-rounded empty-icon">check_circle</i>
+            <h3 class="empty-title">Zero Pending Orders</h3>
+            <p class="empty-desc">The specific date you've chosen is perfectly clean. No logistics stranded.</p>
+        </div>
+        {% else %}
+        <!-- Iterate over grouped territories -->
+        {% for t in territories %}
+        <div class="territory-block">
+            <div class="territory-header" onclick="toggleTerritory('body_{{ loop.index }}', this)">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <span class="material-symbols-rounded" style="color:var(--text-muted)">expand_more</span>
+                    <div>
+                        <div class="t-title">{{ t.city }} <span class="t-badge">{{ t.count }} Pending</span></div>
+                        <div class="t-driver">
+                            <i class="material-symbols-rounded" style="font-size: 16px;">person</i>
+                            Original: {{ t.driver_name }}
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-primary"
+                    onclick="event.stopPropagation(); openRescheduleModal('{{ t.city }}', '{{ t.driver_id }}')">
+                    <i class="material-symbols-rounded" style="font-size: 18px;">sync_alt</i> Reschedule All
+                </button>
+            </div>
+
+            <div class="territory-body" id="body_{{ loop.index }}">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="checkbox-cell">
+                                <input type="checkbox" class="custom-checkbox"
+                                    onchange="toggleAllRow(this, 'body_{{ loop.index }}')" checked>
+                            </th>
+                            <th>Consumer Name</th>
+                            <th>Landmark</th>
+                            <th>Phone</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in t.orders %}
+                        <tr>
+                            <td class="checkbox-cell">
+                                <input type="checkbox" class="custom-checkbox row-check" value="{{ order._id }}"
+                                    checked>
+                            </td>
+                            <td style="font-weight: 600;">{{ order.customer_name }}</td>
+                            <td style="color:var(--text-muted); font-size: 13px;">{{ order.landmark }}</td>
+                            <td style="font-family: monospace;">{{ order.phone }}</td>
+                            <td>
+                                <span
+                                    style="font-size:11px; font-weight:700; padding:4px 8px; border-radius:10px; background:rgba(245,158,11,0.1); color:#f59e0b;">
+                                    WAITING
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+    </main>
+
+    <!-- Smart Reschedule Modal -->
+    <div id="rescheduleModal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeRescheduleModal()"><i
+                    class="material-symbols-rounded">close</i></button>
+            <h2
+                style="font-family: var(--font-display); font-size:24px; color:var(--text-main); font-weight:700; margin-bottom: 8px;">
+                Reschedule Orders</h2>
+            <p style="color:var(--text-muted); font-size:14px;">Select an active driver to take over <span
+                    id="modalOrderCount" style="color:var(--primary); font-weight:800;">0</span> stranded orders for
+                <strong id="modalCity">City</strong> based on today's capacity.
+            </p>
+
+            <input type="hidden" id="modalOrderIds" value="">
+
+            <div class="driver-select-grid" id="modalDriverList">
+                {% for d in drivers %}
+                <!-- Driver Option -->
+                <div class="driver-option" onclick="selectModalDriver('{{ d._id }}', this)">
+                    <div>
+                        <div class="d-opt-name">{{ d.name }}</div>
+                        <div class="d-opt-load">Active assigned load today: {{ d.today_active_load }} total</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div
+                style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); display: flex; gap: 12px;">
+                <button type="button" class="btn-primary"
+                    style="background:var(--bg-surface); color:var(--text-main); flex:1; justify-content:center; border: 1px solid var(--border);"
+                    onclick="closeRescheduleModal()">Cancel</button>
+                <button type="button" class="btn-primary" style="flex:2; justify-content:center;" id="modalSubmitBtn"
+                    onclick="submitBatchReschedule()">Confirm Reschedule</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedDriverIdForReschedule = null;
+
+        function handleDateFilter(dateVal) {
+            window.location.href = `/admin/pending-orders?date=${dateVal}`;
+        }
+
+        function toggleTerritory(bodyId, headerEl) {
+            const body = document.getElementById(bodyId);
+            body.classList.toggle('open');
+            headerEl.classList.toggle('open');
+            const icon = headerEl.querySelector('.material-symbols-rounded');
+            icon.textContent = body.classList.contains('open') ? 'expand_less' : 'expand_more';
+        }
+
+        function toggleAllRow(masterCheckbox, bodyId) {
+            const container = document.getElementById(bodyId);
+            const checkboxes = container.querySelectorAll('.row-check');
+            checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+        }
+
+        function getSelectedOrderIds(bodyElement) {
+            if (!bodyElement) return [];
+            const checkboxes = bodyElement.querySelectorAll('.row-check:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        function openRescheduleModal(city, origDriverId, ordersJson) {
+            // Find the territory body element based on the event target to get checked boxes
+            const targetBody = event.target.closest('.territory-block').querySelector('.territory-body');
+            const selectedIds = getSelectedOrderIds(targetBody);
+
+            if (selectedIds.length === 0) {
+                alert("Please select at least one order to reschedule.");
+                return;
+            }
+
+            document.getElementById('modalCity').textContent = city;
+            document.getElementById('modalOrderCount').textContent = selectedIds.length;
+            document.getElementById('modalOrderIds').value = JSON.stringify(selectedIds);
+
+            // Reset modal states
+            selectedDriverIdForReschedule = null;
+            document.querySelectorAll('.driver-option').forEach(el => el.classList.remove('selected'));
+            document.getElementById('rescheduleModal').classList.add('open');
+            document.getElementById('modalSubmitBtn').innerHTML = 'Confirm Reschedule';
+            document.getElementById('modalSubmitBtn').disabled = false;
+        }
+
+        function closeRescheduleModal() {
+            document.getElementById('rescheduleModal').classList.remove('open');
+        }
+
+        function selectModalDriver(driverId, el) {
+            selectedDriverIdForReschedule = driverId;
+            document.querySelectorAll('.driver-option').forEach(e => e.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        async function submitBatchReschedule() {
+            if (!selectedDriverIdForReschedule) {
+                alert("You must select a driver to absorb this load.");
+                return;
+            }
+
+            const rawIds = document.getElementById('modalOrderIds').value;
+            let orderIds = [];
+            try { orderIds = JSON.parse(rawIds); } catch (e) { }
+
+            if (orderIds.length === 0) return;
+
+            // Target Date is Today IST (the backend defaults to today if we pass current date)
+            const today = new Date().toISOString().split('T')[0];
+
+            const btn = document.getElementById('modalSubmitBtn');
+            btn.innerHTML = '<i class="material-symbols-rounded animate-spin">sync</i> Processing...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/admin/orders/batch-reschedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_ids: orderIds,
+                        new_driver_id: selectedDriverIdForReschedule,
+                        target_date: today
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert("Error: " + data.message);
+                    btn.innerHTML = 'Confirm Reschedule';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert("Network communication failed.");
+                btn.innerHTML = 'Confirm Reschedule';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

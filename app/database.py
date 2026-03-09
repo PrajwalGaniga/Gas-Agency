@@ -53,9 +53,13 @@ driver_location_collection = db["driver_locations"]
 change_requests_collection = db["customer_change_requests"]
 daily_stats_collection = db["daily_stats"]
 counters_collection = db["counters"]
+shifts_collection = db["shifts"]
 
 # Initialize Counter if not exists
 if counters_collection is not None:
+    if customer_collection is not None:
+        customer_collection.create_index("consumer_id", unique=True, sparse=True)
+
     counters_collection.update_one(
         {"_id": "customer_id"},
         {"$setOnInsert": {"sequence_value": 1000}},

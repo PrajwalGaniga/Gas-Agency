@@ -28,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
     
     try {
       final res = await ApiService().login(_phoneController.text, _passwordController.text);
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
 
       if (res['success'] == true && res['access_token'] != null && res['driver'] != null) {
         if (_rememberMe) {
@@ -50,14 +50,16 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       } else {
-        String msg = res['message'] ?? "Login Failed: Server returned incomplete data";
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        String msg = res['message'] ?? "Login Failed: Server returned error";
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red[900]));
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Connection Error: Server might be waking up. Try again in 30 seconds."))
-      );
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Critical Connection Error: ${ApiService.baseUrl}"), backgroundColor: Colors.red[900])
+        );
+      }
     }
   }
 
@@ -163,6 +165,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: _handleLogin, 
                         child: const Text("ACCESS FLEET")
                       ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Debug/Status Indicator
+                  Text(
+                    "Service Status: ${ApiService.baseUrl.contains('10.0.2.2') ? 'Local Dev' : ApiService.baseUrl.contains('ngrok') ? 'Bridge Mode' : 'Cloud'}",
+                    style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
             ),

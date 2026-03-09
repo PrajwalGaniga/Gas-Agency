@@ -12,8 +12,9 @@ from auth import get_current_admin, create_access_token, get_current_driver
 from app.database import (
     db, admin_collection, driver_collection, 
     customer_collection, order_collection, cities_collection,
-    driver_audit_collection, driver_location_collection, change_requests_collection, daily_stats_collection
+    driver_audit_collection, driver_location_collection, change_requests_collection, daily_stats_collection, shifts_collection
 )
+from app.schemas import StartShiftRequest, CloseShiftRequest
 from app.utils import verify_password, get_password_hash, generate_otp, send_otp_email
 
 admin_router = APIRouter()
@@ -389,6 +390,242 @@ async def assign_delivery(order_id: str = Form(...), driver_id: str = Form(...))
         return RedirectResponse(url="/assignments", status_code=303)
     except Exception as e: return {"success": False, "message": str(e)}
 
+@admin_router.get("/admin/pending-orders")
+async def pending_orders_dashboard(
+    request: Request, 
+    date: str = Query(None), 
+    admin_id: ObjectId = Depends(get_current_admin)
+):
+    if not admin_id: 
+        return RedirectResponse(url="/", status_code=303)
+    
+    # 1. Date Filtering Logic
+    now_utc = datetime.utcnow()
+    target_dt = datetime.strptime(date, "%Y-%m-%d").date() if date else to_ist(now_utc).date()
+    target_date_str = target_dt.strftime("%Y-%m-%d")
+
+    # 2. Fetch Pending Orders for the specific assigned_date
+    pending_orders_cursor = order_collection.find({
+        "admin_id": admin_id, 
+        "status": "PENDING",
+        # Find orders explicitly assigned to this date, OR legacy orders missing the field but created on this date
+        "$or": [
+            {"assigned_date": target_date_str},
+            {"assigned_date": {"$exists": False}, "created_at": {"$gte": datetime.combine(target_dt, datetime.min.time()), "$lt": datetime.combine(target_dt + timedelta(days=1), datetime.min.time())}}
+        ]
+    })
+    
+    pending_orders = list(pending_orders_cursor)
+    
+    # 3. Enhance Orders with Customer Info & Group by Territory (City)
+    grouped_territories = {}
+    
+    for order in pending_orders:
+        order["_id"] = str(order["_id"])
+        order["customer_id"] = str(order["customer_id"])
+        
+        city = order.get("city", "Unknown City")
+        driver_id_str = str(order.get("assigned_driver_id")) if order.get("assigned_driver_id") else "Unassigned"
+        driver_name = order.get("assigned_driver_name", "Unassigned")
+
+        # Create a unique logical group key for City + Driver combo
+        group_key = f"{city}_{driver_id_str}"
+
+        if group_key not in grouped_territories:
+            grouped_territories[group_key] = {
+                "city": city,
+                "driver_id": driver_id_str,
+                "driver_name": driver_name,
+                "orders": [],
+                "count": 0
+            }
+        
+        # Populate Customer Link
+        cust = customer_collection.find_one({"_id": ObjectId(order["customer_id"])})
+        if cust:
+            order["customer_name"] = cust.get("name", "Unknown")
+            order["phone"] = cust.get("phone_number", "N/A")
+            order["landmark"] = cust.get("landmark", "N/A")
+        
+        grouped_territories[group_key]["orders"].append(order)
+        grouped_territories[group_key]["count"] += 1
+
+    # Convert mapping to list for the template
+    territory_list = list(grouped_territories.values())
+
+    # 4. Fetch Active Drivers (For the Reschedule Dropdown) & Calculate Today's Load
+    active_drivers_cursor = driver_collection.find({"admin_id": admin_id, "is_active": True})
+    active_drivers = []
+    
+    today_str = to_ist(now_utc).date().strftime("%Y-%m-%d")
+
+    for d in active_drivers_cursor:
+        d["_id"] = str(d["_id"])
+        # Calculate active load on the driver specifically for TODAY
+        active_load = order_collection.count_documents({
+            "assigned_driver_id": ObjectId(d["_id"]),
+            "status": {"$in": ["PENDING", "IN_PROGRESS"]},
+            "$or": [
+                {"assigned_date": today_str},
+                {"assigned_date": {"$exists": False}} # Fallback
+            ]
+        })
+        d["today_active_load"] = active_load
+        active_drivers.append(d)
+
+    stats = {
+        "pending": len(pending_orders),
+        "territories": len(territory_list)
+    }
+
+    return templates.TemplateResponse("pending_orders.html", {
+        "request": request, 
+        "territories": territory_list, 
+        "drivers": active_drivers,
+        "selected_date": target_date_str,
+        "selected_date_display": target_dt.strftime("%d %b %Y"),
+        "stats": stats
+    })
+
+@admin_router.post("/api/reassign-order")
+async def reassign_order(
+    order_id: str = Form(...), 
+    new_driver_id: str = Form(...), 
+    target_date: str = Form(None),
+    admin_id: ObjectId = Depends(get_current_admin)
+):
+    if not admin_id: return {"success": False, "message": "Unauthorized"}
+    try:
+        o_id = ObjectId(order_id)
+        order = order_collection.find_one({"_id": o_id})
+        if not order: return {"success": False, "message": "Order not found"}
+
+        final_driver_id = None
+        final_driver_name = "Unassigned"
+        
+        if new_driver_id != "auto":
+            driver = driver_collection.find_one({"_id": ObjectId(new_driver_id)})
+            if driver:
+                final_driver_id = driver["_id"]
+                final_driver_name = driver["name"]
+
+        # Component 7: Date strictness. If no date provided, default to today IST
+        now_utc = datetime.utcnow()
+        t_date_obj = datetime.strptime(target_date, "%Y-%m-%d").date() if target_date else to_ist(now_utc).date()
+        
+        # Check if actually rescheduled
+        orig_assigned_date = order.get("assigned_date")
+        if orig_assigned_date and isinstance(orig_assigned_date, datetime):
+            orig_assigned_date = orig_assigned_date.date()
+        else:
+            orig_date_utc = order.get("created_at")
+            orig_assigned_date = to_ist(orig_date_utc).date() if orig_date_utc else to_ist(now_utc).date()
+
+        is_rescheduled = True if t_date_obj != orig_assigned_date or order.get("is_rescheduled") else False
+        
+        # We store assigned_date as a datetime representing the start of that day in UTC for easier querying later if needed, 
+        # or just store string "YYYY-MM-DD". Let's store as a string for precise matching without timezone fuzz.
+        assigned_date_str = t_date_obj.strftime("%Y-%m-%d")
+
+        update_payload = {
+            "status": "IN_PROGRESS", 
+            "assigned_driver_id": final_driver_id, 
+            "assigned_driver_name": final_driver_name, 
+            "assigned_at": now_utc,
+            "assigned_date": assigned_date_str,
+        }
+
+        if is_rescheduled:
+            update_payload["is_rescheduled"] = True
+            if not order.get("original_date"):
+                update_payload["original_date"] = orig_assigned_date.strftime("%Y-%m-%d")
+
+        order_collection.update_one(
+            {"_id": o_id}, 
+            {"$set": update_payload}
+        )
+        customer_collection.update_one(
+            {"records.order_id": o_id}, 
+            {"$set": {
+                "records.$.status": "IN_PROGRESS", 
+                "records.$.driver_name": final_driver_name
+            }}
+        )
+        return RedirectResponse(url="/admin/pending-orders", status_code=303)
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@admin_router.post("/admin/orders/batch-reschedule")
+async def batch_reschedule_orders(request: Request, admin_id: ObjectId = Depends(get_current_admin)):
+    """Handles mass rescheduling from the Command Center logic"""
+    if not admin_id:
+        return {"success": False, "message": "Unauthorized"}
+    try:
+        data = await request.json()
+        order_ids = data.get("order_ids", [])
+        new_driver_id = data.get("new_driver_id")
+        target_date = data.get("target_date")
+
+        if not order_ids or not target_date:
+            return {"success": False, "message": "Missing required fields"}
+
+        final_driver_id = None
+        final_driver_name = "Unassigned"
+        
+        if new_driver_id and new_driver_id != "auto":
+            driver = driver_collection.find_one({"_id": ObjectId(new_driver_id)})
+            if driver:
+                final_driver_id = driver["_id"]
+                final_driver_name = driver["name"]
+        
+        now_utc = datetime.utcnow()
+        t_date_obj = datetime.strptime(target_date, "%Y-%m-%d").date()
+        assigned_date_str = t_date_obj.strftime("%Y-%m-%d")
+
+        success_count = 0
+        for o_id_str in order_ids:
+            o_id = ObjectId(o_id_str)
+            order = order_collection.find_one({"_id": o_id})
+            if not order: continue
+
+            # Date calculation
+            orig_assigned_date = order.get("assigned_date")
+            if orig_assigned_date and isinstance(orig_assigned_date, datetime):
+                orig_assigned_date = orig_assigned_date.date()
+            else:
+                orig_date_utc = order.get("created_at")
+                orig_assigned_date = to_ist(orig_date_utc).date() if orig_date_utc else to_ist(now_utc).date()
+
+            is_rescheduled = True if t_date_obj != orig_assigned_date or order.get("is_rescheduled") else False
+
+            update_payload = {
+                "status": "IN_PROGRESS", 
+                "assigned_driver_id": final_driver_id, 
+                "assigned_driver_name": final_driver_name, 
+                "assigned_at": now_utc,
+                "assigned_date": assigned_date_str,
+            }
+
+            if is_rescheduled:
+                update_payload["is_rescheduled"] = True
+                if not order.get("original_date"):
+                    update_payload["original_date"] = orig_assigned_date.strftime("%Y-%m-%d")
+
+            result = order_collection.update_one({"_id": o_id}, {"$set": update_payload})
+            if result.modified_count > 0:
+                customer_collection.update_one(
+                    {"records.order_id": o_id}, 
+                    {"$set": {
+                        "records.$.status": "IN_PROGRESS", 
+                        "records.$.driver_name": final_driver_name
+                    }}
+                )
+                success_count += 1
+                
+        return {"success": True, "message": f"Successfully rescheduled {success_count} orders"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
 # --- TRACKING & AUDIT ---
 
 @admin_router.get("/track/{driver_id}")
@@ -546,7 +783,63 @@ async def export_driver_audit(period: str = "1w", admin_id: ObjectId = Depends(g
 @admin_router.post("/api/resolve-request")
 async def resolve_change_request(request_id: str = Form(...), action: str = Form(...), remarks: str = Form(""), admin_id: ObjectId = Depends(get_current_admin)):
     status = "APPROVED" if action == "approve" else "REJECTED"
-    change_requests_collection.update_one({"_id": ObjectId(request_id), "admin_id": admin_id}, {"$set": {"status": status, "admin_remarks": remarks, "decision_timestamp": datetime.now(timezone.utc)}})
+    
+    # 1. Fetch the request
+    req = change_requests_collection.find_one({"_id": ObjectId(request_id), "admin_id": admin_id})
+    if not req:
+        return RedirectResponse("/driver-audit?error=Request not found", status_code=303)
+        
+    # 2. Update the Request Status
+    change_requests_collection.update_one(
+        {"_id": ObjectId(request_id)}, 
+        {"$set": {"status": status, "admin_remarks": remarks, "decision_timestamp": datetime.now(timezone.utc)}}
+    )
+    
+    # 3. Apply the changes if Approved
+    if status == "APPROVED":
+        if req.get("request_type") == "LOCATION_UPDATE":
+            # Update Customer Coordinates
+            customer_collection.update_one(
+                {"_id": req["customer_id"]},
+                {"$set": {
+                    "verified_lat": req["lat"],
+                    "verified_lng": req["lng"],
+                    "active_order_lock": False,
+                    "last_order_date": datetime.now(timezone.utc)
+                }}
+            )
+            # If an order is tied, mark it DELIVERED
+            if req.get("order_id"):
+                order_collection.update_one(
+                    {"_id": req["order_id"]},
+                    {"$set": {"status": "DELIVERED", "is_flagged": True, "delivered_at": datetime.now(timezone.utc)}}
+                )
+                customer_collection.update_one(
+                    {"_id": req["customer_id"], "records.order_id": req["order_id"]},
+                    {"$set": {"records.$.status": "DELIVERED"}}
+                )
+        elif req.get("request_type") == "ADDRESS":
+            customer_collection.update_one({"_id": req["customer_id"]}, {"$set": {"landmark": req["new_value"]}})
+        elif req.get("request_type") == "PHONE":
+            customer_collection.update_one({"_id": req["customer_id"]}, {"$set": {"phone_number": req["new_value"]}})
+            
+    elif status == "REJECTED":
+        if req.get("request_type") == "LOCATION_UPDATE" and req.get("order_id"):
+            # Mark the order as CANCELLED or keep it PENDING?
+            # Revert to PENDING so driver has to redo it properly or another driver is assigned
+            order_collection.update_one(
+                {"_id": req["order_id"]},
+                {"$set": {"status": "PENDING"}} # Revert
+            )
+            customer_collection.update_one(
+                {"_id": req["customer_id"], "records.order_id": req["order_id"]},
+                {"$set": {"records.$.status": "PENDING"}}
+            )
+            customer_collection.update_one(
+                {"_id": req["customer_id"]},
+                {"$set": {"active_order_lock": False}}
+            )
+
     return RedirectResponse("/driver-audit?msg=Request updated", status_code=303)
 
 # --- REPORTS & STATISTICS ---
@@ -682,6 +975,7 @@ async def download_template(admin_id: ObjectId = Depends(get_current_admin)):
     
     # Create template structure
     df = pd.DataFrame({
+        "consumer_id": [1000001, 1000002],
         "name": ["John Doe", "Jane Smith"],
         "phone_number": ["9876543210", "7001122334"],
         "city": ["Udupi", "Mangalore"],
@@ -702,49 +996,209 @@ async def download_template(admin_id: ObjectId = Depends(get_current_admin)):
 
 @admin_router.post("/upload-customers")
 async def upload_customers(
-    request: Request, 
     file: UploadFile = File(...), 
     admin_id: ObjectId = Depends(get_current_admin)
 ):
-    if not admin_id: return RedirectResponse("/", status_code=303)
+    if not admin_id: return {"summary": {"error": "Unauthorized"}}
     
     try:
         content = await file.read()
-        df = pd.read_excel(io.BytesIO(content)) if file.filename.endswith('.xlsx') else pd.read_csv(io.BytesIO(content))
+        df = pd.read_excel(io.BytesIO(content), dtype=str) if file.filename.endswith('.xlsx') else pd.read_csv(io.BytesIO(content), dtype=str)
         
         # 🛡️ VALIDATION: Check for required columns
-        required = ["name", "phone_number", "city", "landmark", "pincode"]
+        required = ["consumer_id", "name", "phone_number", "city", "landmark", "pincode"]
         missing = [col for col in required if col not in df.columns]
         if missing:
-            return templates.TemplateResponse("dashboard.html", {
-                "request": request, "stats": {}, # Fetch real stats here
-                "error": f"❌ Missing columns: {', '.join(missing)}"
-            })
+            return {"summary": {"error": f"Missing columns: {', '.join(missing)}"}}
 
+        total_processed = len(df)
         success_count = 0
-        error_logs = []
+        duplicate_count = 0
+        error_count = 0
+        new_cities = set()
+        
+        errors = []
+        duplicates = []
+
+        # Get existing cities to minimize DB calls during the loop
+        existing_cities = {c["name"].lower(): c["name"] for c in cities_collection.find()}
 
         for index, row in df.iterrows():
-            # Basic validation for empty fields
-            if pd.isna(row['name']) or pd.isna(row['phone_number']) or pd.isna(row['city']):
-                error_logs.append(f"Row {index+2}: Missing mandatory name/phone/city")
+            row_num = index + 2 # Header is row 1
+            
+            if pd.isna(row.get('consumer_id')) or pd.isna(row.get('name')) or pd.isna(row.get('phone_number')) or pd.isna(row.get('city')) or \
+               str(row.get('consumer_id')).strip() == "nan" or str(row.get('name')).strip() == "nan" or str(row.get('phone_number')).strip() == "nan" or str(row.get('city')).strip() == "nan":
+                error_count += 1
+                errors.append({"row": row_num, "reason": "Missing mandatory consumer_id/name/phone/city"})
                 continue
+
+            try:
+                c_str = str(row['consumer_id']).replace(".0", "").strip()
+                c_id_val = int(c_str)
+                if len(str(c_id_val)) > 7:
+                    error_count += 1
+                    errors.append({"row": row_num, "reason": "Consumer ID exceeds 7 digits"})
+                    continue
+            except ValueError:
+                error_count += 1
+                errors.append({"row": row_num, "reason": "Consumer ID must be numeric"})
+                continue
+
+            if customer_collection.find_one({"consumer_id": c_id_val}):
+                duplicate_count += 1
+                duplicates.append(c_id_val)
+                continue
+
+            city_name = str(row['city']).strip()
+            city_lower = city_name.lower()
+            if city_lower not in existing_cities:
+                db["cities"].update_one(
+                    {"name": {"$regex": f"^{city_name}$", "$options": "i"}},
+                    {"$set": {"name": city_name}},
+                    upsert=True
+                )
+                existing_cities[city_lower] = city_name
+                new_cities.add(city_name)
+            else:
+                city_name = existing_cities[city_lower] # Use proper case
+
+            landmark_val = str(row['landmark']).strip() if pd.notna(row['landmark']) and str(row['landmark']).strip() != "nan" else ""
+            pincode_val = str(row['pincode']).replace(".0", "").strip() if pd.notna(row['pincode']) and str(row['pincode']).strip() != "nan" else ""
 
             customer_collection.insert_one({
                 "admin_id": admin_id,
-                "name": str(row['name']),
-                "phone_number": str(row['phone_number']),
-                "city": str(row['city']),
-                "landmark": str(row['landmark']) if not pd.isna(row['landmark']) else "",
-                "pincode": str(row['pincode']) if not pd.isna(row['pincode']) else "",
+                "consumer_id": c_id_val,
+                "name": str(row['name']).strip(),
+                "phone_number": str(row['phone_number']).replace(".0", "").strip(),
+                "city": city_name,
+                "landmark": landmark_val,
+                "pincode": pincode_val,
                 "verified_lat": None, "verified_lng": None, "records": [],
+                "active_order_lock": False,
                 "created_at": datetime.utcnow()
             })
             success_count += 1
 
-        msg = f"✅ Imported {success_count} customers successfully."
-        if error_logs: msg += f" ({len(error_logs)} errors skipped)"
-        
-        return RedirectResponse(url=f"/dashboard?message={msg}", status_code=303)
+        return {
+            "summary": {
+                "total_processed": total_processed,
+                "success_count": success_count,
+                "duplicate_count": duplicate_count,
+                "error_count": error_count,
+                "new_cities": list(new_cities)
+            },
+            "errors": errors,
+            "duplicates": duplicates
+        }
+
     except Exception as e:
-        return RedirectResponse(url=f"/dashboard?error=Upload failed: {str(e)}", status_code=303)
+        return {"summary": {"error": f"Upload failed: {str(e)}"}}
+
+# --- SHIFT & INVENTORY MANAGEMENT ---
+
+@admin_router.get("/inventory")
+async def inventory_management(request: Request, admin_id: ObjectId = Depends(get_current_admin)):
+    if not admin_id: return RedirectResponse("/")
+    
+    drivers = list(driver_collection.find({"admin_id": admin_id, "is_active": True}))
+    
+    shift_data = []
+    total_agency_full = 0
+    total_agency_empty = 0
+    total_agency_cash = 0
+    
+    # Map open shifts by driver_id for quick lookup
+    open_shifts = {s["driver_id"]: s for s in shifts_collection.find({"admin_id": str(admin_id), "status": "OPEN"})}
+    
+    for driver in drivers:
+        d_id = str(driver["_id"])
+        shift = open_shifts.get(d_id)
+        
+        if shift:
+            # Calculate current stock on truck
+            current_full = shift["load_departure"]["full"] - shift["load_return"]["full"]
+            current_empty = shift["load_departure"]["empty"] + shift["load_return"]["empty"]
+            
+            total_agency_full += current_full
+            total_agency_empty += current_empty
+            total_agency_cash += shift.get("financials", {}).get("expected_cash", 0)
+            
+            shift_data.append({
+                "shift_id": str(shift["_id"]),
+                "driver_id": d_id,
+                "driver_name": driver["name"],
+                "status": "OPEN",
+                "initial_full": shift["load_departure"]["full"],
+                "current_full": current_full,
+                "current_empty": current_empty,
+                "expected_cash": shift.get("financials", {}).get("expected_cash", 0),
+                "upi_total": shift.get("financials", {}).get("upi_total", 0)
+            })
+        else:
+            shift_data.append({
+                "shift_id": None,
+                "driver_id": d_id,
+                "driver_name": driver["name"],
+                "status": "CLOSED",
+                "initial_full": 0,
+                "current_full": 0,
+                "current_empty": 0,
+                "expected_cash": 0,
+                "upi_total": 0
+            })
+        
+    stats = {
+        "pending": order_collection.count_documents({"admin_id": admin_id, "status": "PENDING"}),
+        "agency_full": total_agency_full,
+        "agency_empty": total_agency_empty,
+        "agency_cash": total_agency_cash
+    }
+    
+    drivers = list(driver_collection.find({"admin_id": admin_id, "is_active": True}))
+    for d in drivers: d["_id"] = str(d["_id"])
+    
+    return templates.TemplateResponse("inventory_management.html", {
+        "request": request,
+        "shift_data": shift_data,
+        "drivers": drivers,
+        "stats": stats
+    })
+
+@admin_router.post("/shifts/start")
+async def start_shift(driver_id: str = Form(...), full_cylinders: int = Form(...), empty_cylinders: int = Form(0), admin_id: ObjectId = Depends(get_current_admin)):
+    if not admin_id: return RedirectResponse("/")
+    
+    # Close any existing open shifts for this driver
+    shifts_collection.update_many(
+        {"driver_id": driver_id, "status": "OPEN"},
+        {"$set": {"status": "CLOSED", "closed_at": datetime.now(timezone.utc)}}
+    )
+    
+    shifts_collection.insert_one({
+        "admin_id": str(admin_id),
+        "driver_id": driver_id,
+        "date": datetime.now(timezone.utc),
+        "status": "OPEN",
+        "load_departure": {"full": full_cylinders, "empty": empty_cylinders},
+        "load_return": {"full": 0, "empty": 0},
+        "financials": {"expected_cash": 0.0, "actual_cash": 0.0, "upi_total": 0.0}
+    })
+    
+    return RedirectResponse(url="/inventory?msg=Shift Started", status_code=303)
+
+@admin_router.post("/shifts/close")
+async def close_shift(shift_id: str = Form(...), actual_cash: float = Form(...), actual_full: int = Form(...), actual_empty: int = Form(...), admin_id: ObjectId = Depends(get_current_admin)):
+    if not admin_id: return RedirectResponse("/")
+    
+    shifts_collection.update_one(
+        {"_id": ObjectId(shift_id), "admin_id": str(admin_id), "status": "OPEN"},
+        {"$set": {
+            "status": "CLOSED",
+            "closed_at": datetime.now(timezone.utc),
+            "load_return.full": actual_full,
+            "load_return.empty": actual_empty,
+            "financials.actual_cash": actual_cash
+        }}
+    )
+    
+    return RedirectResponse(url="/inventory?msg=Shift Closed", status_code=303)

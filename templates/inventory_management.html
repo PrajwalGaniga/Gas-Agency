@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory & Reconciliation | GasFlow</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: ['selector', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#6366f1',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --primary: #6366f1;
+                --radius-md: 12px;
+                --header-h: 72px;
+            }
+            [data-theme="dark"] {
+                --bg-body: #0f172a;
+                --bg-card: #1e293b;
+                --border: rgba(255, 255, 255, 0.08);
+                --text-main: #f8fafc;
+                --text-muted: #94a3b8;
+            }
+            [data-theme="light"] {
+                --bg-body: #f8fafc;
+                --bg-card: #ffffff;
+                --border: rgba(15, 23, 42, 0.08);
+                --text-main: #1e293b;
+                --text-muted: #64748b;
+            }
+        }
+        @layer components {
+            .nav-link {
+                @apply flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200;
+                color: var(--text-muted);
+            }
+            .nav-link:hover { @apply bg-primary/5 text-primary; }
+            .nav-link.active { @apply bg-primary/10 text-primary; }
+            
+            .stat-card {
+                @apply bg-[var(--bg-card)] border border-[var(--border)] p-6 rounded-2xl flex items-center gap-5 transition-transform duration-200 hover:-translate-y-1;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-[var(--bg-body)] text-[var(--text-main)] font-sans transition-colors duration-300 min-h-screen">
+
+    <!-- Unified Navbar -->
+    <nav class="h-[72px] sticky top-0 bg-[var(--bg-body)]/80 backdrop-blur-xl border-b border-[var(--border)] z-50">
+        <div class="max-w-[1400px] mx-auto h-full px-6 flex items-center justify-between">
+            <a href="/dashboard" class="flex items-center gap-3 font-display font-bold text-2xl">
+                <i class="material-symbols-rounded text-primary text-3xl">local_fire_department</i>
+                <span>GasFlow</span>
+            </a>
+
+            <div
+                class="hidden lg:flex items-center gap-2 bg-[var(--bg-card)] p-1 rounded-xl border border-[var(--border)]">
+                <a href="/customers" class="nav-link">
+                    <i class="material-symbols-rounded text-[20px]">group</i> Customers
+                </a>
+                <a href="/drivers" class="nav-link">
+                    <i class="material-symbols-rounded text-[20px]">local_shipping</i> Drivers
+                </a>
+                <a href="/assignments" class="nav-link">
+                    <i class="material-symbols-rounded text-[20px]">assignment</i> Assignments
+                </a>
+                <a href="/inventory" class="nav-link active">
+                    <i class="material-symbols-rounded text-[20px]">inventory_2</i> Inventory
+                </a>
+                <a href="/reports" class="nav-link">
+                    <i class="material-symbols-rounded text-[20px]">bar_chart</i> Reports
+                </a>
+                <a href="/driver-audit" class="nav-link">
+                    <i class="material-symbols-rounded text-[20px]">fact_check</i> Audit
+                </a>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button id="themeToggle"
+                    class="w-10 h-10 rounded-full border border-[var(--border)] grid place-items-center text-[var(--text-muted)] hover:text-primary hover:border-primary transition-all">
+                    <i class="material-symbols-rounded">light_mode</i>
+                </button>
+                <div class="h-10 w-px bg-[var(--border)] hidden sm:block"></div>
+                <div class="hidden sm:flex items-center gap-3">
+                    <div class="text-right">
+                        <p class="text-sm font-bold m-0">Admin User</p>
+                        <p class="text-[11px] text-[var(--text-muted)] m-0">Operations</p>
+                    </div>
+                    <div
+                        class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-primary text-white flex items-center justify-center font-bold shadow-lg">
+                        AD</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-[1400px] mx-auto px-6 py-10">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+            <div>
+                <h1 class="text-3xl font-display font-bold">Inventory Management</h1>
+                <p class="text-[var(--text-muted)] mt-1">Real-time cylinder stock and financial reconciliation.</p>
+            </div>
+            <button onclick="document.getElementById('startShiftModal').classList.add('flex')"
+                class="bg-primary hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/20 transition-all">
+                <i class="material-symbols-rounded">add_circle</i>
+                Start New Shift
+            </button>
+        </header>
+
+        <!-- Summary Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="stat-card">
+                <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                    <i class="material-symbols-rounded text-3xl">propane_tank</i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Total Full Stok
+                    </p>
+                    <h3 class="text-2xl font-display font-bold mt-1 text-indigo-400">{{ stats.agency_full }}</h3>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="w-14 h-14 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
+                    <i class="material-symbols-rounded text-3xl">moped</i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Empty Collected
+                    </p>
+                    <h3 class="text-2xl font-display font-bold mt-1 text-orange-400">{{ stats.agency_empty }}</h3>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                    <i class="material-symbols-rounded text-3xl">payments</i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Estimated Cash
+                    </p>
+                    <h3 class="text-2xl font-display font-bold mt-1 text-emerald-400">₹{{
+                        "{:,.2f}".format(stats.agency_cash) }}</h3>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                    <i class="material-symbols-rounded text-3xl">notification_important</i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Flagged
+                        Deliveries</p>
+                    <h3 class="text-2xl font-display font-bold mt-1 text-amber-400">0</h3>
+                </div>
+            </div>
+        </section>
+
+        <!-- Driver Ledger Table -->
+        <section class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm">
+            <div class="p-6 border-b border-[var(--border)] flex items-center justify-between">
+                <h2 class="text-xl font-display font-bold">Driver Live Ledger</h2>
+                <div
+                    class="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    Active Shifts Only
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr
+                            class="bg-[var(--bg-body)]/50 text-[var(--text-muted)] text-[11px] font-bold uppercase tracking-wider">
+                            <th class="px-6 py-4">Driver</th>
+                            <th class="px-6 py-4 text-center">Status</th>
+                            <th class="px-6 py-4 text-center">Loaded Today</th>
+                            <th class="px-6 py-4 text-center">Remaining Full</th>
+                            <th class="px-6 py-4 text-center">Empties</th>
+                            <th class="px-6 py-4 text-right">Collections (Cash/UPI)</th>
+                            <th class="px-6 py-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[var(--border)]">
+                        {% for shift in shift_data %}
+                        <tr
+                            class="hover:bg-primary/5 transition-colors group {% if shift.status == 'CLOSED' %}opacity-60{% endif %}">
+                            <td class="px-6 py-5">
+                                <div class="font-bold">{{ shift.driver_name }}</div>
+                                <div class="text-[11px] text-[var(--text-muted)]">ID: {{ shift.driver_id[-6:] }}</div>
+                            </td>
+                            <td class="px-6 py-5 text-center">
+                                {% if shift.status == 'OPEN' %}
+                                <span
+                                    class="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded text-[10px] font-bold uppercase tracking-tight border border-emerald-500/20">Active</span>
+                                {% else %}
+                                <span
+                                    class="px-2 py-1 bg-slate-500/10 text-slate-500 rounded text-[10px] font-bold uppercase tracking-tight border border-slate-500/20">No
+                                    Active Shift</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-5 text-center font-medium">
+                                <span class="bg-[var(--bg-body)] px-3 py-1 rounded-lg border border-[var(--border)]">{{
+                                    shift.initial_full }}</span>
+                            </td>
+                            <td class="px-6 py-5 text-center">
+                                {% if shift.status == 'OPEN' %}
+                                <span
+                                    class="{% if shift.current_full <= 5 %}text-red-500{% else %}text-emerald-500{% endif %} font-bold text-lg">
+                                    {{ shift.current_full }}
+                                </span>
+                                {% else %}
+                                <span class="text-[var(--text-muted)]">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-5 text-center">
+                                {% if shift.status == 'OPEN' %}
+                                <span class="text-orange-400 font-bold">+{{ shift.current_empty }}</span>
+                                {% else %}
+                                <span class="text-[var(--text-muted)]">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-5 text-right">
+                                {% if shift.status == 'OPEN' %}
+                                <div class="font-bold text-emerald-400">₹{{ "{:,.2f}".format(shift.expected_cash) }}
+                                </div>
+                                <div class="text-[10px] text-indigo-400">UPI: ₹{{ "{:,.2f}".format(shift.upi_total) }}
+                                </div>
+                                {% else %}
+                                <span class="text-[var(--text-muted)]">₹0.00</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-5 text-right">
+                                {% if shift.status == 'OPEN' %}
+                                <button data-shift-id="{{ shift.shift_id }}" data-driver-name="{{ shift.driver_name }}"
+                                    data-full="{{ shift.current_full }}" data-empty="{{ shift.current_empty }}"
+                                    data-cash="{{ shift.expected_cash }}" onclick="openCloseShiftModal(this)"
+                                    class="bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-all">
+                                    Reconcile
+                                </button>
+                                {% else %}
+                                <button
+                                    onclick="openStartShiftModal('{{ shift.driver_id }}', '{{ shift.driver_name }}')"
+                                    class="bg-primary/10 text-primary hover:bg-primary hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-all">
+                                    Start Shift
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="px-6 py-20 text-center opacity-40">
+                                <i class="material-symbols-rounded text-6xl mb-4">no_accounts</i>
+                                <p class="text-lg">No active shifts found for today.</p>
+                                <p class="text-sm">Start a shift for a driver to see live inventory tracking.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Start Shift Modal -->
+    <div id="startShiftModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden items-center justify-center p-6 bg-slate-900/40">
+        <div
+            class="bg-[var(--bg-card)] w-full max-w-md rounded-3xl border border-[var(--border)] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div class="p-8 border-b border-[var(--border)] bg-primary/5">
+                <h2 class="text-2xl font-display font-bold">Start Driver Shift</h2>
+                <p class="text-sm text-[var(--text-muted)] mt-1">Assign departure load to the truck.</p>
+            </div>
+            <form action="/shifts/start" method="POST" class="p-8">
+                <div class="space-y-6">
+                    <div class="space-y-2">
+                        <label class="text-[11px] font-black uppercase tracking-widest text-[var(--text-muted)]">Select
+                            Driver</label>
+                        <select name="driver_id" required
+                            class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl px-4 py-3 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                            <option value="" disabled selected>Choose a driver...</option>
+                            {% for driver in drivers %}
+                            <option value="{{ driver._id }}">{{ driver.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label
+                                class="text-[11px] font-black uppercase tracking-widest text-[var(--text-muted)]">Full
+                                Cylinders</label>
+                            <input type="number" name="full_cylinders" value="25" min="1" required
+                                class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl px-4 py-3 text-center text-xl font-bold">
+                        </div>
+                        <div class="space-y-2">
+                            <label
+                                class="text-[11px] font-black uppercase tracking-widest text-[var(--text-muted)]">Empty
+                                Initial</label>
+                            <input type="number" name="empty_cylinders" value="0" min="0"
+                                class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl px-4 py-3 text-center text-xl font-bold">
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-10">
+                    <button type="button" onclick="document.getElementById('startShiftModal').classList.remove('flex')"
+                        class="py-3 px-6 rounded-xl font-bold border border-[var(--border)] hover:bg-[var(--bg-body)] transition-all">Cancel</button>
+                    <button type="submit"
+                        class="py-3 px-6 rounded-xl font-bold bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">Confirm
+                        Load</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Close Shift Modal -->
+    <div id="closeShiftModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden items-center justify-center p-6">
+        <div
+            class="bg-[var(--bg-card)] w-full max-w-md rounded-3xl border border-[var(--border)] overflow-hidden shadow-2xl">
+            <div class="p-8 border-b border-red-500/10 bg-red-500/5">
+                <h2 class="text-2xl font-display font-bold">Shift Reconciliation</h2>
+                <p class="text-sm text-[var(--text-muted)] mt-1">Final check for driver: <span id="r_driver_name"
+                        class="text-primary font-bold"></span></p>
+            </div>
+            <form action="/shifts/close" method="POST" class="p-8">
+                <input type="hidden" name="shift_id" id="r_shift_id">
+                <div class="space-y-6">
+                    <div class="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-[var(--text-muted)]">System Expected Cash</span>
+                            <span class="font-display font-bold text-emerald-500" id="r_expected_cash">₹0.00</span>
+                        </div>
+                        <label class="text-[11px] font-black uppercase tracking-widest text-[var(--text-muted)]">Actual
+                            Cash Collected</label>
+                        <input type="number" step="0.01" name="actual_cash" id="r_actual_cash" required
+                            class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl px-4 py-3 text-xl font-bold text-emerald-400 mt-1">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label
+                                class="text-[11px] font-black uppercase tracking-widest text-[var(--text-muted)]">Returned
+                                Full</label>
+                            <input type="number" name="actual_full" id="r_actual_full" required
+                                class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl px-4 py-3 text-center text-xl font-bold">
+                        </div>
+                        <div class="space-y-2">
+                            <label
+                                class="text-[11px] font-black uppercase tracking-widest text-[var(--text-muted)]">Returned
+                                Empty</label>
+                            <input type="number" name="actual_empty" id="r_actual_empty" required
+                                class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl px-4 py-3 text-center text-xl font-bold text-orange-400">
+                        </div>
+                    </div>
+
+                    <div id="discrepancyAlert"
+                        class="hidden p-3 bg-red-500/10 text-red-500 rounded-lg text-[10px] font-bold text-center border border-red-500/20">
+                        ⚠️ CAUTION: System expectations do not match physical return!
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-8">
+                    <button type="button" onclick="document.getElementById('closeShiftModal').classList.remove('flex')"
+                        class="py-3 px-6 rounded-xl font-bold border border-[var(--border)]">Cancel</button>
+                    <button type="submit"
+                        class="py-3 px-6 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 transition-all">Close
+                        & Settle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+
+        const updateTheme = (theme) => {
+            html.setAttribute('data-theme', theme);
+            localStorage.setItem('gasflow_theme', theme);
+            themeToggle.querySelector('i').textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+        };
+
+        themeToggle.addEventListener('click', () => {
+            const current = html.getAttribute('data-theme');
+            updateTheme(current === 'dark' ? 'light' : 'dark');
+        });
+
+        updateTheme(localStorage.getItem('gasflow_theme') || 'dark');
+
+        // Modal Handlers
+        function openStartShiftModal(driverId, driverName) {
+            const select = document.querySelector('select[name="driver_id"]');
+            if (select) select.value = driverId;
+            const modal = document.getElementById('startShiftModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function openCloseShiftModal(btn) {
+            const id = btn.getAttribute('data-shift-id');
+            const name = btn.getAttribute('data-driver-name');
+            const full = parseInt(btn.getAttribute('data-full'));
+            const empty = parseInt(btn.getAttribute('data-empty'));
+            const cash = parseFloat(btn.getAttribute('data-cash'));
+
+            document.getElementById('r_shift_id').value = id;
+            document.getElementById('r_driver_name').textContent = name;
+            document.getElementById('r_expected_cash').textContent = '₹' + cash.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            document.getElementById('r_actual_cash').value = cash;
+            document.getElementById('r_actual_full').value = full;
+            document.getElementById('r_actual_empty').value = empty;
+
+            const modal = document.getElementById('closeShiftModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            // Reset discrepancy alert
+            document.getElementById('discrepancyAlert').classList.add('hidden');
+
+            // Check for discrepancies in real-time
+            const inputs = ['r_actual_cash', 'r_actual_full', 'r_actual_empty'];
+            inputs.forEach(inputId => {
+                const el = document.getElementById(inputId);
+                // Remove old listeners to prevent stacking
+                const newEl = el.cloneNode(true);
+                el.parentNode.replaceChild(newEl, el);
+
+                newEl.addEventListener('input', () => {
+                    const c = parseFloat(document.getElementById('r_actual_cash').value);
+                    const f = parseInt(document.getElementById('r_actual_full').value);
+                    const e = parseInt(document.getElementById('r_actual_empty').value);
+
+                    if (Math.abs(c - cash) > 0.01 || f !== full || e !== empty) {
+                        document.getElementById('discrepancyAlert').classList.remove('hidden');
+                    } else {
+                        document.getElementById('discrepancyAlert').classList.add('hidden');
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>

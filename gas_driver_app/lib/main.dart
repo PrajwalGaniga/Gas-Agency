@@ -15,6 +15,7 @@ void main() async {
     // 🚀 CRITICAL: You MUST 'await' these so they are ready before the UI builds
     await Hive.openBox(ApiService.orderBoxName);      // Box: "cached_orders"
     await Hive.openBox(ApiService.syncQueueBoxName); // Box: "sync_queue"
+    await Hive.openBox(ApiService.settingsBoxName);  // Box: "settings"
     
     debugPrint("Hive boxes opened successfully.");
   } catch (e) {

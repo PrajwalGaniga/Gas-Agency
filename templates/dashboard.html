@@ -135,10 +135,22 @@
                     {% endif %}
                 </a>
 
+                <a href="/inventory"
+                    class="nav-link px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all flex items-center gap-2 w-full lg:w-auto">
+                    <i class="material-symbols-rounded text-[20px]">inventory_2</i>
+                    Inventory
+                </a>
+
                 <a href="/reports"
                     class="nav-link px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all flex items-center gap-2 w-full lg:w-auto">
                     <i class="material-symbols-rounded text-[20px]">bar_chart</i>
                     Reports
+                </a>
+
+                <a href="/admin/pending-orders"
+                    class="nav-link px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all flex items-center gap-2 w-full lg:w-auto">
+                    <i class="material-symbols-rounded text-[20px]">gavel</i>
+                    Resolutions
                 </a>
 
                 <a href="/driver-audit"
@@ -437,13 +449,12 @@
                     <p class="text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">Sync external customer
                         databases (CSV/XLSX) to update records instantly.</p>
 
-                    <form action="/upload-customers" method="POST" enctype="multipart/form-data"
-                        class="flex flex-col flex-grow">
+                    <form id="bulkImportFormDashboard" class="flex flex-col flex-grow">
                         <div id="fileDropArea"
                             class="flex-grow border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[140px]">
-                            <input type="file" name="file" id="fileInput" accept=".csv, .xlsx" class="hidden"
+                            <input type="file" id="fileInputDashboard" accept=".csv, .xlsx" class="hidden"
                                 onchange="updateFileName(this)" required>
-                            <label for="fileInput" class="cursor-pointer w-full block">
+                            <label for="fileInputDashboard" class="cursor-pointer w-full block">
                                 <div
                                     class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 mx-auto mb-3 flex items-center justify-center group-hover:scale-110 transition-transform">
                                     <i class="material-symbols-rounded text-2xl text-indigo-500">cloud_upload</i>
@@ -454,7 +465,8 @@
                                 <p class="text-[10px] text-slate-400 mt-1">Max size 10MB</p>
                             </label>
                         </div>
-                        <button type="submit"
+                        <button type="button" id="bulkUploadBtnDashboard"
+                            onclick="handleBulkUploadDashboard(document.getElementById('fileInputDashboard'), 'bulkUploadBtnDashboard')"
                             class="w-full mt-4 flex items-center justify-center gap-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold text-sm text-slate-700 dark:text-slate-200 transition-all">
                             <i class="material-symbols-rounded">upload_file</i>
                             Process Data
@@ -590,6 +602,78 @@
         </div>
     </footer>
 
+    <!-- High-Contrast Import Summary Modal -->
+    <div id="importSummaryModalDashboard"
+        class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300">
+        <div
+            class="modal-content w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up p-0">
+            <div class="flex justify-between items-center p-6 border-b border-slate-800 bg-slate-950/50">
+                <h2 class="text-xl font-bold font-display text-white flex items-center gap-2">
+                    <i class="material-symbols-rounded text-emerald-500">cloud_done</i> Import Complete!
+                </h2>
+                <button onclick="window.location.reload()" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="material-symbols-rounded text-xl">close</i>
+                </button>
+            </div>
+
+            <div class="p-6 text-slate-300">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-slate-800 rounded-xl p-4 border border-slate-700 text-center">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Processed</p>
+                        <p class="text-2xl font-black text-white" id="dbStatProcessed">0</p>
+                    </div>
+                    <div class="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/20 text-center">
+                        <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-1">Added</p>
+                        <p class="text-2xl font-black text-emerald-500" id="dbStatSuccess">0</p>
+                    </div>
+                    <div class="bg-amber-500/10 rounded-xl p-4 border border-amber-500/20 text-center">
+                        <p class="text-[10px] text-amber-400 font-bold uppercase tracking-wider mb-1">Skipped</p>
+                        <p class="text-2xl font-black text-amber-500" id="dbStatDuplicates">0</p>
+                    </div>
+                    <div class="bg-red-500/10 rounded-xl p-4 border border-red-500/20 text-center">
+                        <p class="text-[10px] text-red-400 font-bold uppercase tracking-wider mb-1">Failed</p>
+                        <p class="text-2xl font-black text-red-500" id="dbStatErrors">0</p>
+                    </div>
+                </div>
+
+                <div id="dbNewCitiesAlert"
+                    class="hidden mb-6 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-start gap-3">
+                    <i class="material-symbols-rounded text-indigo-400 mt-0.5">location_city</i>
+                    <div>
+                        <p class="font-bold text-sm text-indigo-400 mb-1" id="dbNewCitiesTitle">New Cities Discovered!
+                        </p>
+                        <p class="text-xs" id="dbNewCitiesList"></p>
+                    </div>
+                </div>
+
+                <div id="dbErrorLogSection" class="hidden">
+                    <h3 class="text-sm font-bold text-white mb-3 uppercase tracking-wider">Error Log <span
+                            class="text-slate-500 text-xs font-normal lowercase">(Requires manual fix)</span></h3>
+                    <div
+                        class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden max-h-48 overflow-y-auto w-full custom-scrollbar">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-900 border-b border-slate-800 sticky top-0">
+                                <tr>
+                                    <th class="py-2 px-4 text-[10px] font-bold text-slate-400 uppercase">Row</th>
+                                    <th class="py-2 px-4 text-[10px] font-bold text-slate-400 uppercase">Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dbErrorLogBody" class="divide-y divide-slate-800/50">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-950/50 border-t border-slate-800 flex justify-end">
+                <button onclick="window.location.reload()"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20">
+                    Acknowledge & Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         (function () {
             /* 1. Theme Engine Integration (Preserved Logic) */
@@ -723,6 +807,80 @@
         }, 1000);
         }
     });
+
+        async function handleBulkUploadDashboard(input, btnId) {
+            if (!input.files || input.files.length === 0) return;
+
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const btn = document.getElementById(btnId);
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="material-symbols-rounded animate-spin">sync</i> Processing...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/upload-customers', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.summary && data.summary.error) {
+                    alert("Import Error: " + data.summary.error);
+                } else {
+                    showDashboardImportSummary(data);
+                }
+            } catch (err) {
+                alert("Network error. Could not process bulk import.");
+                console.error(err);
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+                input.value = '';
+            }
+        }
+
+        function showDashboardImportSummary(data) {
+            const summary = data.summary;
+            document.getElementById('dbStatProcessed').textContent = summary.total_processed;
+            document.getElementById('dbStatSuccess').textContent = summary.success_count;
+            document.getElementById('dbStatDuplicates').textContent = summary.duplicate_count;
+            document.getElementById('dbStatErrors').textContent = summary.error_count;
+
+            const citiesAlert = document.getElementById('dbNewCitiesAlert');
+            if (summary.new_cities && summary.new_cities.length > 0) {
+                document.getElementById('dbNewCitiesTitle').textContent = `${summary.new_cities.length} New cities were automatically registered.`;
+                document.getElementById('dbNewCitiesList').textContent = `Added: ${summary.new_cities.join(', ')}`;
+                citiesAlert.classList.remove('hidden');
+            } else {
+                citiesAlert.classList.add('hidden');
+            }
+
+            const errorDoc = document.getElementById('dbErrorLogSection');
+            const tbody = document.getElementById('dbErrorLogBody');
+            tbody.innerHTML = '';
+
+            if (data.errors && data.errors.length > 0) {
+                data.errors.forEach(e => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-800/50 transition-colors";
+                    tr.innerHTML = `
+                    <td class="py-2 px-4 font-mono text-red-400 text-xs">#${e.row}</td>
+                    <td class="py-2 px-4 text-slate-300 text-xs truncate max-w-[300px]" title="${e.reason}">${e.reason}</td>
+                `;
+                    tbody.appendChild(tr);
+                });
+                errorDoc.classList.remove('hidden');
+            } else {
+                errorDoc.classList.add('hidden');
+            }
+
+            const modal = document.getElementById('importSummaryModalDashboard');
+            modal.classList.remove('hidden');
+        }
     </script>
 
 </body>
