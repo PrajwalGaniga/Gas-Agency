@@ -121,18 +121,44 @@
     </nav>
 
     <main class="max-w-[1400px] mx-auto px-6 py-10">
-        <!-- Header -->
-        <header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+        <!-- Header & Control Bar -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <div>
-                <h1 class="text-3xl font-display font-bold">Inventory Management</h1>
-                <p class="text-[var(--text-muted)] mt-1">Real-time cylinder stock and financial reconciliation.</p>
+                <h1 class="text-3xl font-display font-bold">Historical Inventory & Audit</h1>
+                <p class="text-[var(--text-muted)] mt-1">Reconcile physical stock against system logs.</p>
             </div>
-            <button onclick="document.getElementById('startShiftModal').classList.add('flex')"
-                class="bg-primary hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/20 transition-all">
-                <i class="material-symbols-rounded">add_circle</i>
-                Start New Shift
-            </button>
+
+            <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                <!-- Date Bar -->
+                <div
+                    class="flex items-center bg-[var(--bg-card)] border border-[var(--border)] rounded-xl overflow-hidden text-sm h-[48px] shadow-sm">
+                    <button onclick="setDateRange('today')" id="btn-today"
+                        class="px-4 h-full font-bold bg-primary/10 text-primary transition-colors flex items-center justify-center">Today</button>
+                    <div class="w-px h-6 bg-[var(--border)]"></div>
+                    <button onclick="setDateRange('yesterday')" id="btn-yesterday"
+                        class="px-4 h-full font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-body)] transition-colors flex items-center justify-center">Yesterday</button>
+                    <div class="w-px h-6 bg-[var(--border)]"></div>
+                    <input type="date" id="custom-start-date"
+                        class="bg-transparent border-0 focus:ring-0 text-[var(--text-muted)] px-3 text-sm h-full outline-none"
+                        onchange="setDateRange('custom')">
+                </div>
+
+                <button onclick="document.getElementById('startShiftModal').classList.add('flex')"
+                    class="bg-primary hover:bg-indigo-600 text-white px-6 h-[48px] rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/20 transition-all ml-auto sm:ml-0 whitespace-nowrap">
+                    <i class="material-symbols-rounded">add_circle</i>
+                    Start Shift
+                </button>
+            </div>
         </header>
+
+        <!-- Search Bar -->
+        <div
+            class="mb-8 flex items-center bg-[var(--bg-card)] border border-[var(--border)] rounded-xl px-4 py-3 shadow-sm max-w-lg">
+            <i class="material-symbols-rounded text-[var(--text-muted)] mr-3">search</i>
+            <input type="text" id="driver-search" placeholder="Search by driver name..."
+                class="bg-transparent border-0 focus:ring-0 text-[var(--text-main)] text-sm w-full outline-none"
+                oninput="debounceFetchLedger()">
+        </div>
 
         <!-- Summary Cards -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
@@ -141,9 +167,10 @@
                     <i class="material-symbols-rounded text-3xl">propane_tank</i>
                 </div>
                 <div>
-                    <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Total Full Stok
+                    <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Total Full Stock
                     </p>
-                    <h3 class="text-2xl font-display font-bold mt-1 text-indigo-400">{{ stats.agency_full }}</h3>
+                    <h3 id="stat-full-stock" class="text-2xl font-display font-bold mt-1 text-indigo-400">{{
+                        stats.agency_full }}</h3>
                 </div>
             </div>
             <div class="stat-card">
@@ -153,7 +180,8 @@
                 <div>
                     <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Empty Collected
                     </p>
-                    <h3 class="text-2xl font-display font-bold mt-1 text-orange-400">{{ stats.agency_empty }}</h3>
+                    <h3 id="stat-empty-stock" class="text-2xl font-display font-bold mt-1 text-orange-400">{{
+                        stats.agency_empty }}</h3>
                 </div>
             </div>
             <div class="stat-card">
@@ -161,9 +189,14 @@
                     <i class="material-symbols-rounded text-3xl">payments</i>
                 </div>
                 <div>
-                    <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Estimated Cash
+                    <p
+                        class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-2">
+                        Estimated Cash
+                        <span
+                            class="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-500 text-[9px] px-1.5 py-0.5 rounded font-black"><i
+                                class="material-symbols-rounded text-[10px]">trending_up</i> Filtered</span>
                     </p>
-                    <h3 class="text-2xl font-display font-bold mt-1 text-emerald-400">₹{{
+                    <h3 id="stat-cash" class="text-2xl font-display font-bold mt-1 text-emerald-400">₹{{
                         "{:,.2f}".format(stats.agency_cash) }}</h3>
                 </div>
             </div>
@@ -203,10 +236,10 @@
                             <th class="px-6 py-4 text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-[var(--border)]">
+                    <tbody id="ledger-table-body" class="divide-y divide-[var(--border)]">
                         {% for shift in shift_data %}
                         <tr
-                            class="hover:bg-primary/5 transition-colors group {% if shift.status == 'CLOSED' %}opacity-60{% endif %}">
+                            class="hover:bg-primary/5 transition-colors group {% if shift.status == 'CLOSED' or shift.status == 'RECONCILED' %}opacity-60{% endif %}">
                             <td class="px-6 py-5">
                                 <div class="font-bold">{{ shift.driver_name }}</div>
                                 <div class="text-[11px] text-[var(--text-muted)]">ID: {{ shift.driver_id[-6:] }}</div>
@@ -215,10 +248,12 @@
                                 {% if shift.status == 'OPEN' %}
                                 <span
                                     class="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded text-[10px] font-bold uppercase tracking-tight border border-emerald-500/20">Active</span>
+                                {% elif shift.status == 'RECONCILED' %}
+                                <span
+                                    class="px-2 py-1 bg-purple-500/10 text-purple-500 rounded text-[10px] font-bold uppercase tracking-tight border border-purple-500/20">Settled</span>
                                 {% else %}
                                 <span
-                                    class="px-2 py-1 bg-slate-500/10 text-slate-500 rounded text-[10px] font-bold uppercase tracking-tight border border-slate-500/20">No
-                                    Active Shift</span>
+                                    class="px-2 py-1 bg-slate-500/10 text-slate-500 rounded text-[10px] font-bold uppercase tracking-tight border border-slate-500/20">Closed</span>
                                 {% endif %}
                             </td>
                             <td class="px-6 py-5 text-center font-medium">
@@ -232,19 +267,26 @@
                                     {{ shift.current_full }}
                                 </span>
                                 {% else %}
-                                <span class="text-[var(--text-muted)]">-</span>
+                                <span class="text-[var(--text-muted)] font-bold">{{ shift.current_full }}</span>
                                 {% endif %}
                             </td>
                             <td class="px-6 py-5 text-center">
                                 {% if shift.status == 'OPEN' %}
                                 <span class="text-orange-400 font-bold">+{{ shift.current_empty }}</span>
                                 {% else %}
-                                <span class="text-[var(--text-muted)]">-</span>
+                                <span class="text-[var(--text-muted)] font-bold">+{{ shift.current_empty }}</span>
                                 {% endif %}
                             </td>
                             <td class="px-6 py-5 text-right">
-                                {% if shift.status == 'OPEN' %}
-                                <div class="font-bold text-emerald-400">₹{{ "{:,.2f}".format(shift.expected_cash) }}
+                                {% if shift.status == 'RECONCILED' %}
+                                <div class="font-bold text-emerald-400">₹{{ "{:,.2f}".format(shift.actual_cash |
+                                    default(shift.expected_cash)) }}
+                                </div>
+                                <div class="text-[10px] text-indigo-400">UPI: ₹{{ "{:,.2f}".format(shift.upi_total) }}
+                                </div>
+                                {% elif shift.status == 'OPEN' %}
+                                <div class="font-bold text-[var(--text-main)] opacity-70">₹{{
+                                    "{:,.2f}".format(shift.expected_cash) }}
                                 </div>
                                 <div class="text-[10px] text-indigo-400">UPI: ₹{{ "{:,.2f}".format(shift.upi_total) }}
                                 </div>
@@ -260,6 +302,10 @@
                                     class="bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-all">
                                     Reconcile
                                 </button>
+                                {% elif shift.status == 'RECONCILED' %}
+                                <div class="text-[10px] text-purple-400 font-bold uppercase tracking-wider"><i
+                                        class="material-symbols-rounded text-[14px] align-middle -mt-[2px]">done_all</i>
+                                    Audited</div>
                                 {% else %}
                                 <button
                                     onclick="openStartShiftModal('{{ shift.driver_id }}', '{{ shift.driver_name }}')"
@@ -270,16 +316,22 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr>
-                            <td colspan="6" class="px-6 py-20 text-center opacity-40">
+                        <tr id="initial-empty-row">
+                            <td colspan="7" class="px-6 py-20 text-center opacity-40">
                                 <i class="material-symbols-rounded text-6xl mb-4">no_accounts</i>
-                                <p class="text-lg">No active shifts found for today.</p>
+                                <p class="text-lg">No active shifts found for this date.</p>
                                 <p class="text-sm">Start a shift for a driver to see live inventory tracking.</p>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+                <div id="ledgerLoading"
+                    class="hidden absolute inset-0 bg-[var(--bg-card)]/50 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-2xl">
+                    <div class="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin">
+                    </div>
+                    <p class="mt-4 text-sm font-bold text-indigo-400">Loading Data...</p>
+                </div>
             </div>
         </section>
     </main>
@@ -460,6 +512,159 @@
                 });
             });
         }
+
+        // Ledger Fetch Logic
+        let currentFilterDateStart = new Date();
+        let currentFilterDateEnd = new Date();
+
+        // Initial setup for default "today"
+        currentFilterDateStart.setHours(0, 0, 0, 0);
+        currentFilterDateEnd.setHours(23, 59, 59, 999);
+
+        let fetchTimeout;
+        function debounceFetchLedger() {
+            clearTimeout(fetchTimeout);
+            fetchTimeout = setTimeout(fetchLedgerData, 300);
+        }
+
+        function setDateRange(mode) {
+            const btnToday = document.getElementById('btn-today');
+            const btnYest = document.getElementById('btn-yesterday');
+
+            // Reset styles
+            btnToday.className = "px-4 h-full font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-body)] transition-colors flex items-center justify-center";
+            btnYest.className = "px-4 h-full font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-body)] transition-colors flex items-center justify-center";
+
+            let start = new Date();
+            let end = new Date();
+
+            if (mode === 'today') {
+                btnToday.className = "px-4 h-full font-bold bg-primary/10 text-primary transition-colors flex items-center justify-center";
+                start.setHours(0, 0, 0, 0);
+                end.setHours(23, 59, 59, 999);
+                document.getElementById('custom-start-date').value = '';
+            } else if (mode === 'yesterday') {
+                btnYest.className = "px-4 h-full font-bold bg-primary/10 text-primary transition-colors flex items-center justify-center";
+                start.setDate(start.getDate() - 1);
+                end.setDate(end.getDate() - 1);
+                start.setHours(0, 0, 0, 0);
+                end.setHours(23, 59, 59, 999);
+                document.getElementById('custom-start-date').value = '';
+            } else if (mode === 'custom') {
+                const customVal = document.getElementById('custom-start-date').value;
+                if (!customVal) return;
+                start = new Date(customVal);
+                end = new Date(customVal);
+                start.setHours(0, 0, 0, 0);
+                end.setHours(23, 59, 59, 999);
+            }
+
+            currentFilterDateStart = start;
+            currentFilterDateEnd = end;
+            fetchLedgerData();
+        }
+
+        async function fetchLedgerData() {
+            const searchQ = document.getElementById('driver-search').value;
+            // Ensure ISO dates for python
+            const startIso = currentFilterDateStart.toISOString();
+            const endIso = currentFilterDateEnd.toISOString();
+
+            let uri = `/admin/api/inventory/ledger?start_date=${encodeURIComponent(startIso)}&end_date=${encodeURIComponent(endIso)}`;
+            if (searchQ) uri += `&driver_name=${encodeURIComponent(searchQ)}`;
+
+            try {
+                const res = await fetch(uri);
+                const data = await res.json();
+
+                if (data.success) {
+                    // Update Metric Cards
+                    document.getElementById('stat-full-stock').textContent = data.stats.total_delivered || 0; // Using delivered as a proxy if agency_full changes context
+                    document.getElementById('stat-empty-stock').textContent = data.stats.total_empties || 0;
+                    document.getElementById('stat-cash').textContent = '₹' + (data.stats.total_cash || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+                    // Rebuild Table
+                    const tbody = document.getElementById('ledger-table-body');
+                    tbody.innerHTML = '';
+
+                    if (data.shift_data.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="7" class="px-6 py-20 text-center opacity-40">
+                                    <i class="material-symbols-rounded text-6xl mb-4">no_accounts</i>
+                                    <p class="text-lg">No shifts found for this criteria.</p>
+                                </td>
+                            </tr>
+                         `;
+                        return;
+                    }
+
+                    data.shift_data.forEach(shift => {
+                        let statusBadgeHtml = '';
+                        let rowOpacity = '';
+                        let actionHtml = '';
+                        let currentFullColor = 'text-[var(--text-muted)]';
+                        let currentFullValHtml = `<span class="text-[var(--text-muted)] font-bold">${shift.current_full}</span>`;
+                        let cashHtml = `<span class="text-[var(--text-muted)]">₹0.00</span>`;
+
+                        if (shift.status === 'OPEN') {
+                            statusBadgeHtml = `<span class="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded text-[10px] font-bold uppercase tracking-tight border border-emerald-500/20">Active</span>`;
+                            currentFullValHtml = `<span class="${shift.current_full <= 5 ? 'text-red-500' : 'text-emerald-500'} font-bold text-lg">${shift.current_full}</span>`;
+                            cashHtml = `<div class="font-bold text-[var(--text-main)] opacity-70">₹${shift.expected_cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                        <div class="text-[10px] text-indigo-400">UPI: ₹${shift.upi_total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>`;
+                            actionHtml = `<button data-shift-id="${shift.shift_id}" data-driver-name="${shift.driver_name}"
+                                                data-full="${shift.current_full}" data-empty="${shift.current_empty}"
+                                                data-cash="${shift.expected_cash}" onclick="openCloseShiftModal(this)"
+                                                class="bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-all">
+                                                Reconcile
+                                            </button>`;
+                        } else if (shift.status === 'RECONCILED') {
+                            rowOpacity = 'opacity-60';
+                            statusBadgeHtml = `<span class="px-2 py-1 bg-purple-500/10 text-purple-500 rounded text-[10px] font-bold uppercase tracking-tight border border-purple-500/20">Settled</span>`;
+                            cashHtml = `<div class="font-bold text-emerald-400">₹${shift.actual_cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                        <div class="text-[10px] text-indigo-400">UPI: ₹${shift.upi_total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>`;
+                            actionHtml = `<div class="text-[10px] text-purple-400 font-bold uppercase tracking-wider"><i class="material-symbols-rounded text-[14px] align-middle -mt-[2px]">done_all</i> Audited</div>`;
+                        } else {
+                            rowOpacity = 'opacity-60';
+                            statusBadgeHtml = `<span class="px-2 py-1 bg-slate-500/10 text-slate-500 rounded text-[10px] font-bold uppercase tracking-tight border border-slate-500/20">Closed</span>`;
+                            actionHtml = `<button onclick="openStartShiftModal('${shift.driver_id}', '${shift.driver_name}')"
+                                                class="bg-primary/10 text-primary hover:bg-primary hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-all">
+                                                Start Shift
+                                            </button>`;
+                        }
+
+                        tbody.innerHTML += `
+                         <tr class="hover:bg-primary/5 transition-colors group ${rowOpacity}">
+                             <td class="px-6 py-5">
+                                 <div class="font-bold">${shift.driver_name}</div>
+                                 <div class="text-[11px] text-[var(--text-muted)]">ID: ${shift.driver_id.substring(shift.driver_id.length - 6)}</div>
+                             </td>
+                             <td class="px-6 py-5 text-center">${statusBadgeHtml}</td>
+                             <td class="px-6 py-5 text-center font-medium">
+                                 <span class="bg-[var(--bg-body)] px-3 py-1 rounded-lg border border-[var(--border)]">${shift.initial_full}</span>
+                             </td>
+                             <td class="px-6 py-5 text-center">${currentFullValHtml}</td>
+                             <td class="px-6 py-5 text-center">
+                                 <span class="${shift.status === 'OPEN' ? 'text-orange-400' : 'text-[var(--text-muted)]'} font-bold">+${shift.current_empty}</span>
+                             </td>
+                             <td class="px-6 py-5 text-right">${cashHtml}</td>
+                             <td class="px-6 py-5 text-right">${actionHtml}</td>
+                         </tr>
+                         `;
+                    });
+                }
+            } catch (err) {
+                console.error("Ledger fetch error:", err);
+            }
+        }
+
+        // Setup initial default logic on load without triggering fetch (Jinja handles first render)
+        // Wait 1 second before first polling starts to not double-query immediately
+        setTimeout(() => {
+            // Optional: Call fetchLedgerData periodically if you want live stock updates on ledger
+            // setInterval(fetchLedgerData, 30000); 
+        }, 1000);
+
     </script>
 </body>
 

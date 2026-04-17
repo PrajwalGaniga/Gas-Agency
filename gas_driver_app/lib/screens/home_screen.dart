@@ -18,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List orders = [];
+  String selectedCity = "All"; // 🏙️ New: Territory Filter State
   bool isLoading = true;
   bool isSyncing = false; // 🔄 New: Tracks background sync status
   Position? currentPos;
@@ -109,9 +110,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    int deliv = orders.where((o) => o['status'] == 'DELIVERED').length;
-    int ongoing = orders.where((o) => o['status'] == 'IN_PROGRESS').length;
-    int pend = orders.where((o) => o['status'] == 'PENDING').length;
+    // 🛡️ Apply Focus Mode Filter
+    List fOrders = orders;
+    if (selectedCity != "All") {
+      fOrders = orders.where((o) => o['city'] == selectedCity).toList();
+    }
+    
+    int deliv = fOrders.where((o) => o['status'] == 'DELIVERED').length;
+    int ongoing = fOrders.where((o) => o['status'] == 'IN_PROGRESS').length;
+    int pend = fOrders.where((o) => o['status'] == 'PENDING').length;
 
     return Scaffold(
       backgroundColor: kBgColor,
@@ -191,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    _statCard("Total", orders.length.toString(), Colors.grey[800]!),
+                    _statCard("Total", fOrders.length.toString(), Colors.grey[800]!),
                     const SizedBox(width: 10),
                     _statCard("Done", deliv.toString(), Colors.green[900]!),
                     const SizedBox(width: 10),
@@ -214,11 +221,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 elevation: 4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () {
-                if(orders.isEmpty) {
+                if(fOrders.isEmpty) {
                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No orders available to map.")));
                    return;
                 }
-                Navigator.push(context, MaterialPageRoute(builder: (context) => MapScreen(orders: orders, currentPos: currentPos!)));
+                Navigator.push(context, MaterialPageRoute(builder: (context) => MapScreen(orders: fOrders, currentPos: currentPos!)));
               },
               icon: const Icon(Icons.map, size: 28),
               label: const Text("VIEW MAP MODE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1)),
@@ -305,17 +312,23 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          
+          // 🏙️ 3.5 FOCUS MODE CHIPS
+          _buildCityFilter(),
+          
+          // 🚀 3.6 SMART NEXT DELIVERY BANNER
+          _buildNextDeliveryBanner(fOrders),
 
           // 4️⃣ SCROLLABLE ORDER LIST
           Expanded(
             child: RefreshIndicator(
               onRefresh: _refreshData,
-              child: orders.isEmpty && !isLoading 
-                ? const Center(child: Text("No orders found for this date.", style: TextStyle(color: Colors.grey)))
+              child: fOrders.isEmpty && !isLoading 
+                ? const Center(child: Text("No orders found for this territory.", style: TextStyle(color: Colors.grey)))
                 : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 80),
-                    itemCount: orders.length,
-                    itemBuilder: (context, index) => _buildOrderRow(orders[index], index + 1),
+                    padding: const EdgeInsets.only(bottom: 80, top: 10),
+                    itemCount: fOrders.length,
+                    itemBuilder: (context, index) => _buildOrderRow(fOrders[index], index + 1),
                   ),
             ),
           )
@@ -509,6 +522,82 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- REUSABLE UI COMPONENTS ---
 
+  Widget _buildCityFilter() {
+    List<dynamic> assignedCities = widget.driverData['cities'] ?? [];
+    if (assignedCities.isEmpty) return const SizedBox.shrink();
+    
+    List<String> chips = ["All", ...assignedCities.map((e) => e.toString())];
+    
+    return Container(
+      height: 55,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: chips.length,
+        itemBuilder: (context, index) {
+          String city = chips[index];
+          bool isSelected = selectedCity == city;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0, top: 5, bottom: 5),
+            child: ChoiceChip(
+              label: Text(city, style: TextStyle(color: isSelected ? Colors.black : Colors.white70, fontWeight: FontWeight.bold)),
+              selected: isSelected,
+              selectedColor: kSuccessGreen,
+              backgroundColor: const Color(0xFF2C2C2C),
+              showCheckmark: false,
+              onSelected: (bool selected) {
+                if(selected) setState(() => selectedCity = city);
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildNextDeliveryBanner(List fOrders) {
+    if (fOrders.isEmpty) return const SizedBox.shrink();
+    
+    Map? nextOrder;
+    try {
+      nextOrder = fOrders.firstWhere((o) => o['status'] == 'IN_PROGRESS' || o['status'] == 'PENDING');
+    } catch (e) {
+      nextOrder = null;
+    }
+    
+    if (nextOrder == null) return const SizedBox.shrink();
+
+    String statusMsg = nextOrder['status'] == 'IN_PROGRESS' ? "CURRENT DESTINATION" : "NEXT CLOSEST DELIVERY";
+    
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 5, 16, 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: kPrimaryBlue.withOpacity(0.15),
+        border: Border.all(color: kPrimaryBlue.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(12)
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.directions_car, color: kPrimaryBlue, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(statusMsg, style: TextStyle(color: kPrimaryBlue, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                const SizedBox(height: 4),
+                Text(nextOrder['customer_name'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text("${nextOrder['address']}", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            )
+          ),
+          //const Icon(Icons.touch_app, color:kPrimaryBlue, size: 20)
+        ],
+      )
+    );
+  }
+
   Widget _navButton(double lat, double lng) {
     return GestureDetector(
       onTap: () => _launchNavigation(lat, lng),
@@ -568,25 +657,108 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showChangeRequest(Map order) {
-    String cat = "ADDRESS";
-    final det = TextEditingController();
-    showDialog(context: context, builder: (c) => AlertDialog(backgroundColor: kCardColor,
-      title: const Text("Change Request", style: TextStyle(color: Colors.white)),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        DropdownButtonFormField(value: "ADDRESS", dropdownColor: const Color(0xFF2C2C2C), style: const TextStyle(color: Colors.white),
-          items: const [DropdownMenuItem(value: "ADDRESS", child: Text("Wrong Address")), DropdownMenuItem(value: "PHONE", child: Text("New Phone Number"))],
-          onChanged: (v) => cat = v.toString(), decoration: const InputDecoration(filled: true, fillColor: Color(0xFF121212))),
-        const SizedBox(height: 15),
-        TextField(controller: det, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: "Correct Details", filled: true, fillColor: Color(0xFF121212))),
-      ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-        ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: kPrimaryBlue), onPressed: () async {
-          await ApiService().submitChangeRequest(widget.token, {'customer_id': order['customer_id'], 'category': cat, 'new_details': det.text});
-          if(mounted) Navigator.pop(context);
-          _refreshData();
-        }, child: const Text("Submit", style: TextStyle(color: Colors.white))),
-      ],
+    String category = "LOCATION_UPDATE";
+    final detailsController = TextEditingController();
+    double? capturedLat;
+    double? capturedLng;
+    bool isCapturing = false;
+
+    showDialog(context: context, builder: (c) => StatefulBuilder(
+      builder: (context, setStateDialog) {
+        return AlertDialog(
+          backgroundColor: kCardColor,
+          title: const Text("Change Request", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: category,
+                dropdownColor: const Color(0xFF2C2C2C),
+                style: const TextStyle(color: Colors.white),
+                items: const [
+                  DropdownMenuItem(value: "LOCATION_UPDATE", child: Text("Wrong Address (GPS)")),
+                  DropdownMenuItem(value: "PHONE", child: Text("New Phone Number"))
+                ],
+                onChanged: (v) => setStateDialog(() {
+                  category = v!;
+                  capturedLat = null;
+                  capturedLng = null;
+                }),
+                decoration: const InputDecoration(filled: true, fillColor: Color(0xFF121212), border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 20),
+              if (category == "LOCATION_UPDATE") ...[
+                ElevatedButton.icon(
+                  icon: isCapturing 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                    : const Icon(Icons.my_location, size: 18),
+                  label: Text(isCapturing ? "FETCHING GPS..." : "USE MY CURRENT LOCATION"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: capturedLat != null ? Colors.green[700] : kPrimaryBlue,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                  ),
+                  onPressed: isCapturing ? null : () async {
+                    setStateDialog(() => isCapturing = true);
+                    try {
+                      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+                      setStateDialog(() {
+                        capturedLat = pos.latitude;
+                        capturedLng = pos.longitude;
+                        isCapturing = false;
+                      });
+                    } catch (e) {
+                      setStateDialog(() => isCapturing = false);
+                      if(context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("GPS Error: Enable permissions")));
+                    }
+                  },
+                ),
+                if (capturedLat != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      "📍 Lat: ${capturedLat!.toStringAsFixed(4)}, Lng: ${capturedLng!.toStringAsFixed(4)} captured",
+                      style: const TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ] else ...[
+                TextField(
+                  controller: detailsController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: "Correct Details", 
+                    filled: true, 
+                    fillColor: Color(0xFF121212),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: (category == "LOCATION_UPDATE" && capturedLat == null) ? Colors.grey : kPrimaryBlue,
+              ), 
+              onPressed: (category == "LOCATION_UPDATE" && capturedLat == null) ? null : () async {
+                final payload = {
+                  'customer_id': order['customer_id'],
+                  'order_id': order['_id'],
+                  'category': category,
+                  'new_details': category == "LOCATION_UPDATE" ? "GPS COORDINATES" : detailsController.text,
+                  'lat': capturedLat,
+                  'lng': capturedLng,
+                };
+                await ApiService().submitChangeRequest(widget.token, payload);
+                if(mounted) Navigator.pop(context);
+                _refreshData();
+              }, 
+              child: const Text("SUBMIT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+            ),
+          ],
+        );
+      }
     ));
   }
 

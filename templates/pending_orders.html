@@ -1211,7 +1211,8 @@
             <div class="driver-select-grid" id="modalDriverList">
                 {% for d in drivers %}
                 <!-- Driver Option -->
-                <div class="driver-option" onclick="selectModalDriver('{{ d._id }}', this)">
+                <div class="driver-option" data-cities="{{ d.assigned_cities | join(',') | lower }}"
+                    onclick="selectModalDriver('{{ d._id }}', this)">
                     <div>
                         <div class="d-opt-name">{{ d.name }}</div>
                         <div class="d-opt-load">Active assigned load today: {{ d.today_active_load }} total</div>
@@ -1272,12 +1273,36 @@
             document.getElementById('modalOrderCount').textContent = selectedIds.length;
             document.getElementById('modalOrderIds').value = JSON.stringify(selectedIds);
 
+            // 🛡️ Territory Lock Filter
+            const cityLowercase = city.toLowerCase().trim();
+            const driverOptions = document.querySelectorAll('.driver-option');
+            let availableDrivers = 0;
+
+            driverOptions.forEach(el => {
+                const driverCities = (el.getAttribute('data-cities') || "").split(',');
+                if (driverCities.map(c => c.trim()).includes(cityLowercase)) {
+                    el.style.display = 'flex';
+                    availableDrivers++;
+                } else {
+                    el.style.display = 'none';
+                }
+                el.classList.remove('selected');
+            });
+
             // Reset modal states
             selectedDriverIdForReschedule = null;
-            document.querySelectorAll('.driver-option').forEach(el => el.classList.remove('selected'));
             document.getElementById('rescheduleModal').classList.add('open');
-            document.getElementById('modalSubmitBtn').innerHTML = 'Confirm Reschedule';
-            document.getElementById('modalSubmitBtn').disabled = false;
+
+            const submitBtn = document.getElementById('modalSubmitBtn');
+            if (availableDrivers === 0) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.5';
+                submitBtn.innerHTML = 'No Territory Drivers';
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                submitBtn.innerHTML = 'Confirm Reschedule';
+            }
         }
 
         function closeRescheduleModal() {

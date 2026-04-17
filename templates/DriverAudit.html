@@ -460,7 +460,7 @@
                             </td>
                             <td class="px-6 py-4">
                                 <button
-                                    onclick="openVerifyModal('{{ req._id }}', '{{ req.customer_id_str }}', '{{ req.customer_name }}', '{{ req.request_type }}', '{{ req.old_value }}', '{{ req.new_value }}')"
+                                    onclick="openVerifyModal('{{ req._id }}', '{{ req.customer_id_str }}', '{{ req.customer_name }}', '{{ req.request_type }}', '{{ req.old_value }}', '{{ req.new_value }}', '{{ req.lat }}', '{{ req.lng }}')"
                                     class="text-sm font-bold text-indigo-600 dark:text-indigo-400 border-b border-dashed border-indigo-600 hover:text-indigo-500 transition-colors">
                                     {{ req.customer_name }}
                                 </button>
@@ -471,22 +471,44 @@
                                     {{ req.request_type }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-white max-w-[200px] truncate"
-                                title="{{ req.new_value }}">
+                            <td
+                                class="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-white max-w-[200px] truncate">
+                                {% if req.request_type == 'LOCATION_UPDATE' %}
+                                <a href="https://www.google.com/maps?q={{ req.lat }},{{ req.lng }}" target="_blank"
+                                    class="inline-flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:underline">
+                                    <i class="material-symbols-rounded text-sm">map</i> View on Map
+                                </a>
+                                {% else %}
                                 {{ req.new_value }}
+                                {% endif %}
                             </td>
                             <td class="px-6 py-4">
-                                {% if req.status == 'PENDING' %}
-                                <span
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> PENDING
-                                </span>
-                                {% else %}
-                                <span
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ req.status }}
-                                </span>
-                                {% endif %}
+                                <div class="flex items-center gap-2">
+                                    {% if req.status == 'PENDING' %}
+                                    <div class="flex items-center gap-1 mr-2">
+                                        <button onclick="quickResolve('{{ req._id }}', 'approve')"
+                                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all"
+                                            title="Approve">
+                                            <i class="material-symbols-rounded text-lg">check</i>
+                                        </button>
+                                        <button onclick="quickResolve('{{ req._id }}', 'reject')"
+                                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white transition-all"
+                                            title="Reject">
+                                            <i class="material-symbols-rounded text-lg">close</i>
+                                        </button>
+                                    </div>
+                                    <span
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                        PENDING
+                                    </span>
+                                    {% else %}
+                                    <span
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ req.status }}
+                                    </span>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -660,13 +682,43 @@
         /* 3. Modal Logic */
         let activeReq = null;
 
-        function openVerifyModal(rid, cid, cname, type, oldV, newV) {
+        function openVerifyModal(rid, cid, cname, type, oldV, newV, lat, lng) {
             activeReq = { rid, cid, cname };
-            document.getElementById('oldT').innerText = oldV;
-            document.getElementById('newT').innerText = newV;
-            document.getElementById('finalVal').value = newV;
+
+            if (type === 'LOCATION_UPDATE' && lat && lng) {
+                document.getElementById('oldT').innerText = oldV;
+                document.getElementById('newT').innerHTML = `
+                    <div class="flex flex-col gap-2">
+                        <span class="text-indigo-600 dark:text-indigo-400">Captured GPS</span>
+                        <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" class="text-xs flex items-center gap-1 hover:underline">
+                            <i class="material-symbols-rounded text-sm">map</i> Open Proposed Map
+                        </a>
+                    </div>
+                `;
+                document.getElementById('finalVal').value = "GPS UPDATED";
+            } else {
+                document.getElementById('oldT').innerText = oldV;
+                document.getElementById('newT').innerText = newV;
+                document.getElementById('finalVal').value = newV;
+            }
+
             document.getElementById('vModal').classList.add('active');
-            document.body.style.overflow = 'hidden'; // Prevent scrolling
+            document.body.style.overflow = 'hidden';
+        }
+
+        async function quickResolve(rid, action) {
+            try {
+                const f2 = new FormData();
+                f2.append('request_id', rid);
+                f2.append('action', action);
+                f2.append('remarks', action === 'approve' ? 'Direct Table Approval' : 'Direct Table Rejection');
+
+                await fetch('/api/resolve-request', { method: 'POST', body: f2 });
+                location.reload();
+            } catch (e) {
+                alert("Error resolving request.");
+                console.error(e);
+            }
         }
 
         function closeVerifyModal() {

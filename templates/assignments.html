@@ -862,16 +862,15 @@
                                 <option value="{{ d._id }}">{{ d.name }} • {{ d.phone_number }}</option>
                                 {% endfor %}
                             </optgroup>
-                            {% endif %}
-
-                            <optgroup label="Other Available Personnel">
-                                {% for d in other_drivers %}
-                                <option value="{{ d._id }}">{{ d.name }} • {{ d.phone_number }}</option>
-                                {% endfor %}
+                            {% else %}
+                            <optgroup label="No local drivers available">
+                                <option disabled>Assign a driver to {{ order.city }} in Driver settings</option>
                             </optgroup>
+                            {% endif %}
                         </select>
 
-                        <button type="submit" class="btn-confirm">
+                        <button type="submit" class="btn-confirm" {% if not local_drivers %}disabled
+                            style="opacity:0.5;" {% endif %}>
                             <i class="material-symbols-rounded" style="font-size: 20px;">person_check</i>
                             Execute Assignment
                         </button>

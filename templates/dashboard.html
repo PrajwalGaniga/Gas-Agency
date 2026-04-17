@@ -330,34 +330,57 @@
                     Inventory Panel
                 </h3>
 
-                <div class="flex-grow overflow-y-auto pr-2 space-y-4 relative z-10 custom-scrollbar">
+                <div id="inventory-panel-container"
+                    class="flex-grow overflow-y-auto pr-2 space-y-4 relative z-10 custom-scrollbar">
                     {% for driver in drivers %}
-                    <div class="bg-white/10 rounded-xl p-4 border border-white/5 backdrop-blur-sm">
+                    <div
+                        class="glass rounded-xl p-4 border border-slate-200 dark:border-slate-700/50 shadow-sm relative overflow-hidden group">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="font-semibold text-white text-sm">{{ driver.name }}</span>
-                            {% if driver.is_online %}
+                            <span class="font-semibold text-slate-900 dark:text-white text-sm">{{ driver.name }}</span>
+                            {% if driver.status_color == 'green' %}
                             <span
                                 class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+                            {% elif driver.status_color == 'yellow' %}
+                            <span
+                                class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] px-1"></span>
                             {% else %}
                             <span class="w-2 h-2 rounded-full bg-slate-500"></span>
                             {% endif %}
                         </div>
                         <div class="grid grid-cols-2 gap-2 text-center mt-3">
-                            <div class="bg-slate-900/50 rounded-lg py-2 border border-blue-500/20">
-                                <i class="material-symbols-rounded text-blue-400 text-sm mb-1">propane</i>
-                                <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Full</div>
-                                <div class="text-xl font-display font-bold text-white">{{ driver.current_stock }}</div>
+                            <div
+                                class="bg-slate-50 dark:bg-slate-900/50 rounded-lg py-2 border border-blue-500/20 flex flex-col justify-center min-h-[70px]">
+                                <i
+                                    class="material-symbols-rounded text-blue-500 dark:text-blue-400 text-sm mb-1 mx-auto">propane</i>
+                                <div
+                                    class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">
+                                    Full</div>
+                                {% if not driver.shift_start_load %}
+                                <div
+                                    class="text-[10px] font-bold text-red-500 dark:text-red-400 mt-1 uppercase tracking-wider">
+                                    No Load<br>Assigned</div>
+                                {% else %}
+                                <div class="text-xl font-display font-bold text-slate-900 dark:text-white">{{
+                                    driver.current_stock }}</div>
+                                {% endif %}
                             </div>
-                            <div class="bg-slate-900/50 rounded-lg py-2 border border-slate-500/20">
-                                <i class="material-symbols-rounded text-slate-400 text-sm mb-1">eco</i>
-                                <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Empty</div>
-                                <!-- Real implementation might differ, simulating empty counts for demo based on delivery logic -->
-                                <div class="text-xl font-display font-bold text-slate-300">{{ driver.completed }}</div>
+                            <div
+                                class="bg-slate-50 dark:bg-slate-900/50 rounded-lg py-2 border border-slate-300 dark:border-slate-500/20 flex flex-col justify-center min-h-[70px]">
+                                <i class="material-symbols-rounded text-slate-400 text-sm mb-1 mx-auto">eco</i>
+                                <div
+                                    class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">
+                                    Completed</div>
+                                <div class="text-xl font-display font-bold text-slate-700 dark:text-slate-300">{{
+                                    driver.completed }}</div>
                             </div>
                         </div>
                     </div>
                     {% else %}
-                    <div class="text-center py-10 text-slate-400 text-sm">No driver data available</div>
+                    <div
+                        class="text-center py-10 text-slate-400 text-sm font-semibold flex flex-col items-center gap-2">
+                        <i class="material-symbols-rounded text-3xl">garage</i>
+                        All units currently base-docked
+                    </div>
                     {% endfor %}
                 </div>
             </div>
@@ -512,7 +535,7 @@
                                     Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                        <tbody id="fleet-control-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
                             {% for driver in drivers %}
                             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
                                 <td class="p-4">
@@ -541,8 +564,14 @@
                                     </span>
                                     {% endif %}
                                 </td>
-                                <td class="p-4 text-sm font-medium text-slate-600 dark:text-slate-300">{{
-                                    driver.work_time }}</td>
+                                <td class="p-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+                                    {% if driver.shift_start_time %}
+                                    <span class="shift-timer" data-start="{{ driver.shift_start_time }}">{{
+                                        driver.work_time }}</span>
+                                    {% else %}
+                                    {{ driver.work_time }}
+                                    {% endif %}
+                                </td>
                                 <td class="p-4">
                                     <span class="font-bold text-indigo-500 dark:text-indigo-400">{{ driver.current_stock
                                         }}x</span>
@@ -567,14 +596,14 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="6" class="py-16 text-center">
+                                <td colspan="8" class="py-16 text-center">
                                     <div
                                         class="w-20 h-20 rounded-full bg-slate-50 dark:bg-slate-900 mx-auto mb-4 flex items-center justify-center">
                                         <i
-                                            class="material-symbols-rounded text-4xl text-slate-300 dark:text-slate-600">person_off</i>
+                                            class="material-symbols-rounded text-4xl text-slate-300 dark:text-slate-600">garage</i>
                                     </div>
-                                    <p class="text-slate-500 dark:text-slate-400 font-medium">No active drivers
-                                        currently online</p>
+                                    <p class="text-slate-500 dark:text-slate-400 font-medium">All units currently
+                                        base-docked</p>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -794,19 +823,201 @@
                     attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
                 }).addTo(map);
 
-                // Fetch live positions via API (Assuming/track-data or driver.py exposes it later. Mocking for now)
-                setTimeout(() => {
-                    const drivers = {{ drivers | tojson | safe
-                }};
-            let bounds = [];
+                // Keep track of markers to remove them before redrawing
+                let driverMarkers = [];
 
-            // For a real implementation, you'd fetch live lat/lng from the backend.
-            // Assuming drivers have last_known_lat, last_known_lng in driver collection.
-            // Since we don't have it explicitly mapped in 'stats_list' right now, 
-            // this initializes the map cleanly.
-        }, 1000);
-        }
-    });
+                async function updateFleetData() {
+                    try {
+                        const response = await fetch('/admin/fleet/status');
+                        const data = await response.json();
+
+                        if (data.success && data.fleet) {
+                            const drivers = data.fleet;
+                            let bounds = [];
+
+                            // 1. Clear existing map markers
+                            driverMarkers.forEach(m => map.removeLayer(m));
+                            driverMarkers = [];
+
+                            // 2. Plot new map markers
+                            drivers.forEach(d => {
+                                if (d.lat && d.lng) {
+                                    let markerColor = '#64748b'; // Offline (slate)
+                                    if (d.status_color === 'green') markerColor = '#10b981'; // Moving
+                                    else if (d.status_color === 'yellow') markerColor = '#f59e0b'; // Idle
+
+                                    const markerHtml = `
+                                        <div style="
+                                            background-color: ${parseFloat(d.lat) ? 'white' : 'transparent'};
+                                            border: 2px solid ${markerColor};
+                                            border-radius: 50%;
+                                            width: 32px;
+                                            height: 32px;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                                        ">
+                                            <span class="material-symbols-rounded" style="font-size: 18px; color: ${markerColor}">local_shipping</span>
+                                        </div>
+                                        ${d.status_color === 'green' ? `<div style="position:absolute; top:-2px; left:-2px; right:-2px; bottom:-2px; border-radius:50%; border: 2px solid ${markerColor}; animation: pulseRed 2s infinite; opacity: 0.5;"></div>` : ''}
+                                    `;
+
+                                    const customIcon = L.divIcon({
+                                        html: markerHtml,
+                                        className: 'relative',
+                                        iconSize: [32, 32],
+                                        iconAnchor: [16, 16]
+                                    });
+
+                                    const marker = L.marker([d.lat, d.lng], { icon: customIcon }).addTo(map)
+                                        .bindPopup(`<b>${d.name}</b><br>Stock: ${d.remaining_full}<br>Status: ${d.status_color}`);
+
+                                    driverMarkers.push(marker);
+                                    bounds.push([d.lat, d.lng]);
+                                }
+                            });
+
+                            // Only fit bounds on first load
+                            if (bounds.length > 0 && map.getZoom() === 5) {
+                                map.fitBounds(bounds, { padding: [50, 50] });
+                            }
+
+                            // 3. Re-render Inventory Panel Cards
+                            const inventoryContainer = document.getElementById('inventory-panel-container');
+                            if (inventoryContainer) {
+                                if (drivers.length > 0) {
+                                    inventoryContainer.innerHTML = '';
+                                    drivers.forEach(d => {
+                                        let statusDot = `<span class="w-2 h-2 rounded-full bg-slate-500"></span>`;
+                                        if (d.status_color === 'green') {
+                                            statusDot = `<span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>`;
+                                        } else if (d.status_color === 'yellow') {
+                                            statusDot = `<span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] px-1"></span>`;
+                                        }
+
+                                        let stockHtml = '';
+                                        if (d.shift_start_load === null || d.shift_start_load === undefined) {
+                                            stockHtml = `<div class="text-[10px] font-bold text-red-500 dark:text-red-400 mt-1 uppercase tracking-wider">No Load<br>Assigned</div>`;
+                                        } else {
+                                            stockHtml = `<div class="text-xl font-display font-bold text-slate-900 dark:text-white">${d.remaining_full}</div>`;
+                                        }
+
+                                        inventoryContainer.innerHTML += `
+                                            <div class="glass rounded-xl p-4 border border-slate-200 dark:border-slate-700/50 shadow-sm relative overflow-hidden group">
+                                                <div class="flex justify-between items-center mb-2">
+                                                    <span class="font-semibold text-slate-900 dark:text-white text-sm">${d.name}</span>
+                                                    ${statusDot}
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-2 text-center mt-3">
+                                                    <div class="bg-slate-50 dark:bg-slate-900/50 rounded-lg py-2 border border-blue-500/20 flex flex-col justify-center min-h-[70px]">
+                                                        <i class="material-symbols-rounded text-blue-500 dark:text-blue-400 text-sm mb-1 mx-auto">propane</i>
+                                                        <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">Full</div>
+                                                        ${stockHtml}
+                                                    </div>
+                                                    <div class="bg-slate-50 dark:bg-slate-900/50 rounded-lg py-2 border border-slate-300 dark:border-slate-500/20 flex flex-col justify-center min-h-[70px]">
+                                                        <i class="material-symbols-rounded text-slate-400 text-sm mb-1 mx-auto">eco</i>
+                                                        <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">Completed</div>
+                                                        <div class="text-xl font-display font-bold text-slate-700 dark:text-slate-300">${d.completed_deliveries}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    });
+                                } else {
+                                    inventoryContainer.innerHTML = `
+                                        <div class="text-center py-10 text-slate-400 text-sm font-semibold flex flex-col items-center gap-2">
+                                            <i class="material-symbols-rounded text-3xl">garage</i>
+                                            All units currently base-docked
+                                        </div>
+                                    `;
+                                }
+                            }
+
+                            // 4. Update the Fleet Control Table
+                            const tableBody = document.getElementById('fleet-control-body');
+                            if (tableBody) {
+                                if (drivers.length > 0) {
+                                    tableBody.innerHTML = '';
+                                    drivers.forEach(d => {
+                                        let statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-700/50 text-slate-500 border border-slate-200 dark:border-slate-600"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Offline</span>`;
+                                        if (d.is_online) {
+                                            statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online</span>`;
+                                        }
+
+                                        let durationHtml = d.shift_duration_str;
+                                        if (d.shift_start_iso) {
+                                            durationHtml = `<span class="shift-timer" data-start="${d.shift_start_iso}">${d.shift_duration_str}</span>`;
+                                        }
+
+                                        tableBody.innerHTML += `
+                                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
+                                                <td class="p-4">
+                                                    <div class="flex items-center gap-3">
+                                                        <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400">
+                                                            ${d.name.substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p class="font-semibold text-slate-900 dark:text-slate-200 text-sm">${d.name}</p>
+                                                            <p class="text-xs text-slate-500 dark:text-slate-400">${d.phone}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="p-4">${statusBadge}</td>
+                                                <td class="p-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+                                                    ${durationHtml}
+                                                </td>
+                                                <td class="p-4">
+                                                    <span class="font-bold text-indigo-500 dark:text-indigo-400">${d.remaining_full}x</span>
+                                                </td>
+                                                <td class="p-4">
+                                                    <span class="font-bold text-emerald-600 dark:text-emerald-400">₹${d.total_collected}</span>
+                                                </td>
+                                                <td class="p-4">
+                                                    <span class="font-bold text-emerald-500">${d.completed_deliveries}</span>
+                                                </td>
+                                                <td class="p-4">
+                                                    <span class="font-bold text-amber-500">${d.pending_deliveries}</span>
+                                                </td>
+                                                <td class="p-4 text-right">
+                                                    <a href="/track/${d.driver_id}" target="_blank"
+                                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:text-indigo-500 dark:hover:text-indigo-400 hover:shadow-sm transition-all">
+                                                        <i class="material-symbols-rounded text-base">map</i>
+                                                        Track
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    });
+                                } else {
+                                    tableBody.innerHTML = `
+                                        <tr>
+                                            <td colspan="8" class="py-16 text-center">
+                                                <div class="w-20 h-20 rounded-full bg-slate-50 dark:bg-slate-900 mx-auto mb-4 flex items-center justify-center">
+                                                    <i class="material-symbols-rounded text-4xl text-slate-300 dark:text-slate-600">garage</i>
+                                                </div>
+                                                <p class="text-slate-500 dark:text-slate-400 font-medium">All units currently base-docked</p>
+                                            </td>
+                                        </tr>
+                                     `;
+                                }
+                            }
+
+                            // Re-trigger the javascript timer for newly added DOM elements
+                            updateShiftTimers();
+                        }
+                    } catch (e) {
+                        console.error('Failed to fetch live fleet data:', e);
+                    }
+                }
+
+                // Initial load
+                updateFleetData();
+
+                // Poll every 30 seconds
+                setInterval(updateFleetData, 30000);
+            }
+        });
 
         async function handleBulkUploadDashboard(input, btnId) {
             if (!input.files || input.files.length === 0) return;
@@ -881,6 +1092,27 @@
             const modal = document.getElementById('importSummaryModalDashboard');
             modal.classList.remove('hidden');
         }
+
+        /* 9. Shift Timers */
+        function updateShiftTimers() {
+            document.querySelectorAll('.shift-timer').forEach(el => {
+                const startTimeStr = el.getAttribute('data-start');
+                if (!startTimeStr) return;
+
+                const start = new Date(startTimeStr);
+                const now = new Date();
+                let diff = Math.floor((now - start) / 1000); // seconds
+
+                if (diff < 0) diff = 0;
+
+                const hours = Math.floor(diff / 3600);
+                const mins = Math.floor((diff % 3600) / 60);
+
+                el.textContent = `${hours}h ${mins}m`;
+            });
+        }
+        setInterval(updateShiftTimers, 60000); // update every minute
+        updateShiftTimers(); // initial call
     </script>
 
 </body>

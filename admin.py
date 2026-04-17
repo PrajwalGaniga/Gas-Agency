@@ -268,6 +268,105 @@ async def signup_request(
         # 📱 This is the message you saw in your phone screenshot
         return {"success": False, "message": "Failed to send email. Please check server logs."}
 
+@admin_router.get("/admin/fleet/status")
+async def get_fleet_status(admin_id: ObjectId = Depends(get_current_admin)):
+    """
+    Unified Single Source of Truth for Live Fleet Tracking & Inventory Ledger.
+    Aggregates Driver, Shift, and Order data dynamically.
+    """
+    if not admin_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    drivers = list(driver_collection.find({"admin_id": admin_id}))
+    now_utc = datetime.now(timezone.utc)
+    
+    fleet_data = []
+    
+    for d in drivers:
+        d_id = str(d["_id"])
+        ls = d.get("last_seen")
+        ls_utc = ls.replace(tzinfo=timezone.utc) if ls and ls.tzinfo is None else ls
+        
+        # 1. Map Status Color (Based on Last Seen)
+        status_color = "red" # Offline
+        if ls_utc:
+            diff_mins = (now_utc - ls_utc).total_seconds() / 60
+            if diff_mins < 10:
+                status_color = "green" # Online / Moving
+            elif diff_mins <= 60:
+                status_color = "yellow" # Idle
+                
+        # 2. Shift Inventory Logic (The single source)
+        shift = shifts_collection.find_one({"driver_id": d_id, "status": "OPEN"})
+        
+        shift_start_load = None
+        remaining_full = 0
+        total_collected = 0
+        shift_duration_str = "0h 0m"
+        shift_start_iso = None
+        
+        if shift:
+            # Load = Departure Full
+            shift_start_load = shift.get("load_departure", {}).get("full", 0)
+            
+            # Consumed = Return Full (Since return full increments when they consume a fresh cylinder)
+            consumed_full = shift.get("load_return", {}).get("full", 0)
+            
+            # Remaining = Load - Consumed (Bottom capped at 0)
+            remaining_full = max(0, shift_start_load - consumed_full)
+            
+            # Total Collected Cash
+            total_collected = shift.get("financials", {}).get("actual_cash_collected", 0)
+            
+            # Duration ISO for JS Counter
+            if shift.get("start_time"):
+                start_ist = to_ist(shift["start_time"])
+                if start_ist:
+                    shift_start_iso = start_ist.isoformat()
+                    diff = ist_now() - start_ist
+                    total_seconds = max(0, int(diff.total_seconds()))
+                    shift_duration_str = f"{total_seconds // 3600}h {(total_seconds % 3600) // 60}m"
+        else:
+            # Fallback if no active shift
+            total_collected = d.get("collected_cash", 0)
+            remaining_full = d.get("current_stock", 0)
+
+        # 3. Order Queue Logic
+        completed_orders = 0
+        if shift:
+            completed_orders = order_collection.count_documents({
+                "shift_id": str(shift["_id"]), "status": "DELIVERED"
+            })
+            
+        pending_orders = order_collection.count_documents({
+            "assigned_driver_id": d["_id"], "status": "PENDING"
+        })
+
+        # 4. Compile Unified Driver Object
+        fleet_data.append({
+            "driver_id": d_id,
+            "name": d["name"],
+            "phone": d.get("phone_number", "N/A"),
+            "is_online": status_color == "green",
+            "status_color": status_color,
+            "last_seen_iso": to_ist(ls_utc).isoformat() if ls_utc else None,
+            "lat": d.get("current_lat"),
+            "lng": d.get("current_lng"),
+            "shift_start_load": shift_start_load,
+            "remaining_full": remaining_full,
+            "total_collected": total_collected,
+            "shift_duration_str": shift_duration_str,
+            "shift_start_iso": shift_start_iso,
+            "completed_deliveries": completed_orders,
+            "pending_deliveries": pending_orders
+        })
+        
+    return {
+        "success": True,
+        "timestamp": ist_now().isoformat(),
+        "fleet": fleet_data
+    }
+
 # --- DASHBOARD & DRIVERS ---
 
 @admin_router.get("/dashboard")
@@ -279,17 +378,64 @@ async def dashboard_view(request: Request, admin_id: ObjectId = Depends(get_curr
     for d in drivers:
         ls = d.get("last_seen")
         ls_utc = ls.replace(tzinfo=timezone.utc) if ls and ls.tzinfo is None else ls
+
+        # --- SMART ADMIN: Shift & Inventory Logic ---
+        shift = shifts_collection.find_one({"driver_id": str(d["_id"]), "status": "OPEN"})
+        
+        shift_start_load = None
+        current_stock = 0
+        shift_duration_str = "0h 0m"
+        shift_start_time_iso = None
+        collected_cash = 0
+
+        if shift:
+            shift_start_load = shift.get("load_departure", {}).get("full", 0)
+            returned_full = shift.get("load_return", {}).get("full", 0)
+            # Enforce 0 stock minimum
+            current_stock = max(0, shift_start_load - returned_full)
+            collected_cash = shift.get("financials", {}).get("actual_cash_collected", 0)
+            
+            if shift.get("start_time"):
+                shift_start_ist = to_ist(shift["start_time"])
+                if shift_start_ist:
+                    shift_start_time_iso = shift_start_ist.isoformat()
+                    # Keep static calculation as fallback, but frontend JS will take over if iso is present
+                    diff = ist_now() - shift_start_ist
+                    total_seconds = max(0, int(diff.total_seconds()))
+                    shift_duration_str = f"{total_seconds // 3600}h {(total_seconds % 3600) // 60}m"
+        else:
+            # Fallback for drivers not in a shift
+            collected_cash = d.get("collected_cash", 0)
+
+        # --- SMART ADMIN: Map Status Color ---
+        status_color = "red"
+        if ls_utc:
+            diff_mins = (now_utc - ls_utc).total_seconds() / 60
+            if diff_mins < 10:
+                status_color = "green"
+            elif diff_mins <= 60:
+                status_color = "yellow"
+
+        completed_orders = 0
+        if shift:
+            completed_orders = order_collection.count_documents({"shift_id": str(shift["_id"]), "status": "DELIVERED"})
+            
         stats_list.append({
             "id": str(d["_id"]),
             "name": d["name"],
             "phone": d.get("phone_number", "N/A"),
-            "is_online": ls_utc and (now_utc - ls_utc).total_seconds() < 300,
+            "is_online": status_color == "green",
+            "status_color": status_color,
             "last_seen": to_ist(ls_utc).isoformat() if ls_utc else None,
-            "work_time": calculate_work_time(d["_id"]),
-            "current_stock": d.get("current_stock", 0),
-            "collected_cash": d.get("collected_cash", 0),
-            "completed": order_collection.count_documents({"assigned_driver_id": d["_id"], "status": "DELIVERED"}),
-            "pending": order_collection.count_documents({"assigned_driver_id": d["_id"], "status": "PENDING"})
+            "work_time": shift_duration_str,
+            "shift_start_time": shift_start_time_iso,
+            "current_stock": current_stock,
+            "shift_start_load": shift_start_load,
+            "collected_cash": collected_cash,
+            "completed": completed_orders,
+            "pending": order_collection.count_documents({"assigned_driver_id": d["_id"], "status": "PENDING"}),
+            "lat": d.get("current_lat"),
+            "lng": d.get("current_lng")
         })
     stats = {
         "drivers": len(drivers), 
@@ -316,20 +462,44 @@ async def driver_management(request: Request, admin_id: ObjectId = Depends(get_c
 @admin_router.post("/add-driver")
 async def add_driver(name: str = Form(...), phone: str = Form(...), password: str = Form(...), cities: list = Form([]), admin_id: ObjectId = Depends(get_current_admin)):
     if not admin_id: return RedirectResponse(url="/", status_code=303)
+    
+    # 🛑 TERRITORY LOCK: Prevent multiple drivers from owning the same city
+    if cities:
+        existing_drivers = list(driver_collection.find({"admin_id": admin_id, "is_active": True}))
+        for d in existing_drivers:
+            intersect = set(cities).intersection(set(d.get("assigned_cities", [])))
+            if intersect:
+                # Redirect with an error message
+                return RedirectResponse(url=f"/drivers?msg=Error: {', '.join(intersect)} already assigned to {d['name']}", status_code=303)
+
     driver_collection.insert_one({
         "admin_id": admin_id, "name": name, "phone_number": phone, 
         "password_hash": get_password_hash(password), "assigned_cities": cities, 
         "is_active": True, "created_at": datetime.now(timezone.utc)
     })
-    return RedirectResponse(url="/drivers", status_code=303)
+    return RedirectResponse(url="/drivers?msg=Driver added successfully", status_code=303)
 
 @admin_router.post("/update-driver")
-async def update_driver(driver_id: str = Form(...), name: str = Form(...), phone: str = Form(...), password: str = Form(None), cities: list = Form([]), is_active: str = Form(None)):
+async def update_driver(driver_id: str = Form(...), name: str = Form(...), phone: str = Form(...), password: str = Form(None), cities: list = Form([]), is_active: str = Form(None), admin_id: ObjectId = Depends(get_current_admin)):
+    if not admin_id: return RedirectResponse(url="/", status_code=303)
+    
+    # 🛑 TERRITORY LOCK
+    if cities and (is_active == "true"):
+        existing_drivers = list(driver_collection.find({
+            "admin_id": admin_id, 
+            "is_active": True, 
+            "_id": {"$ne": ObjectId(driver_id)}
+        }))
+        for d in existing_drivers:
+            intersect = set(cities).intersection(set(d.get("assigned_cities", [])))
+            if intersect:
+                return RedirectResponse(url=f"/drivers?msg=Error: {', '.join(intersect)} already assigned to {d['name']}", status_code=303)
+
     update_data = {"name": name, "phone_number": phone, "assigned_cities": cities, "is_active": (is_active == "true"), "last_edited_at": datetime.now(timezone.utc)}
     if password and password.strip():
         update_data["password_hash"] = get_password_hash(password)
     driver_collection.update_one({"_id": ObjectId(driver_id)}, {"$set": update_data})
-    return RedirectResponse(url="/drivers", status_code=303)
+    return RedirectResponse(url="/drivers?msg=Driver updated successfully", status_code=303)
 
 @admin_router.post("/delete-driver")
 async def delete_driver(driver_id: str = Form(...), admin_id: ObjectId = Depends(get_current_admin)):
@@ -1097,8 +1267,23 @@ async def upload_customers(
 # --- SHIFT & INVENTORY MANAGEMENT ---
 
 @admin_router.get("/inventory")
-async def inventory_management(request: Request, admin_id: ObjectId = Depends(get_current_admin)):
+async def inventory_management(
+    request: Request, 
+    date: str = Query(None),
+    admin_id: ObjectId = Depends(get_current_admin)
+):
     if not admin_id: return RedirectResponse("/")
+    
+    # Base query for date
+    target_date = ist_now()
+    if date:
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=IST)
+        except ValueError:
+            pass
+            
+    utc_start = ist_day_start(target_date)
+    utc_end = ist_day_end(target_date)
     
     drivers = list(driver_collection.find({"admin_id": admin_id, "is_active": True}))
     
@@ -1107,12 +1292,17 @@ async def inventory_management(request: Request, admin_id: ObjectId = Depends(ge
     total_agency_empty = 0
     total_agency_cash = 0
     
-    # Map open shifts by driver_id for quick lookup
-    open_shifts = {s["driver_id"]: s for s in shifts_collection.find({"admin_id": str(admin_id), "status": "OPEN"})}
+    # Map open shifts by driver_id for quick lookup - MUST respect the date boundary so "Today" is accurate
+    shifts_cursor = shifts_collection.find({
+        "admin_id": str(admin_id), 
+        "date": {"$gte": utc_start, "$lte": utc_end}
+    })
+    
+    day_shifts = {s["driver_id"]: s for s in shifts_cursor}
     
     for driver in drivers:
         d_id = str(driver["_id"])
-        shift = open_shifts.get(d_id)
+        shift = day_shifts.get(d_id)
         
         if shift:
             # Calculate current stock on truck
@@ -1168,12 +1358,12 @@ async def inventory_management(request: Request, admin_id: ObjectId = Depends(ge
 async def start_shift(driver_id: str = Form(...), full_cylinders: int = Form(...), empty_cylinders: int = Form(0), admin_id: ObjectId = Depends(get_current_admin)):
     if not admin_id: return RedirectResponse("/")
     
-    # Close any existing open shifts for this driver
-    shifts_collection.update_many(
-        {"driver_id": driver_id, "status": "OPEN"},
-        {"$set": {"status": "CLOSED", "closed_at": datetime.now(timezone.utc)}}
-    )
+    # Check if shift already active
+    existing = shifts_collection.find_one({"driver_id": driver_id, "status": "OPEN"})
+    if existing:
+        return RedirectResponse(url="/inventory?msg=Error: Shift Already Active for this driver.", status_code=303)
     
+    # Insert with explicit UTC (which is exactly 'now' representing real time, independent of local date filtering)
     shifts_collection.insert_one({
         "admin_id": str(admin_id),
         "driver_id": driver_id,
@@ -1187,18 +1377,141 @@ async def start_shift(driver_id: str = Form(...), full_cylinders: int = Form(...
     return RedirectResponse(url="/inventory?msg=Shift Started", status_code=303)
 
 @admin_router.post("/shifts/close")
-async def close_shift(shift_id: str = Form(...), actual_cash: float = Form(...), actual_full: int = Form(...), actual_empty: int = Form(...), admin_id: ObjectId = Depends(get_current_admin)):
+async def close_shift(
+    shift_id: str = Form(...),
+    actual_cash: float = Form(...),
+    actual_full: int = Form(...), 
+    actual_empty: int = Form(...), 
+    admin_id: ObjectId = Depends(get_current_admin)
+):
     if not admin_id: return RedirectResponse("/")
+    
+    # Get the expected values
+    shift = shifts_collection.find_one({"_id": ObjectId(shift_id), "admin_id": str(admin_id)})
+    if not shift:
+        return RedirectResponse(url="/inventory?msg=Shift Not Found", status_code=303)
+        
+    expected_cash = shift.get("financials", {}).get("expected_cash", 0)
+    expected_full = shift.get("load_departure", {}).get("full", 0) - shift.get("load_return", {}).get("full", 0)
+    expected_empty = shift.get("load_departure", {}).get("empty", 0) + shift.get("load_return", {}).get("empty", 0)
+    
+    shortage_cash = expected_cash - actual_cash
+    shortage_full = expected_full - actual_full
+    shortage_empty = expected_empty - actual_empty
     
     shifts_collection.update_one(
         {"_id": ObjectId(shift_id), "admin_id": str(admin_id), "status": "OPEN"},
         {"$set": {
-            "status": "CLOSED",
+            "status": "RECONCILED",
             "closed_at": datetime.now(timezone.utc),
             "load_return.full": actual_full,
             "load_return.empty": actual_empty,
-            "financials.actual_cash": actual_cash
+            "financials.actual_cash": actual_cash,
+            "reconciliation_report": {
+                "shortage_cash": shortage_cash,
+                "shortage_full": shortage_full,
+                "shortage_empty": shortage_empty
+            }
         }}
     )
     
-    return RedirectResponse(url="/inventory?msg=Shift Closed", status_code=303)
+    return RedirectResponse(url="/inventory?msg=Shift Reconciled", status_code=303)
+
+@admin_router.get("/admin/api/inventory/ledger")
+async def get_inventory_ledger(
+    start_date: str = Query(None), 
+    end_date: str = Query(None), 
+    driver_name: str = Query(None),
+    admin_id: ObjectId = Depends(get_current_admin)
+):
+    if not admin_id: return {"error": "Unauthorized"}
+    
+    query = {"admin_id": str(admin_id)}
+    
+    # Date Filtering using robust IST boundaries
+    if start_date and end_date:
+        try:
+            # Parse frontend iso strings, treat as local to what JS sent, convert to IST, then get boundaries in UTC
+            start_ds = datetime.fromisoformat(start_date.replace('Z', '+00:00')).astimezone(IST)
+            end_ds = datetime.fromisoformat(end_date.replace('Z', '+00:00')).astimezone(IST)
+            
+            utc_start = ist_day_start(start_ds)
+            utc_end = ist_day_end(end_ds)
+            
+            query["date"] = {"$gte": utc_start, "$lte": utc_end}
+        except ValueError:
+            pass # Invalid format, ignore dates or handle differently
+            
+    # Fetch shifts based on query
+    shifts = list(shifts_collection.find(query).sort("date", -1))
+    
+    # If a driver search is provided, we need to filter the drivers list
+    driver_query = {"admin_id": admin_id, "is_active": True}
+    if driver_name:
+        driver_query["name"] = {"$regex": driver_name, "$options": "i"}
+        
+    drivers = list(driver_collection.find(driver_query))
+    driver_map = {str(d["_id"]): d["name"] for d in drivers}
+    
+    shift_data = []
+    total_cash = 0
+    total_upi = 0
+    total_delivered = 0
+    total_empties = 0
+    
+    for shift in shifts:
+        d_id = shift.get("driver_id")
+        
+        # Skip if driver search is active and this shift isn't for a matched driver
+        if driver_name and d_id not in driver_map:
+            continue
+            
+        d_name = driver_map.get(d_id, "Unknown Driver")
+        
+        status = shift.get("status", "CLOSED")
+        
+        initial_full = shift.get("load_departure", {}).get("full", 0)
+        rtn_full = shift.get("load_return", {}).get("full", 0)
+        initial_empty = shift.get("load_departure", {}).get("empty", 0)
+        rtn_empty = shift.get("load_return", {}).get("empty", 0)
+        
+        current_full = initial_full - rtn_full
+        current_empty = initial_empty + rtn_empty
+        
+        exp_cash = shift.get("financials", {}).get("expected_cash", 0)
+        upi = shift.get("financials", {}).get("upi_total", 0)
+        actual_cash = shift.get("financials", {}).get("actual_cash", exp_cash) # Default to expected if not reconciled
+        
+        # Aggregate stats (only for the filtered shifts)
+        total_cash += actual_cash if status == "RECONCILED" else exp_cash
+        total_upi += upi
+        total_empties += current_empty
+        total_delivered += rtn_full # Rough proxy for deliveries if not querying orders directly
+        
+        reconciliation = shift.get("reconciliation_report")
+        
+        shift_data.append({
+            "shift_id": str(shift["_id"]),
+            "driver_id": d_id,
+            "driver_name": d_name,
+            "status": status,
+            "date": shift.get("date").isoformat() if isinstance(shift.get("date"), datetime) else shift.get("date"),
+            "initial_full": initial_full,
+            "current_full": current_full,
+            "current_empty": current_empty,
+            "expected_cash": exp_cash,
+            "actual_cash": actual_cash,
+            "upi_total": upi,
+            "reconciliation": reconciliation
+        })
+        
+    return {
+        "success": True,
+        "stats": {
+            "total_cash": total_cash,
+            "total_upi": total_upi,
+            "total_delivered": total_delivered,
+            "total_empties": total_empties
+        },
+        "shift_data": shift_data
+    }

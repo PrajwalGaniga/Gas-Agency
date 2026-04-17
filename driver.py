@@ -137,6 +137,7 @@ async def get_driver_worklist(
             if cust:
                 o["address"] = cust.get("landmark", "No Address")
                 o["phone"] = cust.get("phone_number")
+                o["city"] = cust.get("city", "Unknown")
                 o["verified_lat"] = cust.get("verified_lat")
                 o["verified_lng"] = cust.get("verified_lng")
                 # Calculate real-time distance for sorting
