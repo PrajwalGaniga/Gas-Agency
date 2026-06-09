@@ -38,7 +38,7 @@ def create_driver_token(data: dict):
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     try:
-        if not all([lat1, lon1, lat2, lon2]): return 999.0
+        if any(coord is None for coord in [lat1, lon1, lat2, lon2]): return 999.0
         R = 6371.0 
         phi1, phi2 = math.radians(float(lat1)), math.radians(float(lat2))
         dphi, dlambda = math.radians(float(lat2)-float(lat1)), math.radians(float(lon2)-float(lon1))
@@ -302,6 +302,8 @@ async def sync_offline_data(data: dict = Body(...)):
 async def driver_change_request(data: ChangeRequestPayload = Body(...), driver_id: ObjectId = Depends(get_current_driver)):
     driver = driver_collection.find_one({"_id": driver_id})
     cust = customer_collection.find_one({"_id": ObjectId(data.customer_id)})
+    if not cust:
+        raise HTTPException(status_code=404, detail="Customer not found")
     
     # Determine old value based on category
     category = data.category
@@ -400,13 +402,36 @@ async def complete_order(data: CompleteOrderRequest = Body(...), driver_id: Obje
         if customer and customer.get("verified_lat") and customer.get("verified_lng"):
             distance = calculate_distance(lat, lng, customer["verified_lat"], customer["verified_lng"])
             if distance > 0.15: # 150m threshold
-                # 🛑 Block delivery; require admin change request
-                return {
-                    "success": False, 
-                    "requires_change_request": True,
-                    "distance": distance,
-                    "message": f"Location mismatch: You are {distance * 1000:.0f}m away from verified coordinates. Please submit a Change Request."
-                }
+                if data.force_location_update:
+                    customer_collection.update_one(
+                        {"_id": customer["_id"]},
+                        {"$set": {"verified_lat": lat, "verified_lng": lng}}
+                    )
+                    driver = driver_collection.find_one({"_id": driver_id})
+                    change_requests_collection.insert_one({
+                        "admin_id": driver["admin_id"],
+                        "driver_id": driver_id,
+                        "driver_name": driver["name"],
+                        "customer_id": customer["_id"],
+                        "order_id": o_id,
+                        "request_type": "LOCATION_UPDATE",
+                        "old_value": f"Lat: {customer.get('verified_lat')}, Lng: {customer.get('verified_lng')}",
+                        "new_value": f"Lat: {lat}, Lng: {lng}",
+                        "lat": lat,
+                        "lng": lng,
+                        "status": "AUTO_APPROVED",
+                        "timestamp": datetime.now(timezone.utc)
+                    })
+                    is_flagged = True
+                    print(f"⚠️ Flagged: Auto-approved location update (distance: {distance*1000:.0f}m)")
+                else:
+                    # 🛑 Block delivery; require UI prompt
+                    return {
+                        "success": False, 
+                        "prompt_location_update": True,
+                        "distance": distance,
+                        "message": f"Location mismatch: You are {distance * 1000:.0f}m away. Do you want to update the customer's location to here?"
+                    }
             elif distance > 0.05: # > 50m but < 150m, allow but flag it
                 is_flagged = True
                 print(f"⚠️ Flagged: Driver is {distance*1000:.0f}m away (within 150m limit).")

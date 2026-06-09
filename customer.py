@@ -39,7 +39,7 @@ def get_optimal_driver(admin_id: ObjectId, city: str):
     drivers = list(driver_collection.find({
         "admin_id": admin_id,
         "is_active": True,
-        "assigned_cities": city
+        "assigned_cities": {"$regex": f"^{city}$", "$options": "i"}
     }))
     
     if not drivers:
@@ -184,7 +184,7 @@ async def customer_management(
 
     cities = list(cities_collection.find().sort("name", 1))
     
-    return templates.TemplateResponse("customers.html", {
+    return templates.TemplateResponse(request, "customers.html", {
         "request": request, 
         "customers": processed_customers,
         "cities": cities,

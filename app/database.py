@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 load_dotenv() # Load variables from .env
 
-MONGO_URI = os.getenv("MONGO_URI")
+MONGO_URI = os.getenv("MONGO_URI") or os.getenv("MONGODB_URI")
 
 
 
@@ -46,14 +46,14 @@ driver_collection = db["drivers"] if db is not None else None
 customer_collection = db["customers"] if db is not None else None
 order_collection = db["orders"] if db is not None else None
 # 👇 ADD THIS LINE
-cities_collection = db["cities"]
+cities_collection = db["cities"] if db is not None else None
 
-driver_audit_collection = db["driver_audit_logs"]
-driver_location_collection = db["driver_locations"]
-change_requests_collection = db["customer_change_requests"]
-daily_stats_collection = db["daily_stats"]
-counters_collection = db["counters"]
-shifts_collection = db["shifts"]
+driver_audit_collection = db["driver_audit_logs"] if db is not None else None
+driver_location_collection = db["driver_locations"] if db is not None else None
+change_requests_collection = db["customer_change_requests"] if db is not None else None
+daily_stats_collection = db["daily_stats"] if db is not None else None
+counters_collection = db["counters"] if db is not None else None
+shifts_collection = db["shifts"] if db is not None else None
 
 # Initialize Counter if not exists
 if counters_collection is not None:

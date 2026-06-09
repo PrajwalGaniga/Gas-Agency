@@ -15,6 +15,7 @@ class CompleteOrderRequest(BaseModel):
     empties_collected: int = Field(default=0, ge=0)
     payment_mode: str = Field(default="CASH") # CASH or UPI
     amount_collected: float = Field(default=0.0, ge=0.0)
+    force_location_update: Optional[bool] = False
 
 class LocationPing(BaseModel):
     lat: float = Field(..., ge=-90.0, le=90.0)

@@ -119,14 +119,15 @@ class ApiService {
   }
 
   // --- ACTION QUEUEING (OFFLINE SYNC) ---
-  Future<Map<String, dynamic>> completeOrder(String token, String orderId, double lat, double lng, int emptiesCollected, String paymentMode, double amountCollected) async {
+  Future<Map<String, dynamic>> completeOrder(String token, String orderId, double lat, double lng, int emptiesCollected, String paymentMode, double amountCollected, [bool forceLocationUpdate = false]) async {
     final payload = {
       'order_id': orderId, 
       'lat': lat, 
       'lng': lng,
       'empties_collected': emptiesCollected,
       'payment_mode': paymentMode,
-      'amount_collected': amountCollected
+      'amount_collected': amountCollected,
+      'force_location_update': forceLocationUpdate
     };
 
     try {

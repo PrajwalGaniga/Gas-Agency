@@ -1,11 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
-import 'map_screen.dart';
 import 'login_screen.dart';
-import 'sync_status_screen.dart';
+import 'profile_screen.dart';
+
+// ─── Design Tokens ───────────────────────────────────────────────────────────
+const kBlue       = Color(0xFF2563EB);
+const kGreen      = Color(0xFF16A34A);
+const kAmber      = Color(0xFFF59E0B);
+const kRed        = Color(0xFFEF4444);
+const kBg         = Color(0xFFF8FAFC);
+const kCard       = Color(0xFFFFFFFF);
+const kTextPrimary= Color(0xFF0F172A);
+const kTextMuted  = Color(0xFF64748B);
+const kBorder     = Color(0xFFE2E8F0);
 
 class HomeScreen extends StatefulWidget {
   final Map driverData;
@@ -16,26 +27,24 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  // ── State ──────────────────────────────────────────────────────────────────
   List orders = [];
-  String selectedCity = "All"; // 🏙️ New: Territory Filter State
   bool isLoading = true;
-  bool isSyncing = false; // 🔄 New: Tracks background sync status
   Position? currentPos;
   DateTime selectedDate = DateTime.now();
   Timer? _locationTimer;
-  Map<String, dynamic>? shiftStatus; // 🚚 New: Tracks current inventory
-  int pendingSyncCount = 0; // 🔄 New: Counts items in offline queue
+  Map<String, dynamic>? shiftStatus;
+  int pendingSyncCount = 0;
+  int _currentTab = 0;
 
-  // UX Constants for Consistency
-  final Color kBgColor = const Color(0xFF121212); 
-  final Color kCardColor = const Color(0xFF1E1E1E); 
-  final Color kPrimaryBlue = const Color(0xFF2979FF); 
-  final Color kSuccessGreen = const Color(0xFF00E676); 
+  // ── Tab Animation ──────────────────────────────────────────────────────────
+  late AnimationController _tabAnim;
 
   @override
   void initState() {
     super.initState();
+    _tabAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _initDashboard();
     _startLocationPulse();
   }
@@ -43,16 +52,14 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _locationTimer?.cancel();
+    _tabAnim.dispose();
     super.dispose();
   }
 
-  // 🛰️ Periodic GPS Heartbeat
   void _startLocationPulse() {
-    _locationTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
+    _locationTimer = Timer.periodic(const Duration(minutes: 5), (_) async {
       if (currentPos != null) {
-        await ApiService().sendLocationPing(
-          widget.token, currentPos!.latitude, currentPos!.longitude
-        );
+        await ApiService().sendLocationPing(widget.token, currentPos!.latitude, currentPos!.longitude);
       }
     });
   }
@@ -63,788 +70,999 @@ class _HomeScreenState extends State<HomeScreen> {
     _refreshData();
   }
 
-  // 🔄 REFRESH ENGINE: Now handles Background Sync + Offline Caching
   Future<void> _refreshData() async {
-    setState(() {
-      isLoading = true;
-      isSyncing = true;
-    });
-
+    setState(() => isLoading = true);
     try {
-      // 1. First, try to sync any locally saved offline deliveries
       await ApiService().processSyncQueue(widget.token);
-      
-      // 2. Get GPS
       currentPos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      
-      // 3. Fetch orders (Logic now handles Cache fallback)
-      String cities = (widget.driverData['cities'] as List).join(',');
-      String dateStr = "${selectedDate.year}-${selectedDate.month}-${selectedDate.day}";
-      
-      final res = await ApiService().getOrders(
-        cities, widget.token, currentPos!.latitude, currentPos!.longitude, dateStr
-      );
-
-      // 4. Fetch Shift Status (Inventory)
+      final cities = (widget.driverData['cities'] as List).join(',');
+      final dateStr = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+      final res = await ApiService().getOrders(cities, widget.token, currentPos!.latitude, currentPos!.longitude, dateStr);
       final sStatus = await ApiService().getShiftStatus(widget.token);
-      
-      // 5. Check Sync Queue
       final sCount = await ApiService().getSyncQueueCount();
-      
       if (mounted) {
         setState(() {
           orders = res['orders'] ?? [];
           shiftStatus = sStatus;
           pendingSyncCount = sCount;
           isLoading = false;
-          isSyncing = false;
         });
       }
     } catch (e) {
-      debugPrint("Dashboard Refresh Error: $e");
-      if (mounted) setState(() { isLoading = false; isSyncing = false; });
+      debugPrint("Refresh error: $e");
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
-  // --- UI BUILDERS (Preserving your specific layout) ---
-
-  @override
-  Widget build(BuildContext context) {
-    // 🛡️ Apply Focus Mode Filter
-    List fOrders = orders;
-    if (selectedCity != "All") {
-      fOrders = orders.where((o) => o['city'] == selectedCity).toList();
-    }
-    
-    int deliv = fOrders.where((o) => o['status'] == 'DELIVERED').length;
-    int ongoing = fOrders.where((o) => o['status'] == 'IN_PROGRESS').length;
-    int pend = fOrders.where((o) => o['status'] == 'PENDING').length;
-
-    return Scaffold(
-      backgroundColor: kBgColor,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: kCardColor,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("GASFLOW", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, color: Colors.white)),
-            if (isSyncing) 
-              const Text("Syncing with cloud...", style: TextStyle(fontSize: 10, color: Colors.orangeAccent, fontWeight: FontWeight.bold))
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isSyncing ? Icons.sync : Icons.cloud_sync, 
-              color: isSyncing ? Colors.orangeAccent : Colors.white
-            ),
-            tooltip: 'Sync Status',
-            onPressed: () {
-              Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (context) => SyncStatusScreen(token: widget.token))
-              ).then((_) => _refreshData());
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white), 
-            onPressed: _refreshData,
-            tooltip: 'Refresh Data',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.redAccent), 
-            onPressed: () async {
-              await ApiService().logout();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()), 
-                  (route) => false,
-                );
-              }
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // 1️⃣ DRIVER PERFORMANCE DASHBOARD
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 5, 16, 20),
-            decoration: BoxDecoration(
-              color: kCardColor,
-              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 10, offset: const Offset(0, 5))]
-            ),
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: () => _selectDate(context),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.calendar_month, color: Colors.white70, size: 20),
-                        const SizedBox(width: 8),
-                        Text("${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                        const Icon(Icons.arrow_drop_down, color: Colors.white70)
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    _statCard("Total", fOrders.length.toString(), Colors.grey[800]!),
-                    const SizedBox(width: 10),
-                    _statCard("Done", deliv.toString(), Colors.green[900]!),
-                    const SizedBox(width: 10),
-                    _statCard("Pending", pend.toString(), Colors.orange[900]!),
-                    const SizedBox(width: 10),
-                    _statCard("Active", ongoing.toString(), kPrimaryBlue.withOpacity(0.3)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // 2️⃣ PRIMARY CTA: MAP VIEW
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimaryBlue, foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 56),
-                elevation: 4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () {
-                if(fOrders.isEmpty) {
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No orders available to map.")));
-                   return;
-                }
-                Navigator.push(context, MaterialPageRoute(builder: (context) => MapScreen(orders: fOrders, currentPos: currentPos!)));
-              },
-              icon: const Icon(Icons.map, size: 28),
-              label: const Text("VIEW MAP MODE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1)),
-            ),
-          ),
-
-          // 1.5️⃣ SHIFT STOCK WIDGET (Enhanced)
-          if (shiftStatus != null && shiftStatus!['active'] == true)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [kCardColor, kCardColor.withOpacity(0.8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))
-                  ]
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("TRUCK STOCK", style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-                        Row(
-                          children: [
-                            if (pendingSyncCount > 0)
-                              Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: Colors.orangeAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.orangeAccent.withOpacity(0.4))),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.sync_problem, color: Colors.orangeAccent, size: 10),
-                                    const SizedBox(width: 4),
-                                    Text("$pendingSyncCount PENDING", style: const TextStyle(color: Colors.orangeAccent, fontSize: 8, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.green[900]?.withOpacity(0.3), borderRadius: BorderRadius.circular(20)),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.check_circle, color: Colors.greenAccent, size: 12),
-                                  SizedBox(width: 4),
-                                  Text("SHIFT OPEN", style: TextStyle(color: Colors.greenAccent, fontSize: 9, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _inventoryItem("LOADED", shiftStatus!['inventory']['total_loaded']?.toString() ?? "0", Icons.add_business, Colors.indigoAccent),
-                        _inventoryItem("AVAILABLE", shiftStatus!['inventory']['full_cylinders'].toString(), Icons.propane_tank, Colors.blueAccent),
-                        _inventoryItem("EMPTIES", shiftStatus!['inventory']['empty_cylinders'].toString(), Icons.moped, Colors.orangeAccent),
-                        _inventoryItem("COLLECTED", "₹${shiftStatus!['financials']['expected_cash'] ?? shiftStatus!['financials']['expected_cash_collected'] ?? 0.0}", Icons.payments, Colors.greenAccent),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // 3️⃣ LIST HEADER
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Row(
-              children: [
-                Text("ORDERS QUEUE", style: TextStyle(color: Colors.grey[400], fontSize: 12, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                if (isLoading) const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70))
-              ],
-            ),
-          ),
-          
-          // 🏙️ 3.5 FOCUS MODE CHIPS
-          _buildCityFilter(),
-          
-          // 🚀 3.6 SMART NEXT DELIVERY BANNER
-          _buildNextDeliveryBanner(fOrders),
-
-          // 4️⃣ SCROLLABLE ORDER LIST
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshData,
-              child: fOrders.isEmpty && !isLoading 
-                ? const Center(child: Text("No orders found for this territory.", style: TextStyle(color: Colors.grey)))
-                : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 80, top: 10),
-                    itemCount: fOrders.length,
-                    itemBuilder: (context, index) => _buildOrderRow(fOrders[index], index + 1),
-                  ),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  // 📝 UPDATED ORDER ROW: Handles Offline Success Feedback & Type Safety
-  Widget _buildOrderRow(Map o, int sno) {
-    final status = o['status'] ?? 'PENDING';
-    Color rowBgColor;
-    Color statusColor;
-
-    switch (status) {
-      case 'DELIVERED':
-        rowBgColor = const Color(0xFF0F2E14); 
-        statusColor = kSuccessGreen;
-        break;
-      case 'IN_PROGRESS':
-        rowBgColor = const Color(0xFF0D2545); 
-        statusColor = kPrimaryBlue;
-        break;
-      default:
-        rowBgColor = kCardColor;
-        statusColor = Colors.orangeAccent;
-    }
-
-    // 🕒 OVERDUE CHECK (> 4 hours pending)
-    bool isOverdue = false;
-    if (status == 'PENDING' && o['created_at'] != null) {
-      try {
-        DateTime createdAt = DateTime.parse(o['created_at'].toString());
-        if (DateTime.now().toUtc().difference(createdAt).inHours >= 4) {
-          isOverdue = true;
-        }
-      } catch (e) {
-        // ignore date parse errors
-      }
-    }
-
-    // 🛡️ PRO-FIX: Safe distance parsing to prevent 'String is not a subtype of double' crash
-    double distance = 0.0;
-    try {
-      var rawDist = o['distance'];
-      if (rawDist != null) {
-        // This handles cases where rawDist is already a double or a String from cache
-        distance = double.tryParse(rawDist.toString()) ?? 0.0;
-      }
-    } catch (e) {
-      distance = 0.0;
-    }
-
-    return Card(
-      color: rowBgColor,
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: status == 'IN_PROGRESS' ? BorderSide(color: kPrimaryBlue, width: 2) : BorderSide.none
-      ),
-      child: ExpansionTile(
-        initiallyExpanded: status == 'IN_PROGRESS',
-        iconColor: Colors.white,
-        collapsedIconColor: Colors.grey,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Row(
-          children: [
-            Text("#$sno", style: TextStyle(color: Colors.grey[500], fontSize: 14, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(o['customer_name'] ?? 'Unknown', overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    Icon(Icons.circle, size: 8, color: statusColor),
-                    const SizedBox(width: 4),
-                    Text(status.replaceAll('_', ' '), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold)),
-                    if (o['is_rescheduled'] == true) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.amber[900], 
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.amber[400]!, width: 0.5)
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.warning_amber_rounded, size: 10, color: Colors.white),
-                            SizedBox(width: 2),
-                            Text('RESCHEDULED', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      )
-                    ] else if (isOverdue) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(color: Colors.red[900], borderRadius: BorderRadius.circular(4)),
-                        child: const Text('DELAYED', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                      )
-                    ]
-                  ])
-                ],
-              )
-            ),
-            if (o['verified_lat'] != null)
-              _navButton(
-                // Ensure coordinates are also treated as doubles safely
-                double.tryParse(o['verified_lat'].toString()) ?? 0.0, 
-                double.tryParse(o['verified_lng'].toString()) ?? 0.0
-              ),
-          ],
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Row(children: [
-            const Icon(Icons.location_on, size: 14, color: Colors.grey),
-            const SizedBox(width: 4),
-            Expanded(child: Text("${o['address']} • ${distance.toStringAsFixed(1)} km",
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 13))),
-          ]),
-        ),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(color: Color(0xFF252525), borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12))),
-            child: Row(
-              children: [
-                _actionBtn(Icons.call, Colors.grey[800]!, Colors.white, "Call", () => launchUrl(Uri.parse("tel:${o['phone']}"))),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: status == 'PENDING'
-                    ? _mainActionBtn("ACCEPT ORDER", Colors.orange[800]!, () => _handleStatusChange(o, 'accept'))
-                    : status == 'IN_PROGRESS'
-                        ? _mainActionBtn(
-                            "MARK DELIVERED", 
-                            (shiftStatus?['inventory']?['full_cylinders'] ?? 0) > 0 ? kSuccessGreen : Colors.grey, 
-                            () => (shiftStatus?['inventory']?['full_cylinders'] ?? 0) > 0 
-                                ? _showDeliveryConfirmation(o) 
-                                : ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Insufficient Stock on Truck.")))
-                          )
-                        : Container(height: 45, alignment: Alignment.center,
-                            decoration: BoxDecoration(border: Border.all(color: Colors.green), borderRadius: BorderRadius.circular(8)),
-                            child: const Text("COMPLETED", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
-                ),
-                const SizedBox(width: 10),
-                _actionBtn(Icons.edit, Colors.grey[800]!, Colors.white, "Edit", () => _showChangeRequest(o)),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-  // --- LOGIC HANDLING (Updated for Offline Feedback) ---
-
-  Future<void> _handleStatusChange(Map o, String action, {int empties = 0, String paymentMode = 'CASH', double amountCollected = 0.0}) async {
+  // ── Delivery Complete handler ──────────────────────────────────────────────
+  Future<void> _handleComplete(Map order, {int empties = 0, String paymentMode = 'CASH', double amount = 0.0, bool forceUpdate = false}) async {
     setState(() => isLoading = true);
-    
     try {
-      if (action == 'accept') {
-        final res = await ApiService().acceptOrder(widget.token, o['_id']);
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? "Order Accepted")));
-      } else {
-        Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-        final res = await ApiService().completeOrder(widget.token, o['_id'], pos.latitude, pos.longitude, empties, paymentMode, amountCollected);
-        
-        // 🛡️ OFFLINE FEEDBACK: Tell user if it's saved locally
-        if (mounted && res['offline'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(backgroundColor: Colors.orange, content: Text("No signal. Delivery saved on phone and will sync later."))
-          );
-        } else if (mounted && res['success'] == false) {
-           ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.redAccent, content: Text(res['message'] ?? "Failed to mark delivered.")));
-        } else if (mounted && res['success'] == true) {
-           ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.green, content: Text(res['message'] ?? "Delivery successful.")));
-        }
-      }
-      _refreshData();
-    } catch (e) {
-      if (mounted) {
+      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final res = await ApiService().completeOrder(widget.token, order['_id'], pos.latitude, pos.longitude, empties, paymentMode, amount, forceUpdate);
+
+      if (mounted && res['prompt_location_update'] == true) {
         setState(() => isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error processing status change.")));
+        _showLocationMismatchDialog(order, res['message'] ?? '', empties: empties, paymentMode: paymentMode, amount: amount);
+        return;
       }
+      setState(() => isLoading = false);
+      if (mounted) {
+        final success = res['success'] == true;
+        _showResultBanner(success ? "Delivery completed! 🎉" : (res['message'] ?? "Failed"), success ? kGreen : kRed);
+        if (success) _refreshData();
+      }
+    } catch (_) {
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
-  // --- REUSABLE UI COMPONENTS ---
-
-  Widget _buildCityFilter() {
-    List<dynamic> assignedCities = widget.driverData['cities'] ?? [];
-    if (assignedCities.isEmpty) return const SizedBox.shrink();
-    
-    List<String> chips = ["All", ...assignedCities.map((e) => e.toString())];
-    
-    return Container(
-      height: 55,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: chips.length,
-        itemBuilder: (context, index) {
-          String city = chips[index];
-          bool isSelected = selectedCity == city;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0, top: 5, bottom: 5),
-            child: ChoiceChip(
-              label: Text(city, style: TextStyle(color: isSelected ? Colors.black : Colors.white70, fontWeight: FontWeight.bold)),
-              selected: isSelected,
-              selectedColor: kSuccessGreen,
-              backgroundColor: const Color(0xFF2C2C2C),
-              showCheckmark: false,
-              onSelected: (bool selected) {
-                if(selected) setState(() => selectedCity = city);
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildNextDeliveryBanner(List fOrders) {
-    if (fOrders.isEmpty) return const SizedBox.shrink();
-    
-    Map? nextOrder;
-    try {
-      nextOrder = fOrders.firstWhere((o) => o['status'] == 'IN_PROGRESS' || o['status'] == 'PENDING');
-    } catch (e) {
-      nextOrder = null;
+  Future<void> _handleAccept(Map order) async {
+    setState(() => isLoading = true);
+    final res = await ApiService().acceptOrder(widget.token, order['_id']);
+    setState(() => isLoading = false);
+    if (mounted) {
+      _showResultBanner(res['message'] ?? "Order accepted", res['success'] == true ? kGreen : kRed);
+      if (res['success'] == true) _refreshData();
     }
-    
-    if (nextOrder == null) return const SizedBox.shrink();
-
-    String statusMsg = nextOrder['status'] == 'IN_PROGRESS' ? "CURRENT DESTINATION" : "NEXT CLOSEST DELIVERY";
-    
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 5, 16, 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: kPrimaryBlue.withOpacity(0.15),
-        border: Border.all(color: kPrimaryBlue.withOpacity(0.5)),
-        borderRadius: BorderRadius.circular(12)
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.directions_car, color: kPrimaryBlue, size: 28),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(statusMsg, style: TextStyle(color: kPrimaryBlue, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
-                const SizedBox(height: 4),
-                Text(nextOrder['customer_name'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                Text("${nextOrder['address']}", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
-            )
-          ),
-          //const Icon(Icons.touch_app, color:kPrimaryBlue, size: 20)
-        ],
-      )
-    );
   }
 
-  Widget _navButton(double lat, double lng) {
-    return GestureDetector(
-      onTap: () => _launchNavigation(lat, lng),
-      child: Container(
-        margin: const EdgeInsets.only(left: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-        child: const Row(children: [
-          Icon(Icons.near_me, color: Colors.black, size: 16),
-          SizedBox(width: 4),
-          Text("NAV", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12)),
-        ]),
-      ),
-    );
-  }
-
-  Widget _statCard(String label, String val, Color color) {
-    return Expanded(child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white10)),
-      child: Column(children: [
-        Text(val, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 4),
-        Text(label.toUpperCase(), style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-      ]),
+  void _showResultBanner(String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.all(16),
     ));
   }
 
-  Widget _actionBtn(IconData icon, Color bg, Color fg, String label, VoidCallback onTap) {
-    return InkWell(onTap: onTap,
-      child: Container(width: 50, height: 45, decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-        child: Icon(icon, color: fg, size: 20)));
+  // ─────────────────────────────────────────────────────────────────────────
+  // BUILD
+  // ─────────────────────────────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    final pendingOrders  = orders.where((o) => o['status'] == 'PENDING').toList();
+    final activeOrder    = orders.cast<dynamic>().firstWhere((o) => o['status'] == 'IN_PROGRESS', orElse: () => null);
+    final deliveredCount = orders.where((o) => o['status'] == 'DELIVERED').length;
+
+    return Scaffold(
+      backgroundColor: kBg,
+      body: IndexedStack(
+        index: _currentTab,
+        children: [
+          _buildTasksTab(pendingOrders, activeOrder, deliveredCount),
+          _buildMapTab(),
+          ProfileScreen(driverData: widget.driverData, token: widget.token, shiftStatus: shiftStatus, onLogout: _logout),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
   }
 
-  Widget _mainActionBtn(String label, Color bg, VoidCallback onTap) {
-    return SizedBox(height: 45,
-      child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: bg, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-        onPressed: onTap, child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))));
+  // ─── Bottom Navigation ────────────────────────────────────────────────────
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: kCard,
+        border: Border(top: BorderSide(color: kBorder, width: 1)),
+      ),
+      child: BottomNavigationBar(
+        currentIndex: _currentTab,
+        onTap: (i) => setState(() => _currentTab = i),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        items: [
+          BottomNavigationBarItem(
+            icon: _navIcon(Icons.check_circle_outline_rounded, 0),
+            activeIcon: _navIcon(Icons.check_circle_rounded, 0),
+            label: "Tasks",
+          ),
+          BottomNavigationBarItem(
+            icon: _navIcon(Icons.map_outlined, 1),
+            activeIcon: _navIcon(Icons.map_rounded, 1),
+            label: "Map",
+          ),
+          BottomNavigationBarItem(
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                _navIcon(Icons.person_outline_rounded, 2),
+                if (pendingSyncCount > 0)
+                  Positioned(
+                    right: -4, top: -4,
+                    child: Container(
+                      width: 8, height: 8,
+                      decoration: const BoxDecoration(color: kAmber, shape: BoxShape.circle),
+                    ),
+                  ),
+              ],
+            ),
+            activeIcon: _navIcon(Icons.person_rounded, 2),
+            label: "Profile",
+          ),
+        ],
+      ),
+    );
   }
 
-  Widget _inventoryItem(String label, String value, IconData icon, Color color) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-        Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 10, fontWeight: FontWeight.bold)),
+  Widget _navIcon(IconData icon, int tab) => Icon(icon, color: _currentTab == tab ? kBlue : kTextMuted, size: 24);
+
+  // ─── Tasks Tab (MAIN) ─────────────────────────────────────────────────────
+  Widget _buildTasksTab(List pending, dynamic active, int delivered) {
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        // Header
+        SliverToBoxAdapter(child: _buildHeader(delivered, pending.length, active != null)),
+
+        // Active Job Card (if driver has one)
+        if (active != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: _buildActiveJobCard(active),
+            ),
+          ),
+
+        // Section label
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                Text(
+                  active != null ? "Upcoming Deliveries" : "Today's Deliveries",
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kTextMuted, letterSpacing: 0.5),
+                ),
+                const Spacer(),
+                if (isLoading)
+                  const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: kBlue)),
+              ],
+            ),
+          ),
+        ),
+
+        // Empty state
+        if (orders.isEmpty && !isLoading)
+          SliverToBoxAdapter(child: _buildEmptyState()),
+
+        // Orders list
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (ctx, i) {
+              final o = (active != null ? pending : orders)[i];
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: _buildOrderCard(o),
+              );
+            },
+            childCount: (active != null ? pending : orders).length,
+          ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
     );
   }
 
-  // (Kept _selectDate and _showChangeRequest the same as your previous version for production reliability)
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(context: context, initialDate: selectedDate, firstDate: DateTime(2025), lastDate: DateTime.now(),
-      builder: (context, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: ColorScheme.dark(primary: kPrimaryBlue, onPrimary: Colors.white, surface: kCardColor)), child: child!));
-    if (picked != null && picked != selectedDate) { setState(() => selectedDate = picked); _refreshData(); }
+  // ─── Header ───────────────────────────────────────────────────────────────
+  Widget _buildHeader(int delivered, int pending, bool hasActive) {
+    final name = (widget.driverData['name'] ?? 'Driver').toString().split(' ').first;
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+    final shiftOpen = shiftStatus?['active'] == true;
+
+    return Container(
+      color: kCard,
+      padding: const EdgeInsets.fromLTRB(16, 56, 16, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("$greeting,", style: const TextStyle(fontSize: 13, color: kTextMuted)),
+                    const SizedBox(height: 2),
+                    Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: kTextPrimary, letterSpacing: -0.5)),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: _refreshData,
+                child: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: isLoading ? kBlue.withOpacity(0.1) : kBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: kBorder),
+                  ),
+                  child: Icon(Icons.refresh_rounded, size: 20, color: isLoading ? kBlue : kTextMuted),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Stats Row
+          Row(
+            children: [
+              _statPill("${delivered}", "Delivered", kGreen),
+              const SizedBox(width: 8),
+              _statPill("${pending}", "Pending", kAmber),
+              const SizedBox(width: 8),
+              _statPill(shiftOpen ? "${shiftStatus!['inventory']['full_cylinders']}" : "–", "On Truck", kBlue),
+              const Spacer(),
+              // Date selector
+              GestureDetector(
+                onTap: () => _pickDate(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: kBg, borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: kBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today_rounded, size: 13, color: kTextMuted),
+                      const SizedBox(width: 4),
+                      Text(
+                        "${selectedDate.day}/${selectedDate.month}",
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kTextPrimary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Shift warning
+          if (!shiftOpen) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: kAmber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: kAmber.withOpacity(0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, size: 16, color: kAmber),
+                  SizedBox(width: 8),
+                  Text("No active shift — contact admin to start your shift", style: TextStyle(fontSize: 12, color: kAmber, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
-  void _showChangeRequest(Map order) {
-    String category = "LOCATION_UPDATE";
-    final detailsController = TextEditingController();
-    double? capturedLat;
-    double? capturedLng;
-    bool isCapturing = false;
+  Widget _statPill(String value, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(fontSize: 10, color: kTextMuted, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
 
-    showDialog(context: context, builder: (c) => StatefulBuilder(
-      builder: (context, setStateDialog) {
-        return AlertDialog(
-          backgroundColor: kCardColor,
-          title: const Text("Change Request", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: category,
-                dropdownColor: const Color(0xFF2C2C2C),
-                style: const TextStyle(color: Colors.white),
-                items: const [
-                  DropdownMenuItem(value: "LOCATION_UPDATE", child: Text("Wrong Address (GPS)")),
-                  DropdownMenuItem(value: "PHONE", child: Text("New Phone Number"))
-                ],
-                onChanged: (v) => setStateDialog(() {
-                  category = v!;
-                  capturedLat = null;
-                  capturedLng = null;
-                }),
-                decoration: const InputDecoration(filled: true, fillColor: Color(0xFF121212), border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 20),
-              if (category == "LOCATION_UPDATE") ...[
-                ElevatedButton.icon(
-                  icon: isCapturing 
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
-                    : const Icon(Icons.my_location, size: 18),
-                  label: Text(isCapturing ? "FETCHING GPS..." : "USE MY CURRENT LOCATION"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: capturedLat != null ? Colors.green[700] : kPrimaryBlue,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+  // ─── Active Job Card (Uber-style dominant card) ────────────────────────────
+  Widget _buildActiveJobCard(Map order) {
+    final distance = (order['distance'] as num?)?.toDouble() ?? 0.0;
+    final eta = (distance * 3).ceil(); // rough ETA in minutes
+
+    return Container(
+      decoration: BoxDecoration(
+        color: kBlue,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: kBlue.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  onPressed: isCapturing ? null : () async {
-                    setStateDialog(() => isCapturing = true);
-                    try {
-                      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-                      setStateDialog(() {
-                        capturedLat = pos.latitude;
-                        capturedLng = pos.longitude;
-                        isCapturing = false;
-                      });
-                    } catch (e) {
-                      setStateDialog(() => isCapturing = false);
-                      if(context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("GPS Error: Enable permissions")));
-                    }
-                  },
+                  child: const Text("ACTIVE DELIVERY", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.8)),
                 ),
-                if (capturedLat != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      "📍 Lat: ${capturedLat!.toStringAsFixed(4)}, Lng: ${capturedLng!.toStringAsFixed(4)} captured",
-                      style: const TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
+              ],
+            ),
+          ),
+
+          // Customer info
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order['customer_name'] ?? 'Customer',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: -0.3),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_rounded, size: 14, color: Colors.white70),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              order['address'] ?? '—',
+                              style: const TextStyle(fontSize: 13, color: Colors.white70),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-              ] else ...[
-                TextField(
-                  controller: detailsController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: "Correct Details", 
-                    filled: true, 
-                    fillColor: Color(0xFF121212),
-                    border: OutlineInputBorder(),
+                ),
+                // Call button
+                GestureDetector(
+                  onTap: () => launchUrl(Uri.parse("tel:${order['phone']}")),
+                  child: Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.call_rounded, color: Colors.white, size: 20),
                   ),
                 ),
               ],
-            ],
+            ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: (category == "LOCATION_UPDATE" && capturedLat == null) ? Colors.grey : kPrimaryBlue,
-              ), 
-              onPressed: (category == "LOCATION_UPDATE" && capturedLat == null) ? null : () async {
-                final payload = {
-                  'customer_id': order['customer_id'],
-                  'order_id': order['_id'],
-                  'category': category,
-                  'new_details': category == "LOCATION_UPDATE" ? "GPS COORDINATES" : detailsController.text,
-                  'lat': capturedLat,
-                  'lng': capturedLng,
-                };
-                await ApiService().submitChangeRequest(widget.token, payload);
-                if(mounted) Navigator.pop(context);
-                _refreshData();
-              }, 
-              child: const Text("SUBMIT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+
+          // Distance + ETA
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            child: Row(
+              children: [
+                _metricChip(Icons.straighten_rounded, "${distance.toStringAsFixed(1)} km"),
+                const SizedBox(width: 8),
+                _metricChip(Icons.schedule_rounded, "~$eta min"),
+              ],
+            ),
+          ),
+
+          // Action area
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Navigate
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _launchNav(order['verified_lat'], order['verified_lng']),
+                    child: Container(
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.navigation_rounded, color: Colors.white, size: 18),
+                          SizedBox(width: 6),
+                          Text("Navigate", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Complete
+                Expanded(
+                  flex: 2,
+                  child: GestureDetector(
+                    onTap: () => _showDeliverySheet(order),
+                    child: Container(
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_rounded, color: kBlue, size: 18),
+                          SizedBox(width: 6),
+                          Text("Complete Delivery", style: TextStyle(color: kBlue, fontWeight: FontWeight.w700, fontSize: 14)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Report issue link
+          GestureDetector(
+            onTap: () => _showIssueSheet(order),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: const BoxDecoration(
+                color: Color(0x20000000),
+                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
+              ),
+              child: const Text(
+                "⚠ Report Issue",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metricChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 13, color: Colors.white70),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  // ─── Pending Order Card ────────────────────────────────────────────────────
+  Widget _buildOrderCard(Map order) {
+    final status = order['status'] ?? 'PENDING';
+    final isDelivered = status == 'DELIVERED';
+    final distance = (order['distance'] as num?)?.toDouble() ?? 0.0;
+
+    Color statusColor;
+    String statusLabel;
+    IconData statusIcon;
+
+    switch (status) {
+      case 'DELIVERED':
+        statusColor = kGreen; statusLabel = "Delivered"; statusIcon = Icons.check_circle_rounded;
+        break;
+      case 'IN_PROGRESS':
+        statusColor = kBlue; statusLabel = "In Progress"; statusIcon = Icons.directions_car_rounded;
+        break;
+      default:
+        statusColor = kAmber; statusLabel = "Pending"; statusIcon = Icons.pending_rounded;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: kCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: kBorder),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Status indicator
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(statusIcon, color: statusColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                // Customer info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              order['customer_name'] ?? 'Customer',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kTextPrimary),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(statusLabel, style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 13, color: kTextMuted),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              "${order['address'] ?? '—'} · ${distance.toStringAsFixed(1)} km",
+                              style: const TextStyle(fontSize: 12, color: kTextMuted),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (order['city'] != null) ...[
+                        const SizedBox(height: 4),
+                        Text(order['city'], style: const TextStyle(fontSize: 11, color: kBlue, fontWeight: FontWeight.w500)),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          if (!isDelivered) ...[
+            const Divider(height: 1, thickness: 1, color: kBorder),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+              child: Row(
+                children: [
+                  // Call
+                  GestureDetector(
+                    onTap: () => launchUrl(Uri.parse("tel:${order['phone']}")),
+                    child: _iconAction(Icons.call_rounded, "Call", kTextMuted),
+                  ),
+                  const SizedBox(width: 8),
+                  // Navigate
+                  if (order['verified_lat'] != null) ...[
+                    GestureDetector(
+                      onTap: () => _launchNav(order['verified_lat'], order['verified_lng']),
+                      child: _iconAction(Icons.near_me_rounded, "Navigate", kBlue),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  const Spacer(),
+                  // Primary action
+                  if (status == 'PENDING')
+                    SizedBox(
+                      height: 40,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 20),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () => _handleAccept(order),
+                        child: const Text("Accept", style: TextStyle(fontSize: 13)),
+                      ),
+                    )
+                  else if (status == 'IN_PROGRESS')
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => _showIssueSheet(order),
+                          child: _iconAction(Icons.flag_rounded, "Issue", kRed),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          height: 40,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kGreen,
+                              minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 20),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () => _showDeliverySheet(order),
+                            child: const Text("Deliver", style: TextStyle(fontSize: 13, color: Colors.white)),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
             ),
           ],
-        );
-      }
-    ));
+        ],
+      ),
+    );
   }
 
-  void _showDeliveryConfirmation(Map order) {
-    int emptiesCollected = 0;
-    String paymentMode = "CASH";
-    final emptiesController = TextEditingController(text: "1");
-    // Ensure accurate price defaulting or set to empty if 0
-    final initialAmount = order['total_amount']?.toString() ?? "1000";
-    final amountController = TextEditingController(text: initialAmount);
+  Widget _iconAction(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
 
-    showDialog(context: context, builder: (c) {
-      return StatefulBuilder(
-        builder: (context, setStateDialog) {
-          return AlertDialog(
-            backgroundColor: kCardColor,
-            title: const Text("Confirm Delivery", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            content: SingleChildScrollView(
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text("Empties Collected", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: emptiesController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    filled: true, fillColor: Color(0xFF121212),
-                    border: OutlineInputBorder(),
+  // ─── Empty State ──────────────────────────────────────────────────────────
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        children: [
+          Container(
+            width: 72, height: 72,
+            decoration: BoxDecoration(color: kBorder, borderRadius: BorderRadius.circular(20)),
+            child: const Icon(Icons.inbox_rounded, size: 36, color: kTextMuted),
+          ),
+          const SizedBox(height: 16),
+          const Text("All done for today!", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: kTextPrimary)),
+          const SizedBox(height: 4),
+          const Text("No deliveries assigned. Check back soon.", style: TextStyle(fontSize: 13, color: kTextMuted), textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+
+  // ─── Map Tab ──────────────────────────────────────────────────────────────
+  Widget _buildMapTab() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 72, height: 72,
+          decoration: BoxDecoration(color: kBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+          child: const Icon(Icons.map_rounded, size: 36, color: kBlue),
+        ),
+        const SizedBox(height: 20),
+        const Text("Map View", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: kTextPrimary)),
+        const SizedBox(height: 8),
+        const Text("Open Google Maps to navigate to any delivery.", style: TextStyle(fontSize: 14, color: kTextMuted), textAlign: TextAlign.center),
+        const SizedBox(height: 32),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: ElevatedButton.icon(
+            onPressed: () {
+              final active = orders.cast<dynamic>().firstWhere((o) => o['status'] == 'IN_PROGRESS', orElse: () => null);
+              if (active != null) {
+                _launchNav(active['verified_lat'], active['verified_lng']);
+              } else {
+                _showResultBanner("No active delivery to navigate to", kAmber);
+              }
+            },
+            icon: const Icon(Icons.navigation_rounded, size: 18),
+            label: const Text("Open Current Delivery"),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── Delivery Completion Sheet ─────────────────────────────────────────────
+  void _showDeliverySheet(Map order) {
+    int empties = 1;
+    String payMode = "CASH";
+    final amountCtrl = TextEditingController(text: order['total_amount']?.toString() ?? "");
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => Container(
+          decoration: const BoxDecoration(
+            color: kCard,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: kBorder, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 20),
+
+              const Text("Confirm Delivery", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: kTextPrimary)),
+              Text(order['customer_name'] ?? '', style: const TextStyle(fontSize: 14, color: kTextMuted)),
+              const SizedBox(height: 24),
+
+              // Empty cylinders
+              const Text("Empty cylinders collected", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kTextPrimary)),
+              const SizedBox(height: 10),
+              Row(
+                children: [0, 1, 2, 3].map((n) => GestureDetector(
+                  onTap: () => setS(() => empties = n),
+                  child: Container(
+                    width: 52, height: 52, margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: empties == n ? kBlue : kBg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: empties == n ? kBlue : kBorder, width: empties == n ? 2 : 1),
+                    ),
+                    child: Center(
+                      child: Text("$n", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: empties == n ? Colors.white : kTextPrimary)),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 15),
-                const Text("Amount Collected (₹)", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    filled: true, fillColor: Color(0xFF121212),
-                    border: OutlineInputBorder(),
+                )).toList(),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Amount
+              const Text("Amount collected (₹)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kTextPrimary)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: amountCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(prefixIcon: Icon(Icons.currency_rupee_rounded, size: 18, color: kTextMuted)),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Payment mode
+              const Text("Payment method", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kTextPrimary)),
+              const SizedBox(height: 10),
+              Row(
+                children: ["CASH", "UPI"].map((mode) => GestureDetector(
+                  onTap: () => setS(() => payMode = mode),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      color: payMode == mode ? kBlue.withOpacity(0.08) : kBg,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: payMode == mode ? kBlue : kBorder, width: payMode == mode ? 1.5 : 1),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(mode == "CASH" ? Icons.payments_rounded : Icons.smartphone_rounded, size: 16, color: payMode == mode ? kBlue : kTextMuted),
+                        const SizedBox(width: 6),
+                        Text(mode, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: payMode == mode ? kBlue : kTextMuted)),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 15),
-                const Text("Payment Method", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: paymentMode,
-                  dropdownColor: const Color(0xFF2C2C2C),
-                  style: const TextStyle(color: Colors.white),
-                  items: const [
-                    DropdownMenuItem(value: "CASH", child: Text("Cash (INR)")),
-                    DropdownMenuItem(value: "UPI", child: Text("UPI / Online")),
-                  ],
-                  onChanged: (v) => setStateDialog(() => paymentMode = v!),
-                  decoration: const InputDecoration(filled: true, fillColor: Color(0xFF121212), border: OutlineInputBorder()),
-                ),
-              ]),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
+                )).toList(),
+              ),
+
+              const SizedBox(height: 28),
+
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: kSuccessGreen), 
                 onPressed: () {
-                  int parsedEmpties = int.tryParse(emptiesController.text) ?? 0;
-                  double parsedAmount = double.tryParse(amountController.text) ?? 1000.0;
-                  Navigator.pop(context);
-                  _handleStatusChange(order, 'complete', empties: parsedEmpties, paymentMode: paymentMode, amountCollected: parsedAmount);
-                }, 
-                child: const Text("CONFIRM", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold))
+                  Navigator.pop(ctx);
+                  _handleComplete(order, empties: empties, paymentMode: payMode, amount: double.tryParse(amountCtrl.text) ?? 0.0);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: kGreen),
+                child: const Text("Confirm & Complete"),
               ),
             ],
-          );
-        }
-      );
-    });
+          ),
+        ),
+      ),
+    );
   }
 
-  Future<void> _launchNavigation(dynamic lat, dynamic lng) async {
+  // ─── Issue Report Sheet ────────────────────────────────────────────────────
+  void _showIssueSheet(Map order) {
+    String? selected;
+    const issues = [
+      ("Customer not available", Icons.person_off_rounded),
+      ("Wrong address / GPS", Icons.wrong_location_rounded),
+      ("Cylinder issue / leak", Icons.warning_rounded),
+      ("Customer refused delivery", Icons.block_rounded),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => Container(
+          decoration: const BoxDecoration(
+            color: kCard,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: kBorder, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 20),
+
+              const Row(
+                children: [
+                  Icon(Icons.flag_rounded, color: kRed, size: 20),
+                  SizedBox(width: 8),
+                  Text("Report Issue", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: kTextPrimary)),
+                ],
+              ),
+              Text(order['customer_name'] ?? '', style: const TextStyle(fontSize: 14, color: kTextMuted)),
+              const SizedBox(height: 20),
+
+              ...issues.map((issue) => GestureDetector(
+                onTap: () => setS(() => selected = issue.$1),
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: selected == issue.$1 ? kRed.withOpacity(0.06) : kBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: selected == issue.$1 ? kRed : kBorder, width: selected == issue.$1 ? 1.5 : 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(issue.$2, size: 18, color: selected == issue.$1 ? kRed : kTextMuted),
+                      const SizedBox(width: 12),
+                      Text(issue.$1, style: TextStyle(fontSize: 14, color: selected == issue.$1 ? kRed : kTextPrimary, fontWeight: FontWeight.w500)),
+                      const Spacer(),
+                      if (selected == issue.$1) const Icon(Icons.check_circle_rounded, color: kRed, size: 18),
+                    ],
+                  ),
+                ),
+              )),
+
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: selected == null ? null : () {
+                  Navigator.pop(ctx);
+                  _showResultBanner("Issue reported to admin", kAmber);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: selected == null ? kBorder : kRed,
+                  disabledBackgroundColor: kBorder,
+                ),
+                child: const Text("Submit Report"),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Location Mismatch Dialog ──────────────────────────────────────────────
+  void _showLocationMismatchDialog(Map order, String msg, {int empties = 0, String paymentMode = 'CASH', double amount = 0.0}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: kCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: EdgeInsets.zero,
+        content: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(color: kAmber.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+                child: const Icon(Icons.wrong_location_rounded, color: kAmber, size: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text("Location Mismatch", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: kTextPrimary), textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(msg, style: const TextStyle(fontSize: 13, color: kTextMuted), textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _handleComplete(order, empties: empties, paymentMode: paymentMode, amount: amount, forceUpdate: true);
+                },
+                child: const Text("Update Location & Complete"),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: kBorder),
+                  foregroundColor: kTextMuted,
+                ),
+                child: const Text("Cancel"),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+  Future<void> _pickDate(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context, initialDate: selectedDate,
+      firstDate: DateTime(2024), lastDate: DateTime.now(),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.light().copyWith(colorScheme: const ColorScheme.light(primary: kBlue)),
+        child: child!,
+      ),
+    );
+    if (picked != null && picked != selectedDate) {
+      setState(() => selectedDate = picked);
+      _refreshData();
+    }
+  }
+
+  Future<void> _launchNav(dynamic lat, dynamic lng) async {
     if (lat == null || lng == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: Address not verified.")));
+      _showResultBanner("Address not verified — cannot navigate", kRed);
       return;
     }
-    final String googleMapsUrl = "google.navigation:q=$lat,$lng&mode=d";
+    final gm = "google.navigation:q=$lat,$lng&mode=d";
+    final fb = "http://maps.google.com/maps?q=$lat,$lng";
     try {
-      if (await canLaunchUrl(Uri.parse(googleMapsUrl))) { await launchUrl(Uri.parse(googleMapsUrl)); }
-      else { await launchUrl(Uri.parse("http://maps.google.com/maps?q=$lat,$lng"), mode: LaunchMode.externalApplication); }
-    } catch (e) { debugPrint("Nav Error: $e"); }
+      if (await canLaunchUrl(Uri.parse(gm))) {
+        await launchUrl(Uri.parse(gm));
+      } else {
+        await launchUrl(Uri.parse(fb), mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint("Nav error: $e");
+    }
+  }
+
+  Future<void> _logout() async {
+    await ApiService().logout();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    }
   }
 }

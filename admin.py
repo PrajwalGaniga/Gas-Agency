@@ -158,7 +158,7 @@ def get_detailed_driver_metrics(driver_id, start_date_utc, end_date_utc):
 
 @admin_router.get("/signup")
 async def signup_page(request: Request):
-    return templates.TemplateResponse("signup.html", {"request": request})
+    return templates.TemplateResponse(request, "signup.html", {"request": request})
 
 
 
@@ -177,7 +177,7 @@ async def complete_signup(email: str = Form(...), otp: str = Form(...)):
 
 @admin_router.get("/")
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html", {"request": request})
 
 @admin_router.post("/login")
 async def login_logic(request: Request, email: str = Form(...), password: str = Form(...)):
@@ -187,7 +187,7 @@ async def login_logic(request: Request, email: str = Form(...), password: str = 
         response = RedirectResponse(url="/dashboard", status_code=303)
         response.set_cookie(key="access_token", value=access_token, httponly=True)
         return response
-    return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials."})
+    return templates.TemplateResponse(request, "login.html", {"request": request, "error": "Invalid credentials."})
 
 @admin_router.get("/logout")
 async def logout(request: Request):
@@ -199,7 +199,7 @@ async def logout(request: Request):
 
 @admin_router.get("/forgot-password")
 async def forgot_password_page(request: Request):
-    return templates.TemplateResponse("forgot_password.html", {"request": request})
+    return templates.TemplateResponse(request, "forgot_password.html", {"request": request})
 
 @admin_router.post("/forgot-password-request")
 async def forgot_request(email: str = Form(...)):
@@ -445,7 +445,7 @@ async def dashboard_view(request: Request, admin_id: ObjectId = Depends(get_curr
         "in_progress": order_collection.count_documents({"admin_id": admin_id, "status": "IN_PROGRESS"}),
         "delivered": order_collection.count_documents({"admin_id": admin_id, "status": "DELIVERED"})
     }
-    return templates.TemplateResponse("dashboard.html", {"request": request, "drivers": stats_list, "stats": stats})
+    return templates.TemplateResponse(request, "dashboard.html", {"request": request, "drivers": stats_list, "stats": stats})
 
 @admin_router.get("/drivers")
 async def driver_management(request: Request, admin_id: ObjectId = Depends(get_current_admin)):
@@ -457,7 +457,7 @@ async def driver_management(request: Request, admin_id: ObjectId = Depends(get_c
         d["_id"] = str(d["_id"])
         d["assigned_cities"] = d.get("assigned_cities") or []
         d["total_deliveries"] = order_collection.count_documents({"assigned_driver_id": ObjectId(d["_id"]), "status": "DELIVERED"})
-    return templates.TemplateResponse("drivers.html", {"request": request, "drivers": drivers, "cities": cities, "stats": stats})
+    return templates.TemplateResponse(request, "drivers.html", {"request": request, "drivers": drivers, "cities": cities, "stats": stats})
 
 @admin_router.post("/add-driver")
 async def add_driver(name: str = Form(...), phone: str = Form(...), password: str = Form(...), cities: list = Form([]), admin_id: ObjectId = Depends(get_current_admin)):
@@ -534,7 +534,7 @@ async def delivery_assignments(request: Request, admin_id: ObjectId = Depends(ge
     }
 
     # 3. Pass "stats" into the context dictionary
-    return templates.TemplateResponse("assignments.html", {
+    return templates.TemplateResponse(request, "assignments.html", {
         "request": request, 
         "orders": pending_orders, 
         "drivers": active_drivers,
@@ -648,7 +648,7 @@ async def pending_orders_dashboard(
         "territories": len(territory_list)
     }
 
-    return templates.TemplateResponse("pending_orders.html", {
+    return templates.TemplateResponse(request, "pending_orders.html", {
         "request": request, 
         "territories": territory_list, 
         "drivers": active_drivers,
@@ -803,7 +803,7 @@ async def track_driver_page(request: Request, driver_id: str, admin_id: ObjectId
     if not admin_id: return RedirectResponse("/")
     driver = driver_collection.find_one({"_id": ObjectId(driver_id), "admin_id": admin_id})
     if not driver: return RedirectResponse("/dashboard")
-    return templates.TemplateResponse("DriverTracking.html", {"request": request, "driver_name": driver["name"], "driver_id": driver_id})
+    return templates.TemplateResponse(request, "DriverTracking.html", {"request": request, "driver_name": driver["name"], "driver_id": driver_id})
 
 @admin_router.get("/api/track-data/{driver_id}")
 async def get_tracking_data(
@@ -924,7 +924,7 @@ async def driver_audit_page(request: Request, period: str = Query(None), date: s
     summary_totals["avg_hours"] = round(summary_totals["total_hours"] / len(unique_dates), 1) if unique_dates else 0
     table_data.sort(key=lambda x: x["date"], reverse=True)
 
-    return templates.TemplateResponse("DriverAudit.html", {
+    return templates.TemplateResponse(request, "DriverAudit.html", {
         "request": request, "audits": table_data, "summary": summary_totals, "requests": processed_requests, 
         "drivers": drivers, "active_view": active_view, "selected_date": date or now_ist.strftime("%Y-%m-%d"), "selected_driver": driver_id
     })
@@ -1028,7 +1028,7 @@ async def reports_page(request: Request, period: str = "24h", admin_id: ObjectId
         "in_progress": len([o for o in recent_orders if o.get("status") == "IN_PROGRESS"])
     }
     stats = {"pending": order_collection.count_documents({"admin_id": admin_id, "status": "PENDING"})}
-    return templates.TemplateResponse("reports.html", {"request": request, "summary": summary, "period": period, "orders": recent_orders, "stats": stats})
+    return templates.TemplateResponse(request, "reports.html", {"request": request, "summary": summary, "period": period, "orders": recent_orders, "stats": stats})
 
 @admin_router.get("/export-report")
 async def export_report(period: str = "24h", admin_id: ObjectId = Depends(get_current_admin)):
@@ -1040,7 +1040,12 @@ async def export_report(period: str = "24h", admin_id: ObjectId = Depends(get_cu
     df = pd.DataFrame(export_data)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer: df.to_excel(writer, index=False)
-# admin.py
+    output.seek(0)
+    return StreamingResponse(
+        output, 
+        headers={"Content-Disposition": f"attachment; filename=Report_{period}.xlsx"}, 
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 @admin_router.get("/reconciliation")
 async def reconciliation_page(request: Request, date: str = Query(None), admin_id: ObjectId = Depends(get_current_admin)):
@@ -1080,7 +1085,7 @@ async def reconciliation_page(request: Request, date: str = Query(None), admin_i
             "difference": reported_cash - expected_cash
         })
         
-    return templates.TemplateResponse("reports.html", { # For now reuse reports.html or create a simplified reconciliation view
+    return templates.TemplateResponse(request, "reports.html", { # For now reuse reports.html or create a simplified reconciliation view
         "request": request,
         "date_label": target_date.strftime("%d %b %Y"),
         "reconciliation": reconciliation_data
@@ -1123,7 +1128,7 @@ async def profile_view(request: Request, admin_id: ObjectId = Depends(get_curren
         reg_date_ist = to_ist(d.get("created_at"))
         d["date_str"] = reg_date_ist.strftime("%d %b %Y") if reg_date_ist else "N/A"
 
-    return templates.TemplateResponse("profile.html", {
+    return templates.TemplateResponse(request, "profile.html", {
         "request": request,
         "admin": admin,
         "drivers": my_drivers,
@@ -1347,7 +1352,7 @@ async def inventory_management(
     drivers = list(driver_collection.find({"admin_id": admin_id, "is_active": True}))
     for d in drivers: d["_id"] = str(d["_id"])
     
-    return templates.TemplateResponse("inventory_management.html", {
+    return templates.TemplateResponse(request, "inventory_management.html", {
         "request": request,
         "shift_data": shift_data,
         "drivers": drivers,

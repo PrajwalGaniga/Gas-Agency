@@ -1,0 +1,224 @@
+1. Design System (Clean Light Theme)
+Color Philosophy (critical fix)
+
+Stop using many semantic colors for everything. You only need:
+
+Primary System
+Primary Action: #2563EB (blue)
+Background: #F8FAFC
+Card: #FFFFFF
+Text: #0F172A
+Muted text: #64748B
+Border: #E2E8F0
+State Colors (STRICT LIMIT)
+Success (Delivered / Completed): #16A34A
+Warning (Attention / Delay): #F59E0B
+Error (Failed / Issue): #EF4444
+
+Everything else should be grayscale.
+
+Mistake to avoid: don’t color-code every status differently. Drivers will lose meaning fast.
+
+2. UI Architecture (this is the real fix)
+
+You should NOT design screens. You should design states.
+
+State 1: Idle (No active order)
+
+Simple screen:
+
+“No active delivery”
+Big button: “Start Shift”
+List: assigned orders
+
+This is rare state.
+
+State 2: Active Job (MAIN STATE)
+
+This is your most important screen.
+
+Layout:
+
+Top:
+
+Order ID + Status chip
+
+Center (dominant):
+
+LOCATION CARD (pickup OR drop)
+
+Bottom fixed:
+
+ONE PRIMARY ACTION BUTTON
+
+Example:
+
+Pickup: ABC Warehouse
+Distance: 7.2 km
+ETA: 18 min
+
+[ OPEN NAVIGATION ]
+
+or
+
+Reached Pickup
+
+[ CONFIRM PICKUP ]
+
+or
+
+At Customer Location
+
+[ COMPLETE DELIVERY ]
+Critical rule:
+
+Only ONE action button visible per state.
+
+You are NOT building a form screen. You are building a decision screen.
+
+State 3: Exception State (very important)
+
+Triggered by:
+
+wrong address
+customer not available
+issue reported
+
+UI:
+
+Red/Orange header only
+2–3 simple options max
+
+Example:
+
+Issue detected
+
+[ Customer not available ]
+[ Wrong address ]
+[ Damaged item ]
+
+[ Submit ]
+
+No free text first. Add later.
+
+State 4: Proof / Completion
+
+This is structured but minimal:
+
+Photo upload
+Optional remark
+Confirm button
+
+No extra UI.
+
+3. Screen Strategy (stop overbuilding tabs)
+
+Your current backend suggests many actions, but UI should NOT reflect them as tabs.
+
+Bottom Navigation (ONLY 3)
+Tasks (Home logic lives here)
+Map (optional quick view)
+Profile
+
+Remove Bills tab (it should live inside task flow)
+
+4. Task Card System (most important UI element)
+
+Instead of multiple screens, use ONE evolving card:
+
+Task Card evolves like this:
+Before start
+Pickup info
+Start button
+After accept
+Navigation button
+After reach
+Verify pickup
+During delivery
+Drop location + ETA
+After delivery
+Complete + proof
+
+Same card, changing state.
+
+This is how Uber-style systems stay usable.
+
+5. Navigation UX (critical simplification)
+
+Do NOT build internal maps logic.
+
+Only:
+
+“Open Google Maps”
+Pass coordinates
+
+Inside app:
+
+Show ETA only
+Show distance only
+
+That’s it.
+
+6. Typography & Spacing (where most apps fail)
+Rules:
+Font: Inter / Roboto
+Title: 18–20 semibold
+Body: 14–16 regular
+Muted text: 12–13
+
+Spacing system:
+
+8pt grid system
+Card padding: 16
+Button height: 52–56
+7. Button System (reduce confusion)
+
+Only 3 button types:
+
+Primary (blue)
+
+Main action only
+
+Secondary (outline)
+
+Less important action
+
+Danger (red)
+
+Issues only
+
+Never more than 2 buttons on screen at once.
+
+8. Interaction Rules (THIS is UX, not UI)
+No forms unless necessary
+No typing unless unavoidable
+Prefer:
+buttons
+chips
+toggles
+scan/photo
+
+Drivers should not “fill apps”, they should “complete steps”.
+
+9. Real Problem in Your Current System
+
+Your backend is action-heavy:
+
+accept order
+GPS tracking
+change requests
+offline sync
+issues logging
+
+If UI exposes all of this → cognitive overload.
+
+So UI must:
+
+Collapse backend actions into:
+Start
+Navigate
+Confirm pickup
+Deliver
+Report issue
+
+Everything else is invisible.
